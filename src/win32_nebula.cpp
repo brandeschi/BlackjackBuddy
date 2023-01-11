@@ -1,23 +1,7 @@
 #include <math.h>
 #include <stdint.h>
 
-/* For learning purposes, HH goes through learning how to render things manually
- * without utilizing the power of the gpu. Because of this, I am going to follow
- * since I think it will give a holistic view on how graphics work on computers.
- * I will potentially skip over somethings if I feel it is not worth doing and
- * will notate when I am doing so. */
-
-// This is for a device independent bitmap which is what windows uses to read
-// bitmaps. This allow us to create a bitmap windows is happy with and one it
-// can display properly.
-
 // TODO: THIS FILE WILL NEED DIAGS ONCE A DIAG SYSTEM IS MADE
-
-/* FIXME:
- * I am going to go through the series to make sure I have the basic windows
- * stuff down. Then, I will try w.e the task in that day before casey does it,
- * then compare it to what he does.
- */
 
 #define global static
 #define pi32 3.14159265359f
@@ -100,14 +84,6 @@ static void DEBUG_free_file(thread_context *thread, void *file)
     }
 }
 
-// NOTE: 
-// Below is done to change how we hook into XInput. Currently, if
-// we link with xInput directly, we need to make sure that the user has the
-// version we use on their machine. This also means they would need a controller
-// to play any game with this engine. In order to avoid this, we use the code
-// below to direct xInput calls to the stub functions below if xInput is not
-// loaded when our platform code starts up.
-
 // Macros to get the two function declarations that we need to make xInput work.
 #define XINPUT_GET_STATE(fn_name) DWORD WINAPI fn_name(DWORD dwUserIndex, XINPUT_STATE *pState) // Macro to define a function that matches the signature of XInputGetState
 #define XINPUT_SET_STATE(fn_name) DWORD WINAPI fn_name(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) // Macro to define a function that matche the signature of XInputSetState
@@ -144,6 +120,7 @@ static void win32_load_xinput() {
   }
 }
 
+// TODO: Should I replace this once I want to actually add sound?
 #define DIRECT_SOUND_CREATE(fn_name) HRESULT WINAPI fn_name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter) // Macro to define a function that matches the signature of DirectSound Create func
 typedef DIRECT_SOUND_CREATE(dsound_create);
 
@@ -279,14 +256,12 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
       case WM_CLOSE: {
         OutputDebugStringA("WM_CLOSE");
         g_running = false;
-        // PostQuitMessage(0);
         break;
       }
 
       case WM_DESTROY: {
         OutputDebugStringA("WM_DESTROY");
         g_running = false;
-        // DestroyWindow(win_handle);
         break;
       }
 
@@ -297,10 +272,6 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
         assert(!"NO INPUT HERE");
       }
 
-      /* // This is called everytime windows thinks the window needs to be painted
-       * again. */
-      /* // Thus, I need to tell windows to just redraw what I have in the
-       * buffer(bitmap) to the screen. */
       case WM_PAINT: {
         PAINTSTRUCT s_paint;
         HDC device_context = BeginPaint(win_handle, &s_paint);
@@ -480,8 +451,15 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
                           break;
                         }
                         case VK_SPACE: {
-                          OutputDebugStringA("SPACE\n");
-                          break;
+                            char put_string[256];
+                            for (i32 i = 0; i < arr_count(deck); i++)
+                            {
+                                _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n", 
+                                            deck[i].Value, deck[i].Suit);
+                                OutputDebugStringA(put_string);
+                            }
+                            // OutputDebugStringA("SPACE\n");
+                            break;
                         }
                         case VK_ESCAPE: {
                           win32_process_keeb_message(&keyboard->start, is_down);
@@ -971,10 +949,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 #endif
 #if 0
         i32 fps = 0;
-        // NOTE: 
-        // Below is a source of bugs because things like sprintf and in this case wsprintf
-        // have no check on if you gave a large enough buffer to hold the string. 
-        // Below is safe however because we know we will never use more than 256 chars in the string.
         char perf_record[256];
         _snprintf_s(perf_record, sizeof(perf_record), "MS / frame: %.02fms/f | FPS: %d\n", ms_per_frame, fps);
         OutputDebugStringA(perf_record);

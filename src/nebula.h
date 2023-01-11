@@ -26,6 +26,8 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+typedef size_t mem_index;
+
 typedef float f32;
 typedef double f64;
 
@@ -150,6 +152,29 @@ struct app_memory
                           
   u64 flex_storage_space;
   void *flex_mem_storage;
+};
+
+enum card_type
+{
+    TWO = 2,
+    THREE,
+    FOUR,
+    FIVE,
+    SIX,
+    SEVEN,
+    EIGHT,
+    NINE,
+    TEN,
+    JACK = 10,
+    QUEEN = 10,
+    KING = 10,
+    ACE
+};
+
+struct card
+{
+    card_type Value;
+    char *Suit;
 };
 
 struct app_state 
