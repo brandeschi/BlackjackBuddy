@@ -1,0 +1,10 @@
+.cache/
+CMakeFiles/
+game-data/
+CMakeLists.txt
+*.bat
+build/
+build.*
+compile_commands.json
+.git
+

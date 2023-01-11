@@ -1,0 +1,171 @@
+#include "nebula.h"
+
+static void output_sound(app_state *game_state, engine_sound_buffer *sound_buffer)
+{
+#if 0
+    i16 tone_volume = 1000;
+    int wave_period = sound_buffer->samples_per_second / game_state->tone_hz;
+    // int wave_period = sound_buffer->samples_per_second / game_state->tone_hz;
+
+    i16 *sample_out = sound_buffer->samples;
+    for(int sample_index = 0; sample_index < sound_buffer->sample_count; sample_index++)
+    {
+        float sine_value = sinf(game_state->t_sine);
+        i16 sample_value = (i16) (sine_value * tone_volume);
+        *sample_out++ = sample_value;
+        *sample_out++ = sample_value;
+
+        // NOTE: 
+        // The reason the sound would pitch up a little if the program ran for 20s was because
+        // the sine function would lose it's floating point precision at that time
+        // the if fixes this issue!
+        game_state->t_sine += 2.0f * pi32 * 1.0f / (float) wave_period;
+        if (game_state->t_sine > 2.0f * pi32 * 1.0f)
+        {
+            game_state->t_sine -= 2.0f * pi32 * 1.0f;
+        }
+    }
+
+#endif
+}
+
+static void app_get_sound_samples(thread_context *thread, app_memory *memory, engine_sound_buffer *sound_buffer)
+{
+    app_state *game_state = (app_state *) memory->perm_mem_storage;
+    // output_sound(game_state, sound_buffer);
+}
+
+inline i32 round_f32_to_i32(f32 real)
+{
+    return (i32) (real + 0.5f);
+}
+
+inline u32 round_f32_to_u32(f32 real)
+{
+    return (u32) (real + 0.5f);
+}
+
+static void draw_rect(engine_bitmap_buffer *buffer, f32 f_min_X, f32 f_max_X, f32 f_min_Y, f32 f_max_Y,
+                      f32 r, f32 g, f32 b)
+{
+    i32 min_X = round_f32_to_i32(f_min_X);
+    i32 max_X = round_f32_to_i32(f_max_X);
+    i32 min_Y = round_f32_to_i32(f_min_Y);
+    i32 max_Y = round_f32_to_i32(f_max_Y);
+
+    // Will clamp the values inside of the bitmap_buffer
+    if(min_X < 0)
+    {
+        min_X = 0;
+    }
+    if(max_X > buffer->width)
+    {
+        max_X = buffer->width;
+    }
+    if(min_Y < 0)
+    {
+        min_Y = 0;
+    }
+    if(max_Y > buffer->height)
+    {
+        max_Y = buffer->height;
+    }
+
+    u32 color = (u32)((round_f32_to_u32(r * 255.0f) << 16) | 
+                      (round_f32_to_u32(g * 255.0f) << 8) | 
+                      (round_f32_to_u32(b * 255.0f) << 0));
+    u8 *current_pos = (u8 *)buffer->memory + min_X*buffer->bytes_per_pixel + min_Y*buffer->pitch;
+
+    for (int rows = min_Y; rows < max_Y; rows++)
+    {
+        u32 *pixel = (u32 *)current_pos;
+        for (int cols = min_X; cols < max_X; cols++)
+        {
+            *pixel++ = color;
+        }
+        
+        current_pos += buffer->pitch;
+    }
+}
+
+static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input, engine_bitmap_buffer *bitmap_buffer)
+{
+    assert(sizeof(app_state) <= memory->perm_storage_space);
+    // Casey describes this as a 'cold cast'
+    app_state *game_state = (app_state *) memory->perm_mem_storage;
+
+    if(!memory->is_init)
+    {
+        memory->is_init = true;
+    }
+
+    for (int controller_index = 0;
+         controller_index < arr_count(input->controllers);
+         controller_index++)
+    {
+        engine_controller_input *controller = get_controller(input, controller_index);
+
+        if (controller->is_analog)
+        {
+        }
+        else
+        {
+        }
+
+    }
+
+    // Draw debug backgroun in client area.
+    draw_rect(bitmap_buffer, 0.0f, (f32)bitmap_buffer->width, 0.0f, (f32)bitmap_buffer->height,
+              0.8f, 0.56f, 0.64f);
+
+}
+
+#if 0
+static void render_bitmap(engine_bitmap_buffer *buffer, int x_off, int y_off)
+{
+    u8 *row = (u8 *) buffer->memory;
+    for (int y = 0; y < buffer->height; y++)
+    {
+        u32 *pixel = (u32 *) row; // This controls how wide the bitmap goes (i.e u8 covers 1/4 the screen).
+        for (int x = 0; x < buffer->width; x++)
+        {
+            /*
+             * Pixel in mem:  RR GG BB xx // This is based on the endianess of the architecture 
+             * THIS USES LITTLE ENDIAN ARCH
+             * Thus, in mem it looks like BB GG RR xx or 0x xxBBGGRR (in register)
+             */
+
+            u8 blue = (u8) (x + x_off);
+            u8 green = (u8) (y + y_off);
+            u8 red = 200;
+
+            *pixel++ = ((red << 16) | (green << 8) | blue); // xx RR GG BB <- starting here
+            // *pixel++ = (u8) x; // xx RR GG BB <- starting here 
+            // *pixel++ = 0; // xx RR GG BB <- starting here 
+            // *pixel++ = (u8) y; // xx RR GG BB <- starting here
+            // *pixel++ = 0; // xx RR GG BB <- starting here
+        }
+
+        row += buffer->pitch;
+    }
+}
+
+static void render_player(engine_bitmap_buffer *buffer, int playerX, int playerY)
+{
+    u32 color = 0xFFFFFF;
+    int top = playerY;
+    int bot = playerY + 10;
+    for (int current_x = playerX; current_x < playerX + 10; current_x++)
+    {
+        u8 *pixel = ((u8 *) buffer->memory + 
+                     (current_x * buffer->bytes_per_pixel) + 
+                     (top * buffer->pitch));
+        for (int current_y = top; current_y < bot; current_y++)
+        {
+            *(u32 *)pixel = color;
+            pixel += buffer->pitch;
+        }
+    }
+}
+#endif
+

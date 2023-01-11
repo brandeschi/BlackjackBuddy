@@ -1,0 +1,163 @@
+#pragma once
+
+/*
+ * NOTE:
+ *
+ * NEO_SPEED:
+ * 0 = slow code (asserts, debug stuff, etc)
+ * 1 = Quick code only!
+ *
+ * NEO_INTERNAL
+ * 0 = Release Build
+ * 1 = Develop Build
+ *
+ */
+
+// Type Definitions!
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
+
+typedef i32 b32;
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+
+typedef float f32;
+typedef double f64;
+
+
+
+// Bytes size maps
+#define kilobytes(value) ((value)*1024LL)
+#define megabytes(value) (kilobytes(value) * 1024LL)
+#define gigabytes(value) (megabytes(value) * 1024LL)
+#define terabytes(value) (gigabytes(value) * 1024LL)
+
+// Beta Assert FIXME
+#if NEO_SPEED
+#define assert(expression)
+#else
+#define assert(expression) if (!(expression)) { *(int *)0 = 0; }
+#endif
+
+#define arr_count(array) (sizeof(array) / sizeof((array)[0]))
+
+struct thread_context
+{
+    int placeholder;
+};
+
+#if NEO_INTERNAL
+struct debug_file_result
+{
+    u32 contents_size;
+    void *contents;
+};
+
+inline u32 safe_truncate_int64(u64 value)
+{
+    assert(value <= 0xFFFFFFFF);
+    u32 result = (u32) value;
+    return result;
+}
+
+static debug_file_result DEBUG_read_entire_file(thread_context *thread, char *file_name);
+static void DEBUG_free_file(thread_context *thread, void *file);
+static b32 DEBUG_write_entire_file(thread_context *thread, char *file_name, void *file, u32 file_size);
+#endif
+
+struct engine_bitmap_buffer 
+{
+  void *memory;
+  int pitch;
+  int width;
+  int height;
+  int bytes_per_pixel;
+};
+
+struct engine_sound_buffer 
+{
+  int samples_per_second;
+  int sample_count;
+  i16 *samples;
+};
+
+struct engine_button_state 
+{
+  int half_transitions;
+  b32 is_down;
+};
+
+struct engine_controller_input 
+{
+  b32 is_analog = false;
+  float stick_avg_x;
+  float stick_avg_y;
+
+  union 
+  {
+    // NOTE: MAKE SURE OUR BUTTONS COUNT MATCHES THE NUMBER OF BUTTONS IN STRUCT!!!
+    engine_button_state buttons[12];
+    struct 
+    {
+      engine_button_state move_down;
+      engine_button_state move_left;
+      engine_button_state move_up;
+      engine_button_state move_right;
+
+      engine_button_state action_down;
+      engine_button_state action_left;
+      engine_button_state action_up;
+      engine_button_state action_right;
+
+      engine_button_state left_shoulder;
+      engine_button_state right_shoulder;
+
+      engine_button_state start;
+      engine_button_state back;
+    };
+  };
+};
+
+struct engine_input 
+{
+    engine_button_state mouse_buttons [3];
+    i32 mouseX, mouseY, mouseZ;
+
+    f32 time_step_over_frame;
+    engine_controller_input controllers[5];
+};
+
+inline engine_controller_input *get_controller(engine_input *input, int controller_index)
+{
+    // NOTE: might want to make controller_index unsigned if we don't want neg arr access
+    assert(arr_count(input->controllers) > controller_index);
+
+    engine_controller_input *result = &input->controllers[controller_index];
+    return result;
+}
+
+struct app_memory 
+{
+  b32 is_init;
+
+  u64 perm_storage_space;
+  void *perm_mem_storage; // NOTE: This needs to be cleared to 0 when allocated at startup
+                          
+  u64 flex_storage_space;
+  void *flex_mem_storage;
+};
+
+struct app_state 
+{
+};
+
+static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input,
+                              engine_bitmap_buffer *buffer);
+
+static void app_get_sound_samples(thread_context *thread, app_memory *memory, engine_sound_buffer *sound_buffer);
+
