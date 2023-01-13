@@ -452,10 +452,18 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
                         }
                         case VK_SPACE: {
                             char put_string[256];
-                            for (i32 i = 0; i < arr_count(deck); i++)
+                            for (i32 i = 0; i < arr_count(base_deck); i++)
                             {
                                 _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n", 
-                                            deck[i].Value, deck[i].Suit);
+                                            base_deck[i].Value, base_deck[i].Suit);
+                                OutputDebugStringA(put_string);
+                            }
+                            OutputDebugStringA("==============================\n");
+                            shuffle(base_deck, arr_count(base_deck));
+                            for (i32 i = 0; i < arr_count(base_deck); i++)
+                            {
+                                _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n", 
+                                            base_deck[i].Value, base_deck[i].Suit);
                                 OutputDebugStringA(put_string);
                             }
                             // OutputDebugStringA("SPACE\n");

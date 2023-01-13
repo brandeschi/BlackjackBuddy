@@ -6,7 +6,7 @@
 // - Concept of a hand?
 //
 // Also need to add general player actions
-card deck[52] {
+card base_deck[52] {
     { TWO, "SPADES" },
     { THREE, "SPADES" },
     { FOUR, "SPADES" },
@@ -60,6 +60,24 @@ card deck[52] {
     { KING, "DIAMONDS" },
     { ACE, "DIAMONDS" }
 };
+
+#include <stdlib.h>
+#include <time.h>
+// NOTE: This is Fisher-Yates Algo
+// TODO: Need to implement random numbers
+inline static void shuffle(card deck[], mem_index deck_size)
+{
+    time_t t;
+    srand((unsigned) time(&t));
+    for (int i = 0; i < deck_size - 2; i++)
+    {
+        int j = rand() % (deck_size - 2 - i);
+        // Swap
+        card temp = deck[i];
+        deck[i] = deck[j];
+        deck[j] = temp;
+    }
+}
 
 static void output_sound(app_state *game_state, engine_sound_buffer *sound_buffer)
 {
