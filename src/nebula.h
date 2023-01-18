@@ -72,7 +72,7 @@ static void DEBUG_free_file(thread_context *thread, void *file);
 static b32 DEBUG_write_entire_file(thread_context *thread, char *file_name, void *file, u32 file_size);
 #endif
 
-struct engine_bitmap_buffer 
+struct engine_bitmap_buffer
 {
   void *memory;
   int pitch;
@@ -81,30 +81,30 @@ struct engine_bitmap_buffer
   int bytes_per_pixel;
 };
 
-struct engine_sound_buffer 
+struct engine_sound_buffer
 {
   int samples_per_second;
   int sample_count;
   i16 *samples;
 };
 
-struct engine_button_state 
+struct engine_button_state
 {
   int half_transitions;
   b32 is_down;
 };
 
-struct engine_controller_input 
+struct engine_controller_input
 {
   b32 is_analog = false;
   float stick_avg_x;
   float stick_avg_y;
 
-  union 
+  union
   {
     // NOTE: MAKE SURE OUR BUTTONS COUNT MATCHES THE NUMBER OF BUTTONS IN STRUCT!!!
     engine_button_state buttons[12];
-    struct 
+    struct
     {
       engine_button_state move_down;
       engine_button_state move_left;
@@ -125,7 +125,7 @@ struct engine_controller_input
   };
 };
 
-struct engine_input 
+struct engine_input
 {
     engine_button_state mouse_buttons [3];
     i32 mouseX, mouseY, mouseZ;
@@ -143,13 +143,13 @@ inline engine_controller_input *get_controller(engine_input *input, int controll
     return result;
 }
 
-struct app_memory 
+struct app_memory
 {
   b32 is_init;
 
   u64 perm_storage_space;
   void *perm_mem_storage; // NOTE: This needs to be cleared to 0 when allocated at startup
-                          
+
   u64 flex_storage_space;
   void *flex_mem_storage;
 };
@@ -177,7 +177,12 @@ struct card
     char *Suit;
 };
 
-struct app_state 
+struct deck
+{
+    card cards[52];
+};
+
+struct app_state
 {
 };
 

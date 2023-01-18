@@ -26,7 +26,7 @@ static debug_file_result DEBUG_read_entire_file(thread_context *thread, char *fi
 {
     debug_file_result result = {};
     HANDLE file_handle = CreateFile(file_name, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
-    if (file_handle != INVALID_HANDLE_VALUE) 
+    if (file_handle != INVALID_HANDLE_VALUE)
     {
         LARGE_INTEGER file_size;
         if (GetFileSizeEx(file_handle, &file_size))
@@ -41,7 +41,7 @@ static debug_file_result DEBUG_read_entire_file(thread_context *thread, char *fi
                {
                    result.contents_size = file_size32;
                }
-               else 
+               else
                {
                    DEBUG_free_file(thread, result.contents);
                    result.contents = 0;
@@ -57,21 +57,21 @@ static b32 DEBUG_write_entire_file(thread_context *thread, char *file_name, void
 {
     b32 result = false;
     HANDLE file_handle = CreateFile(file_name, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
-    if (file_handle != INVALID_HANDLE_VALUE) 
+    if (file_handle != INVALID_HANDLE_VALUE)
     {
         DWORD bytes_written;
         if (WriteFile(file_handle, file, file_size, &bytes_written, 0))
-            
+
         {
             result = (bytes_written == file_size);
         }
-        else 
+        else
         {
             // TODO: LOGGING
         }
 
     }
-    
+
     CloseHandle(file_handle);
     return result;
 }
@@ -223,13 +223,13 @@ static void win32_resize_DIB_section(win32_bitmap_buffer *buffer, int _width,
 // This is needed to force rePaint to get a set fps
 static void win32_update_win_with_buffer(HDC device_context,
                                          win32_bitmap_buffer *buffer,
-                                         int win_width, int win_height) 
+                                         int win_width, int win_height)
 {
     // Clear the unused client pixels to black
     PatBlt(device_context, 0, buffer->height, win_width, win_height, BLACKNESS);
     PatBlt(device_context, buffer->width, 0, win_width, win_height, BLACKNESS);
 
-    // TODO: 
+    // TODO:
     // Fix the aspect ratio with math (either through floating point or
     // integer)
     StretchDIBits(
@@ -238,7 +238,7 @@ static void win32_update_win_with_buffer(HDC device_context,
         // _x, _y, _width, _height, // Props of src bitmap
         // To make a simple rect first, we  stretch the bits to the whole window
         // NOTE: HHD[024]: casey wanted to make the displayed pixels be one-to-one
-        // so instead of taking in the win dimensions for this function, 
+        // so instead of taking in the win dimensions for this function,
         // we will be making it based on the buffer's initial dims
         0, 0, buffer->width, buffer->height, 0, 0, buffer->width, buffer->height,
         buffer->memory, &buffer->info,
@@ -247,11 +247,11 @@ static void win32_update_win_with_buffer(HDC device_context,
 }
 static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
                                                    UINT message, WPARAM WParam,
-                                                   LPARAM LParam) 
+                                                   LPARAM LParam)
 {
   LRESULT result = 0;
 
-  switch (message) 
+  switch (message)
   {
       case WM_CLOSE: {
         OutputDebugStringA("WM_CLOSE");
@@ -392,7 +392,7 @@ static void win32_process_keeb_message(engine_button_state *new_state, b32 is_do
 static void win32_process_pending_win_messages(engine_controller_input *keyboard)
 {
     MSG message;
-    while (PeekMessage(&message, 0, 0, 0, PM_REMOVE)) 
+    while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
     {
         switch(message.message)
         {
@@ -408,7 +408,7 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
                 b32 is_down = ((message.lParam & (1 << 31)) == 0);
                 if (is_down != was_down)
                 {
-                    switch (vk_code) 
+                    switch (vk_code)
                     {
                         case 'W': {
                             win32_process_keeb_message(&keyboard->move_up, is_down);
@@ -452,21 +452,25 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
                         }
                         case VK_SPACE: {
                             char put_string[256];
-                            for (i32 i = 0; i < arr_count(base_deck); i++)
-                            {
-                                _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n", 
-                                            base_deck[i].Value, base_deck[i].Suit);
-                                OutputDebugStringA(put_string);
-                            }
-                            OutputDebugStringA("==============================\n");
-                            shuffle(base_deck, arr_count(base_deck));
-                            for (i32 i = 0; i < arr_count(base_deck); i++)
-                            {
-                                _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n", 
-                                            base_deck[i].Value, base_deck[i].Suit);
-                                OutputDebugStringA(put_string);
-                            }
+                            // for (i32 i = 0; i < arr_count(base_deck.cards); i++)
+                            // {
+                            //     _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
+                            //                 base_deck.cards[i].Value, base_deck.cards[i].Suit);
+                            //     OutputDebugStringA(put_string);
+                            // }
+                            // OutputDebugStringA("==============================\n");
+                            // shuffle(base_deck.cards, arr_count(base_deck.cards));
+                            // for (i32 i = 0; i < arr_count(base_deck.cards); i++)
+                            // {
+                            //     _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
+                            //                 base_deck.cards[i].Value, base_deck.cards[i].Suit);
+                            //     OutputDebugStringA(put_string);
+                            // }
                             // OutputDebugStringA("SPACE\n");
+                            deal(&base_deck, 2);
+                            _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
+                                        base_deck.cards[4].Value, base_deck.cards[4].Suit);
+                            OutputDebugStringA(put_string);
                             break;
                         }
                         case VK_ESCAPE: {
@@ -488,19 +492,19 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
                 }
             } break;
 
-            default: 
+            default:
             {
                 TranslateMessage(&message);
                 DispatchMessage(&message);
             } break;
-                
+
         }
 
      }
 }
 
 #if 0
-static void win32_draw_debug_verticals(win32_bitmap_buffer *bm_buffer, int current_x, 
+static void win32_draw_debug_verticals(win32_bitmap_buffer *bm_buffer, int current_x,
                                        int top, int bot, int color)
 {
     if (top <= 0)
@@ -514,8 +518,8 @@ static void win32_draw_debug_verticals(win32_bitmap_buffer *bm_buffer, int curre
 
     if ((current_x >= 0) && (current_x < bm_buffer->width))
     {
-        u8 *pixel = ((u8 *) bm_buffer->memory + 
-                     (current_x * bm_buffer->bytes_per_pixel) + 
+        u8 *pixel = ((u8 *) bm_buffer->memory +
+                     (current_x * bm_buffer->bytes_per_pixel) +
                      (top * bm_buffer->pitch));
         for (int y = top; y < bot; y++)
         {
@@ -525,7 +529,7 @@ static void win32_draw_debug_verticals(win32_bitmap_buffer *bm_buffer, int curre
     }
 }
 
-static void win32_render_debug_display_sync(win32_bitmap_buffer *bm_buffer, int debug_cursor_count, 
+static void win32_render_debug_display_sync(win32_bitmap_buffer *bm_buffer, int debug_cursor_count,
                                             DWORD *debug_cursors, win32_sound_settings *sound_settings,
                                             f32 target_seconds_per_frame)
 {
@@ -551,7 +555,7 @@ inline LARGE_INTEGER win32_get_seconds_wallclock()
 {
     LARGE_INTEGER result;
     QueryPerformanceCounter(&result);
-    return result; 
+    return result;
 }
 
 inline f32 win32_get_seconds_elapsed(LARGE_INTEGER start, LARGE_INTEGER end)
@@ -561,7 +565,7 @@ inline f32 win32_get_seconds_elapsed(LARGE_INTEGER start, LARGE_INTEGER end)
 }
 
 INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
-                   PSTR cmd_line, INT show_command) 
+                   PSTR cmd_line, INT show_command)
 {
     UINT desired_scheduler_timing = 1;
     b32 granular_sleep = (timeBeginPeriod(desired_scheduler_timing) == TIMERR_NOERROR);
@@ -618,20 +622,20 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     win32_clear_sound_buffer(&sound_settings);
     g_secondary_buffer->Play(0, 0, DSBPLAY_LOOPING);
 
-    // TODO: 
+    // TODO:
     // Pool this with bitmap also, once I have an idea about how I want the core of this engine to be,
     // I might want to change how I do these virtualallocs (especially if casey never gets to it)
     i16 *samples =
       (i16 *)VirtualAlloc(0, sound_settings.secondary_buffer_size,
                               MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-    // TODO: 
+    // TODO:
     // For now, we are just setting up the memory space for my machine.
     // Later this will need to handled to in some other way by looking at what we
     // are running on.
 #if NEO_INTERNAL
     LPVOID base_address = (LPVOID) terabytes(2);
-#else 
+#else
     LPVOID base_address = 0;
 #endif
 
@@ -662,16 +666,16 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     b32 valid_sound = false;
 
     // Global Loop
-    while (g_running) 
+    while (g_running)
     {
         new_input->time_step_over_frame = target_seconds_per_frame;
 
         engine_controller_input *new_keeb = get_controller(new_input, 0);
-        engine_controller_input *old_keeb = get_controller(old_input, 0); 
+        engine_controller_input *old_keeb = get_controller(old_input, 0);
         *new_keeb = {};
 
-        for (int button_index = 0; 
-             button_index < arr_count(new_keeb->buttons); 
+        for (int button_index = 0;
+             button_index < arr_count(new_keeb->buttons);
              button_index++)
         {
             new_keeb->buttons[button_index].is_down = old_keeb->buttons[button_index].is_down;
@@ -697,7 +701,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
         }
         // First controller is the keyboard
         for (DWORD controller_index = KEEB_COUNT; controller_index < max_controller_count;
-             controller_index++) 
+             controller_index++)
         {
 
             engine_controller_input *old_control_state =
@@ -710,13 +714,13 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
             // Simply get the state of the controller from XInput.
             // TODO: See if XInputGetState still has the bug discussed in HHD007.
-            if (XInputGetState(controller_index, &controller_state) == ERROR_SUCCESS) 
+            if (XInputGetState(controller_index, &controller_state) == ERROR_SUCCESS)
             {
                 new_control_state->is_analog = old_control_state->is_analog;
 
                 // Controller is connected
                 XINPUT_GAMEPAD *controller = &controller_state.Gamepad;
-                
+
                 // TODO: Potentially change to 'keyboard' control-like code path by adding is_analog = false for d-pad
                 // DPAD
                 if (controller->wButtons & XINPUT_GAMEPAD_DPAD_DOWN)
@@ -742,26 +746,26 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
                 new_control_state->is_analog = true;
                 // LSTICK
-                new_control_state->stick_avg_x = 
-                    win32_process_stick_value(controller->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE); 
-                new_control_state->stick_avg_y = 
-                    win32_process_stick_value(controller->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);  
+                new_control_state->stick_avg_x =
+                    win32_process_stick_value(controller->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+                new_control_state->stick_avg_y =
+                    win32_process_stick_value(controller->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 
                 float threshold = 0.5f;
                 win32_xinput_digital_button_handler(
-                    (new_control_state->stick_avg_y < -threshold ? 1 : 0), 
+                    (new_control_state->stick_avg_y < -threshold ? 1 : 0),
                     &old_control_state->move_down,
                     &new_control_state->move_down, 1);
                 win32_xinput_digital_button_handler(
-                    (new_control_state->stick_avg_x < -threshold ? 1 : 0), 
+                    (new_control_state->stick_avg_x < -threshold ? 1 : 0),
                     &old_control_state->move_left,
                     &new_control_state->move_left, 1);
                 win32_xinput_digital_button_handler(
-                    (new_control_state->stick_avg_y > threshold ? 1 : 0), 
+                    (new_control_state->stick_avg_y > threshold ? 1 : 0),
                     &old_control_state->move_up,
                     &new_control_state->move_up, 1);
                 win32_xinput_digital_button_handler(
-                    (new_control_state->stick_avg_x > threshold ? 1 : 0), 
+                    (new_control_state->stick_avg_x > threshold ? 1 : 0),
                     &old_control_state->move_right,
                     &new_control_state->move_right, 1);
 
@@ -794,8 +798,8 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
                  * XINPUT_GAMEPAD_LEFT_THUMB); */
                 /* b32 right_thumb_button = (controller->wButtons &
                  * XINPUT_GAMEPAD_RIGHT_THUMB); */
-            } 
-            else 
+            }
+            else
             {
                 // TODO: Add basic keyboard controls next.
                 // Controller is not connected
@@ -818,7 +822,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
         DWORD play_cursor = 0;
         DWORD write_cursor = 0;
         if (SUCCEEDED(g_secondary_buffer->GetCurrentPosition(&play_cursor,
-                                                           &write_cursor))) 
+                                                           &write_cursor)))
         {
             if (!valid_sound)
             {
@@ -848,23 +852,23 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
             {
                 target_cursor = write_cursor + expected_sound_bytes_per_frame + sound_settings.cushion_bytes;
             }
-            else 
+            else
             {
                 target_cursor = expected_frame_boundary_byte + expected_sound_bytes_per_frame;
             }
             target_cursor = target_cursor % sound_settings.secondary_buffer_size;
 
-            
+
             DWORD bytes_to_write = 0;
-            if (bytes_to_lock > target_cursor) 
+            if (bytes_to_lock > target_cursor)
             {
                 bytes_to_write = sound_settings.secondary_buffer_size - bytes_to_lock;
                 bytes_to_write += target_cursor;
-            } 
-            else 
+            }
+            else
             {
                 bytes_to_write = target_cursor - bytes_to_lock;
-            }  
+            }
 
             engine_sound_buffer sound_buffer = {};
             sound_buffer.samples_per_second = sound_settings.samples_per_sec;
@@ -876,7 +880,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
             win32_fill_sound_buffer(&sound_settings, bytes_to_lock, bytes_to_write,
                                   &sound_buffer);
         }
-        else 
+        else
         {
             valid_sound = false;
         }
@@ -891,8 +895,8 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
         {
             if (granular_sleep)
             {
-                // NOTE: 
-                // For some reason, the sleep is not accurate enough to wake in time. [HHD018] 
+                // NOTE:
+                // For some reason, the sleep is not accurate enough to wake in time. [HHD018]
                 // Thus, I am sleeping 1ms less to make sure we lock at 33.33ms
                 DWORD sleep_time = (DWORD) ((1000.0f * (target_seconds_per_frame - secs_elapsed_for_frame)) - 1.0f);
                 if (sleep_time > 0)
@@ -928,7 +932,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
         win32_win_dimensions win_size = win32_get_win_dimensions(window);
 // #if NEO_INTERNAL
-//         win32_render_debug_display_sync(&g_bm_buffer, arr_count(debug_cursors), debug_cursors, 
+//         win32_render_debug_display_sync(&g_bm_buffer, arr_count(debug_cursors), debug_cursors,
 //                                         &sound_settings, target_seconds_per_frame);
 // #endif
         win32_update_win_with_buffer(device_context, &g_bm_buffer, win_size.width,
@@ -945,7 +949,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
             DWORD write_cursor_;
             DWORD play_cursor_;
             if (SUCCEEDED(g_secondary_buffer->GetCurrentPosition(&play_cursor_,
-                                                           &write_cursor_))) 
+                                                           &write_cursor_)))
             {
                 debug_cursors[debug_cursor_index++] = play_cursor_;
                 if (debug_cursor_index == arr_count(debug_cursors))

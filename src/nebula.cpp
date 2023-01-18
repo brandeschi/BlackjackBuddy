@@ -6,59 +6,61 @@
 // - Concept of a hand?
 //
 // Also need to add general player actions
-card base_deck[52] {
-    { TWO, "SPADES" },
-    { THREE, "SPADES" },
-    { FOUR, "SPADES" },
-    { FIVE, "SPADES" },
-    { SIX, "SPADES" },
-    { SEVEN, "SPADES" },
-    { EIGHT, "SPADES" },
-    { NINE, "SPADES" },
-    { TEN, "SPADES" },
-    { JACK, "SPADES" },
-    { QUEEN, "SPADES" },
-    { KING, "SPADES" },
-    { ACE, "SPADES" },
-    { TWO, "HEARTS" },
-    { THREE, "HEARTS" },
-    { FOUR, "HEARTS" },
-    { FIVE, "HEARTS" },
-    { SIX, "HEARTS" },
-    { SEVEN, "HEARTS" },
-    { EIGHT, "HEARTS" },
-    { NINE, "HEARTS" },
-    { TEN, "HEARTS" },
-    { JACK, "HEARTS" },
-    { QUEEN, "HEARTS" },
-    { KING, "HEARTS" },
-    { ACE, "HEARTS" },
-    { TWO, "CLUBS" },
-    { THREE, "CLUBS" },
-    { FOUR, "CLUBS" },
-    { FIVE, "CLUBS" },
-    { SIX, "CLUBS" },
-    { SEVEN, "CLUBS" },
-    { EIGHT, "CLUBS" },
-    { NINE, "CLUBS" },
-    { TEN, "CLUBS" },
-    { JACK, "CLUBS" },
-    { QUEEN, "CLUBS" },
-    { KING, "CLUBS" },
-    { ACE, "CLUBS" },
-    { TWO, "DIAMONDS" },
-    { THREE, "DIAMONDS" },
-    { FOUR, "DIAMONDS" },
-    { FIVE, "DIAMONDS" },
-    { SIX, "DIAMONDS" },
-    { SEVEN, "DIAMONDS" },
-    { EIGHT, "DIAMONDS" },
-    { NINE, "DIAMONDS" },
-    { TEN, "DIAMONDS" },
-    { JACK, "DIAMONDS" },
-    { QUEEN, "DIAMONDS" },
-    { KING, "DIAMONDS" },
-    { ACE, "DIAMONDS" }
+deck base_deck = {
+    {
+        { TWO, "SPADES" },
+        { THREE, "SPADES" },
+        { FOUR, "SPADES" },
+        { FIVE, "SPADES" },
+        { SIX, "SPADES" },
+        { SEVEN, "SPADES" },
+        { EIGHT, "SPADES" },
+        { NINE, "SPADES" },
+        { TEN, "SPADES" },
+        { JACK, "SPADES" },
+        { QUEEN, "SPADES" },
+        { KING, "SPADES" },
+        { ACE, "SPADES" },
+        { TWO, "HEARTS" },
+        { THREE, "HEARTS" },
+        { FOUR, "HEARTS" },
+        { FIVE, "HEARTS" },
+        { SIX, "HEARTS" },
+        { SEVEN, "HEARTS" },
+        { EIGHT, "HEARTS" },
+        { NINE, "HEARTS" },
+        { TEN, "HEARTS" },
+        { JACK, "HEARTS" },
+        { QUEEN, "HEARTS" },
+        { KING, "HEARTS" },
+        { ACE, "HEARTS" },
+        { TWO, "CLUBS" },
+        { THREE, "CLUBS" },
+        { FOUR, "CLUBS" },
+        { FIVE, "CLUBS" },
+        { SIX, "CLUBS" },
+        { SEVEN, "CLUBS" },
+        { EIGHT, "CLUBS" },
+        { NINE, "CLUBS" },
+        { TEN, "CLUBS" },
+        { JACK, "CLUBS" },
+        { QUEEN, "CLUBS" },
+        { KING, "CLUBS" },
+        { ACE, "CLUBS" },
+        { TWO, "DIAMONDS" },
+        { THREE, "DIAMONDS" },
+        { FOUR, "DIAMONDS" },
+        { FIVE, "DIAMONDS" },
+        { SIX, "DIAMONDS" },
+        { SEVEN, "DIAMONDS" },
+        { EIGHT, "DIAMONDS" },
+        { NINE, "DIAMONDS" },
+        { TEN, "DIAMONDS" },
+        { JACK, "DIAMONDS" },
+        { QUEEN, "DIAMONDS" },
+        { KING, "DIAMONDS" },
+        { ACE, "DIAMONDS" }
+    }
 };
 
 #include <stdlib.h>
@@ -79,6 +81,18 @@ inline static void shuffle(card deck[], mem_index deck_size)
     }
 }
 
+// NOTE: players includes the dealer
+inline static void deal(deck *deck, u32 players)
+{
+    // TODO: Pass the removed cards to the players/board;
+    card null_card = {};
+    u32 cards_to_remove = players*2;
+    for (u32 i = 0; i < cards_to_remove; ++i)
+    {
+        deck->cards[i] = null_card;
+    }
+}
+
 static void output_sound(app_state *game_state, engine_sound_buffer *sound_buffer)
 {
 #if 0
@@ -94,7 +108,7 @@ static void output_sound(app_state *game_state, engine_sound_buffer *sound_buffe
         *sample_out++ = sample_value;
         *sample_out++ = sample_value;
 
-        // NOTE: 
+        // NOTE:
         // The reason the sound would pitch up a little if the program ran for 20s was because
         // the sine function would lose it's floating point precision at that time
         // the if fixes this issue!
@@ -150,8 +164,8 @@ static void draw_rect(engine_bitmap_buffer *buffer, f32 f_min_X, f32 f_max_X, f3
         max_Y = buffer->height;
     }
 
-    u32 color = (u32)((round_f32_to_u32(r * 255.0f) << 16) | 
-                      (round_f32_to_u32(g * 255.0f) << 8) | 
+    u32 color = (u32)((round_f32_to_u32(r * 255.0f) << 16) |
+                      (round_f32_to_u32(g * 255.0f) << 8) |
                       (round_f32_to_u32(b * 255.0f) << 0));
     u8 *current_pos = (u8 *)buffer->memory + min_X*buffer->bytes_per_pixel + min_Y*buffer->pitch;
 
@@ -162,7 +176,7 @@ static void draw_rect(engine_bitmap_buffer *buffer, f32 f_min_X, f32 f_max_X, f3
         {
             *pixel++ = color;
         }
-        
+
         current_pos += buffer->pitch;
     }
 }
@@ -208,7 +222,7 @@ static void render_bitmap(engine_bitmap_buffer *buffer, int x_off, int y_off)
         for (int x = 0; x < buffer->width; x++)
         {
             /*
-             * Pixel in mem:  RR GG BB xx // This is based on the endianess of the architecture 
+             * Pixel in mem:  RR GG BB xx // This is based on the endianess of the architecture
              * THIS USES LITTLE ENDIAN ARCH
              * Thus, in mem it looks like BB GG RR xx or 0x xxBBGGRR (in register)
              */
@@ -218,8 +232,8 @@ static void render_bitmap(engine_bitmap_buffer *buffer, int x_off, int y_off)
             u8 red = 200;
 
             *pixel++ = ((red << 16) | (green << 8) | blue); // xx RR GG BB <- starting here
-            // *pixel++ = (u8) x; // xx RR GG BB <- starting here 
-            // *pixel++ = 0; // xx RR GG BB <- starting here 
+            // *pixel++ = (u8) x; // xx RR GG BB <- starting here
+            // *pixel++ = 0; // xx RR GG BB <- starting here
             // *pixel++ = (u8) y; // xx RR GG BB <- starting here
             // *pixel++ = 0; // xx RR GG BB <- starting here
         }
@@ -235,8 +249,8 @@ static void render_player(engine_bitmap_buffer *buffer, int playerX, int playerY
     int bot = playerY + 10;
     for (int current_x = playerX; current_x < playerX + 10; current_x++)
     {
-        u8 *pixel = ((u8 *) buffer->memory + 
-                     (current_x * buffer->bytes_per_pixel) + 
+        u8 *pixel = ((u8 *) buffer->memory +
+                     (current_x * buffer->bytes_per_pixel) +
                      (top * buffer->pitch));
         for (int current_y = top; current_y < bot; current_y++)
         {
