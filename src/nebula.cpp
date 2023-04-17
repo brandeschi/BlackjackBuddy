@@ -82,15 +82,17 @@ inline static void shuffle(card deck[], mem_index deck_size)
 }
 
 // NOTE: players includes the dealer
-inline static void deal(deck *deck, u32 players)
+inline static void new_hand_deal(deck *deck, u32 players = 2)
 {
     // TODO: Pass the removed cards to the players/board;
-    card null_card = {};
     u32 cards_to_remove = players*2;
-    for (u32 i = 0; i < cards_to_remove; ++i)
-    {
-        deck->cards[i] = null_card;
-    }
+    // card *cards_removed;
+    // for (u32 i = 0; i < cards_to_remove; ++i)
+    // {
+    //     cards_removed++ = &deck->cards[i];
+    // }
+
+    // return cards_removed;
 }
 
 static void output_sound(app_state *game_state, engine_sound_buffer *sound_buffer)
@@ -211,53 +213,4 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
               0.8f, 0.56f, 0.64f);
 
 }
-
-#if 0
-static void render_bitmap(engine_bitmap_buffer *buffer, int x_off, int y_off)
-{
-    u8 *row = (u8 *) buffer->memory;
-    for (int y = 0; y < buffer->height; y++)
-    {
-        u32 *pixel = (u32 *) row; // This controls how wide the bitmap goes (i.e u8 covers 1/4 the screen).
-        for (int x = 0; x < buffer->width; x++)
-        {
-            /*
-             * Pixel in mem:  RR GG BB xx // This is based on the endianess of the architecture
-             * THIS USES LITTLE ENDIAN ARCH
-             * Thus, in mem it looks like BB GG RR xx or 0x xxBBGGRR (in register)
-             */
-
-            u8 blue = (u8) (x + x_off);
-            u8 green = (u8) (y + y_off);
-            u8 red = 200;
-
-            *pixel++ = ((red << 16) | (green << 8) | blue); // xx RR GG BB <- starting here
-            // *pixel++ = (u8) x; // xx RR GG BB <- starting here
-            // *pixel++ = 0; // xx RR GG BB <- starting here
-            // *pixel++ = (u8) y; // xx RR GG BB <- starting here
-            // *pixel++ = 0; // xx RR GG BB <- starting here
-        }
-
-        row += buffer->pitch;
-    }
-}
-
-static void render_player(engine_bitmap_buffer *buffer, int playerX, int playerY)
-{
-    u32 color = 0xFFFFFF;
-    int top = playerY;
-    int bot = playerY + 10;
-    for (int current_x = playerX; current_x < playerX + 10; current_x++)
-    {
-        u8 *pixel = ((u8 *) buffer->memory +
-                     (current_x * buffer->bytes_per_pixel) +
-                     (top * buffer->pitch));
-        for (int current_y = top; current_y < bot; current_y++)
-        {
-            *(u32 *)pixel = color;
-            pixel += buffer->pitch;
-        }
-    }
-}
-#endif
 
