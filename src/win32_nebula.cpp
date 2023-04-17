@@ -12,8 +12,8 @@
 
 #include <Windows.h>
 #include <stdio.h>
-#include <Xinput.h>
 #include <dsound.h>
+#include <gl/GL.h>
 
 #include "win32_nebula.h"
 
@@ -183,6 +183,35 @@ static void win32_init_dsound(HWND win_handle, i32 buffer_size,
   }
 }
 
+static void win32_init_opengl(HWND window_handle)
+{
+    HDC window_dc = GetDC(window_handle);
+
+    PIXELFORMATDESCRIPTOR desired_pixel_format = {};
+    desired_pixel_format.nSize = sizeof(desired_pixel_format);
+    desired_pixel_format.nVersion = 1;
+    desired_pixel_format.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    desired_pixel_format.iPixelType = PFD_TYPE_RGBA;
+    desired_pixel_format.cColorBits = 32;
+    desired_pixel_format.cAlphaBits = 8;
+    int given_pixelformat_index = ChoosePixelFormat(window_dc, &desired_pixel_format);
+    PIXELFORMATDESCRIPTOR given_pixelformat;
+    DescribePixelFormat(window_dc, given_pixelformat_index, sizeof(given_pixelformat), &given_pixelformat);
+    SetPixelFormat(window_dc, given_pixelformat_index, &given_pixelformat);
+
+    HGLRC opengl_rc = wglCreateContext(window_dc);
+    if(wglMakeCurrent(window_dc, opengl_rc))
+    {
+        // Go to town!
+    }
+    else
+    {
+        invalid_code_path;
+        // TODO: Diags
+    }
+    ReleaseDC(window_handle, window_dc);
+}
+
 static win32_win_dimensions win32_get_win_dimensions(HWND win_handle) {
   win32_win_dimensions window_dimensions = {};
   RECT client_rect;
@@ -225,6 +254,7 @@ static void win32_update_win_with_buffer(HDC device_context,
                                          win32_bitmap_buffer *buffer,
                                          int win_width, int win_height)
 {
+#if 0
     // Clear the unused client pixels to black
     PatBlt(device_context, 0, buffer->height, win_width, win_height, BLACKNESS);
     PatBlt(device_context, buffer->width, 0, win_width, win_height, BLACKNESS);
@@ -240,10 +270,16 @@ static void win32_update_win_with_buffer(HDC device_context,
         // NOTE: HHD[024]: casey wanted to make the displayed pixels be one-to-one
         // so instead of taking in the win dimensions for this function,
         // we will be making it based on the buffer's initial dims
-        0, 0, buffer->width, buffer->height, 0, 0, buffer->width, buffer->height,
+        0, 0, buffer->width, buffer->height,
+        0, 0, buffer->width, buffer->height,
         buffer->memory, &buffer->info,
         DIB_RGB_COLORS, // iUsage - Use literal rgb values to color in the pixels
         SRCCOPY);       // Raster Operation Code - Copy our bitmap to the dest
+#endif
+    glViewport(0, 0, win_width, win_height);
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    SwapBuffers(device_context);
 }
 static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
                                                    UINT message, WPARAM WParam,
@@ -590,7 +626,11 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
                                 WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT,
                                 CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0,
                                 0, win_instance, 0);
+    if(!window)
+        return false;
 
+    // Opengl
+    win32_init_opengl(window);
     // Based on how the device context system functions, when specifying a
     // CS_OWNDC flag for the window, it is possible to get the DC for the window
     // and then never give it back because we now own it for the duration of the
