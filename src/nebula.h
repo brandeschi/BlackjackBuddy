@@ -46,6 +46,8 @@ typedef double f64;
 #define assert(expression) if (!(expression)) { *(int *)0 = 0; }
 #endif
 
+#define invalid_code_path assert(!"InvalidCodePath!");
+
 #define arr_count(array) (sizeof(array) / sizeof((array)[0]))
 
 struct thread_context
@@ -181,6 +183,30 @@ struct deck
 {
     card cards[52];
 };
+
+struct memory_arena
+{
+    mem_index size;
+    u8 *base_address;
+    mem_index used_space;
+};
+
+static void init_arena(memory_arena *ma, mem_index size, u8 *base_address)
+{
+    ma->size = size;
+    ma->base_address = base_address;
+    ma->used_space = 0;
+}
+
+#define push_struct(ma, type) (type *)push_size_(ma, sizeof(type))
+#define push_array(ma, count, type) (type *)push_size_(ma, (count) * sizeof(type))
+void *push_size_(memory_arena *ma, mem_index size)
+{
+    assert((ma->used_space + size) <= ma->size);
+    void *result = ma->base_address + ma->used_space;
+    ma->used_space += size;
+    return result;
+}
 
 struct app_state
 {
