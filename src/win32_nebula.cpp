@@ -84,42 +84,6 @@ static void DEBUG_free_file(thread_context *thread, void *file)
     }
 }
 
-// Macros to get the two function declarations that we need to make xInput work.
-#define XINPUT_GET_STATE(fn_name) DWORD WINAPI fn_name(DWORD dwUserIndex, XINPUT_STATE *pState) // Macro to define a function that matches the signature of XInputGetState
-#define XINPUT_SET_STATE(fn_name) DWORD WINAPI fn_name(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration) // Macro to define a function that matche the signature of XInputSetState
-
-// Define the macros above as types to make them into pointers.
-typedef XINPUT_GET_STATE(x_input_get_state);
-typedef XINPUT_SET_STATE(x_input_set_state);
-
-// Stub functions that are pointed to when xInput is not loaded so the engine
-// doesn't crash.
-XINPUT_GET_STATE(XInputGetStateStubFn) { return (ERROR_DEVICE_NOT_CONNECTED); }
-
-XINPUT_SET_STATE(XInputSetStateStubFn) { return (ERROR_DEVICE_NOT_CONNECTED); }
-
-// These are used to make pointers to the stubs when xInput is not loaded.
-global x_input_get_state *xinput_get_state = XInputGetStateStubFn;
-global x_input_set_state *xinput_set_state = XInputSetStateStubFn;
-
-// This allows for same function calls as if we were always using xInput.
-#define XInputGetState xinput_get_state
-#define XInputSetState xinput_set_state
-
-static void win32_load_xinput() {
-  HMODULE xinput_lib = LoadLibraryA("xinput9_1_0.dll");
-  if (!xinput_lib) {
-    xinput_lib = LoadLibraryA("xinput1_3.dll");
-    // TODO: Add some kind of logging to let us know we didn't load xInputLib
-  }
-  if (xinput_lib) {
-    XInputGetState =
-        (x_input_get_state *)GetProcAddress(xinput_lib, "XInputGetState");
-    XInputSetState =
-        (x_input_set_state *)GetProcAddress(xinput_lib, "XInputSetState");
-  }
-}
-
 // TODO: Should I replace this once I want to actually add sound?
 #define DIRECT_SOUND_CREATE(fn_name) HRESULT WINAPI fn_name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter) // Macro to define a function that matches the signature of DirectSound Create func
 typedef DIRECT_SOUND_CREATE(dsound_create);
@@ -395,27 +359,6 @@ static void win32_fill_sound_buffer(win32_sound_settings *sound_settings,
   }
 }
 
-static float win32_process_stick_value(SHORT thumb_stick_value, SHORT deadzone_threshold)
-{
-    float result = 0;
-    if (thumb_stick_value < -deadzone_threshold) {
-      result = (float) (thumb_stick_value - deadzone_threshold) / 32768.0f;
-    } else if (thumb_stick_value > deadzone_threshold) {
-      result = (float) (thumb_stick_value - deadzone_threshold) / 32767.0f;
-    }
-
-    return result;
-}
-
-static void win32_xinput_digital_button_handler(DWORD xinput_button_state,
-                                                engine_button_state *old_state,
-                                                engine_button_state *new_state,
-                                                DWORD button_bit) {
-  new_state->is_down = ((xinput_button_state & button_bit) == button_bit);
-  new_state->half_transitions =
-      (old_state->is_down != new_state->is_down) ? 1 : 0;
-}
-
 static void win32_process_keeb_message(engine_button_state *new_state, b32 is_down)
 {
     if (new_state->is_down != is_down)
@@ -488,22 +431,8 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
                         }
                         case VK_SPACE: {
                             char put_string[256];
-                            // for (i32 i = 0; i < arr_count(base_deck.cards); i++)
-                            // {
-                            //     _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
-                            //                 base_deck.cards[i].Value, base_deck.cards[i].Suit);
-                            //     OutputDebugStringA(put_string);
-                            // }
-                            // OutputDebugStringA("==============================\n");
-                            // shuffle(base_deck.cards, arr_count(base_deck.cards));
-                            // for (i32 i = 0; i < arr_count(base_deck.cards); i++)
-                            // {
-                            //     _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
-                            //                 base_deck.cards[i].Value, base_deck.cards[i].Suit);
-                            //     OutputDebugStringA(put_string);
-                            // }
-                            // OutputDebugStringA("SPACE\n");
-                            deal(&base_deck, 2);
+
+                            new_hand_deal(&base_deck);
                             _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
                                         base_deck.cards[4].Value, base_deck.cards[4].Suit);
                             OutputDebugStringA(put_string);
@@ -538,54 +467,6 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
 
      }
 }
-
-#if 0
-static void win32_draw_debug_verticals(win32_bitmap_buffer *bm_buffer, int current_x,
-                                       int top, int bot, int color)
-{
-    if (top <= 0)
-    {
-        top = 0;
-    }
-    if (bot > bm_buffer->height)
-    {
-        bot = bm_buffer->height;
-    }
-
-    if ((current_x >= 0) && (current_x < bm_buffer->width))
-    {
-        u8 *pixel = ((u8 *) bm_buffer->memory +
-                     (current_x * bm_buffer->bytes_per_pixel) +
-                     (top * bm_buffer->pitch));
-        for (int y = top; y < bot; y++)
-        {
-            *(u32 *)pixel = color;
-            pixel += bm_buffer->pitch;
-        }
-    }
-}
-
-static void win32_render_debug_display_sync(win32_bitmap_buffer *bm_buffer, int debug_cursor_count,
-                                            DWORD *debug_cursors, win32_sound_settings *sound_settings,
-                                            f32 target_seconds_per_frame)
-{
-    int pad_x = 32;
-    int pad_y = 32;
-
-    int top = pad_y;
-    int bot = bm_buffer->height - pad_y;
-
-    f32 coeff = (f32) (bm_buffer->width - pad_x) / (f32) sound_settings->secondary_buffer_size;
-
-    for (int debug_cursor_index = 0;
-         debug_cursor_index < debug_cursor_count;
-         debug_cursor_index++)
-    {
-        int current_x = pad_x + (int) (coeff * (f32) debug_cursors[debug_cursor_index]);
-        win32_draw_debug_verticals(bm_buffer, current_x, top, bot, 0xFFFFFF);
-    }
-}
-#endif
 
 inline LARGE_INTEGER win32_get_seconds_wallclock()
 {
@@ -642,9 +523,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
     f32 update_hz = monitor_hz / 2.0f;
     f32 target_seconds_per_frame = 1.0f / update_hz;
-
-    // Load input
-    win32_load_xinput();
 
     // Set up our sound config
     win32_sound_settings sound_settings = {};
@@ -723,8 +601,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
         win32_process_pending_win_messages(new_keeb);
 
-        // NOTE: since xInput polls the inputs, need to make sure if more polling is
-        // needed/control over the polling is needed for the engine.
         POINT mouse_point;
         GetCursorPos(&mouse_point);
         ScreenToClient(window, &mouse_point);
@@ -735,7 +611,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
         win32_process_keeb_message(&new_input->mouse_buttons[1], GetKeyState(VK_MBUTTON) & (1 << 15));
         win32_process_keeb_message(&new_input->mouse_buttons[2], GetKeyState(VK_RBUTTON) & (1 << 15));
 
-        DWORD max_controller_count = KEEB_COUNT + XUSER_MAX_COUNT;
+        DWORD max_controller_count = KEEB_COUNT;
         if (max_controller_count > arr_count(new_input->controllers)) {
           max_controller_count = arr_count(new_input->controllers);
         }
@@ -749,101 +625,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
             engine_controller_input *new_control_state =
                 get_controller(new_input, controller_index);
 
-            XINPUT_STATE controller_state;
-            ZeroMemory(&controller_state, sizeof(XINPUT_STATE));
-
-            // Simply get the state of the controller from XInput.
-            // TODO: See if XInputGetState still has the bug discussed in HHD007.
-            if (XInputGetState(controller_index, &controller_state) == ERROR_SUCCESS)
-            {
-                new_control_state->is_analog = old_control_state->is_analog;
-
-                // Controller is connected
-                XINPUT_GAMEPAD *controller = &controller_state.Gamepad;
-
-                // TODO: Potentially change to 'keyboard' control-like code path by adding is_analog = false for d-pad
-                // DPAD
-                if (controller->wButtons & XINPUT_GAMEPAD_DPAD_DOWN)
-                {
-                    new_control_state->stick_avg_y = -1.0f;
-                    new_control_state->is_analog = false;
-                }
-                if (controller->wButtons & XINPUT_GAMEPAD_DPAD_UP)
-                {
-                    new_control_state->stick_avg_y = 1.0f;
-                    new_control_state->is_analog = false;
-                }
-                if (controller->wButtons & XINPUT_GAMEPAD_DPAD_LEFT)
-                {
-                    new_control_state->stick_avg_x = -1.0f;
-                    new_control_state->is_analog = false;
-                }
-                if (controller->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT)
-                {
-                    new_control_state->stick_avg_x = 1.0f;
-                    new_control_state->is_analog = false;
-                }
-
-                new_control_state->is_analog = true;
-                // LSTICK
-                new_control_state->stick_avg_x =
-                    win32_process_stick_value(controller->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-                new_control_state->stick_avg_y =
-                    win32_process_stick_value(controller->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-
-                float threshold = 0.5f;
-                win32_xinput_digital_button_handler(
-                    (new_control_state->stick_avg_y < -threshold ? 1 : 0),
-                    &old_control_state->move_down,
-                    &new_control_state->move_down, 1);
-                win32_xinput_digital_button_handler(
-                    (new_control_state->stick_avg_x < -threshold ? 1 : 0),
-                    &old_control_state->move_left,
-                    &new_control_state->move_left, 1);
-                win32_xinput_digital_button_handler(
-                    (new_control_state->stick_avg_y > threshold ? 1 : 0),
-                    &old_control_state->move_up,
-                    &new_control_state->move_up, 1);
-                win32_xinput_digital_button_handler(
-                    (new_control_state->stick_avg_x > threshold ? 1 : 0),
-                    &old_control_state->move_right,
-                    &new_control_state->move_right, 1);
-
-                win32_xinput_digital_button_handler(
-                    controller->wButtons, &old_control_state->action_down,
-                    &new_control_state->action_down, XINPUT_GAMEPAD_A);
-                win32_xinput_digital_button_handler(
-                    controller->wButtons, &old_control_state->action_right,
-                    &new_control_state->action_right, XINPUT_GAMEPAD_B);
-                win32_xinput_digital_button_handler(
-                    controller->wButtons, &old_control_state->action_left,
-                    &new_control_state->action_left, XINPUT_GAMEPAD_X);
-                win32_xinput_digital_button_handler(
-                    controller->wButtons, &old_control_state->action_up,
-                    &new_control_state->action_up, XINPUT_GAMEPAD_Y);
-                win32_xinput_digital_button_handler(
-                    controller->wButtons, &old_control_state->left_shoulder,
-                    &new_control_state->left_shoulder, XINPUT_GAMEPAD_LEFT_SHOULDER);
-                win32_xinput_digital_button_handler(
-                    controller->wButtons, &old_control_state->right_shoulder,
-                    &new_control_state->right_shoulder, XINPUT_GAMEPAD_RIGHT_SHOULDER);
-                win32_xinput_digital_button_handler(
-                    controller->wButtons, &old_control_state->start,
-                    &new_control_state->start, XINPUT_GAMEPAD_START);
-                win32_xinput_digital_button_handler(
-                    controller->wButtons, &old_control_state->back,
-                    &new_control_state->back, XINPUT_GAMEPAD_BACK);
-
-                /* b32 left_thumb_button = (controller->wButtons &
-                 * XINPUT_GAMEPAD_LEFT_THUMB); */
-                /* b32 right_thumb_button = (controller->wButtons &
-                 * XINPUT_GAMEPAD_RIGHT_THUMB); */
-            }
-            else
-            {
-                // TODO: Add basic keyboard controls next.
-                // Controller is not connected
-            }
         }
 
         thread_context thread = {};
