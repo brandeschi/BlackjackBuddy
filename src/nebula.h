@@ -208,6 +208,8 @@ void *push_size_(memory_arena *ma, mem_index size)
     return result;
 }
 
+#include "neo_math.h"
+
 struct app_state
 {
 };
