@@ -22,6 +22,47 @@ global win32_bitmap_buffer g_bm_buffer;
 global LPDIRECTSOUNDBUFFER g_secondary_buffer;
 global i64 g_perf_count_freq;
 
+// NOTE: Opengl definitions
+typedef i64 GLsizeiptr;
+typedef char GLchar;
+#define GL_ARRAY_BUFFER                   0x8892
+#define GL_STATIC_DRAW                    0x88E4
+#define GL_VERTEX_SHADER                  0x8B31
+#define GL_FRAGMENT_SHADER                0x8B30
+#define GL_COMPILE_STATUS                 0x8B81
+#define GL_LINK_STATUS                    0x8B82
+
+typedef void glgenbuffers(GLsizei n, GLuint *buffers);
+global glgenbuffers *glGenBuffers;
+typedef void glbindbuffer(GLenum target, GLuint buffer);
+global glbindbuffer *glBindBuffer;
+typedef void glbufferdata(GLenum target, GLsizeiptr size, const void *data, GLenum usage);
+global glbufferdata *glBufferData;
+typedef GLuint glcreateshader(GLenum type);
+global glcreateshader *glCreateShader;
+typedef void glshadersource(GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
+global glshadersource *glShaderSource;
+typedef void glcompileshader(GLuint shader);
+global glcompileshader *glCompileShader;
+typedef void glgetshaderiv(GLuint shader, GLenum pname, GLint *params);
+global glgetshaderiv *glGetShaderiv;
+typedef void glgetshaderinfolog(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
+global glgetshaderinfolog *glGetShaderInfoLog;
+typedef GLuint glcreateprogram(void);
+global glcreateprogram *glCreateProgram;
+typedef void glattachshader(GLuint program, GLuint shader);
+global glattachshader *glAttachShader;
+typedef void gllinkprogram(GLuint program);
+global gllinkprogram *glLinkProgram;
+typedef void gluseprogram(GLuint program);
+global gluseprogram *glUseProgram;
+typedef void gldeleteshader(GLuint shader);
+global gldeleteshader *glDeleteShader;
+typedef void glgetprogramiv(GLuint program, GLenum pname, GLint *params);
+global glgetprogramiv *glGetProgramiv;
+typedef void glgetprograminfolog(GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
+global glgetprograminfolog *glGetProgramInfoLog;
+
 static debug_file_result DEBUG_read_entire_file(thread_context *thread, char *file_name)
 {
     debug_file_result result = {};
@@ -164,9 +205,84 @@ static void win32_init_opengl(HWND window_handle)
     SetPixelFormat(window_dc, given_pixelformat_index, &given_pixelformat);
 
     HGLRC opengl_rc = wglCreateContext(window_dc);
-    if(wglMakeCurrent(window_dc, opengl_rc))
-    {
-        // Go to town!
+    if(wglMakeCurrent(window_dc, opengl_rc)) {
+        glGenBuffers = (glgenbuffers *)wglGetProcAddress("glGenBuffers");
+        glBindBuffer = (glbindbuffer *)wglGetProcAddress("glBindBuffer");
+        glBufferData = (glbufferdata *)wglGetProcAddress("glBufferData");
+        glCreateShader = (glcreateshader *)wglGetProcAddress("glCreateShader");
+        glShaderSource = (glshadersource *)wglGetProcAddress("glShaderSource");
+        glCompileShader = (glcompileshader *)wglGetProcAddress("glCompileShader");
+        glGetShaderiv = (glgetshaderiv *)wglGetProcAddress("glGetShaderiv");
+        glGetShaderInfoLog = (glgetshaderinfolog *)wglGetProcAddress("glGetShaderInfoLog");
+        glCreateProgram = (glcreateprogram *)wglGetProcAddress("glCreateProgram");
+        glAttachShader = (glattachshader *)wglGetProcAddress("glAttachShader");
+        glLinkProgram = (gllinkprogram *)wglGetProcAddress("glLinkProgram");
+        glUseProgram = (gluseprogram *)wglGetProcAddress("glUseProgram");
+        glDeleteShader = (gldeleteshader *)wglGetProcAddress("glDeleteShader");
+
+        v3 vertices[] = {
+            { -0.5f, -0.5f, 0.0f },
+            { 0.5f, -0.5f, 0.0f },
+            { 0.0f, 0.5f, 0.0f },
+        };
+        u32 VBO;
+        glGenBuffers(1, &VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        const char *vertexShaderSource = "#version 330 core\n"
+            "layout (location = 0) in vec3 aPos;\n"
+            "void main()\n"
+            "{\n"
+            "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+            "}\0";
+        u32 vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertex_shader, 1, &vertexShaderSource, NULL);
+        glCompileShader(vertex_shader);
+        // Check the shader was compiled successfully
+        i32 success;
+        char info[512];
+        glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
+        if(!success) {
+            char put_string[512];
+            glGetShaderInfoLog(vertex_shader, arr_count(info), NULL, info);
+            _snprintf_s(put_string, sizeof(put_string), "Failed vertex shader compilation: %s\n",
+                        info);
+            OutputDebugStringA(put_string);
+        }
+        const char *fragmentShaderSource = "#version 330 core\n"
+            "out vec4 FragColor;\n"
+            "void main()\n"
+            "{\n"
+            "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+            "}\0";
+        u32 fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragment_shader, 1, &fragmentShaderSource, NULL);
+        glCompileShader(fragment_shader);
+        glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
+        if(!success) {
+            char put_string[512];
+            glGetShaderInfoLog(fragment_shader, arr_count(info), NULL, info);
+            _snprintf_s(put_string, sizeof(put_string), "Failed fragment shader compilation: %s\n",
+                        info);
+            OutputDebugStringA(put_string);
+        }
+        u32 shader_program = glCreateProgram();
+        glAttachShader(shader_program, vertex_shader);
+        glAttachShader(shader_program, fragment_shader);
+        glLinkProgram(shader_program);
+        glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+        if(!success) {
+            char put_string[512];
+            glGetProgramInfoLog(shader_program, arr_count(info), NULL, info);
+            _snprintf_s(put_string, sizeof(put_string), "Failed shader program link: %s\n",
+                        info);
+            OutputDebugStringA(put_string);
+        }
+        glUseProgram(shader_program);
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        // TODO: Linking Vertex Attributes part
+
     }
     else
     {
@@ -240,6 +356,7 @@ static void win32_update_win_with_buffer(HDC device_context,
         DIB_RGB_COLORS, // iUsage - Use literal rgb values to color in the pixels
         SRCCOPY);       // Raster Operation Code - Copy our bitmap to the dest
 #endif
+
     glViewport(0, 0, win_width, win_height);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
