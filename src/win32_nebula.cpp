@@ -21,11 +21,13 @@ global b32 g_running = false;
 global win32_bitmap_buffer g_bm_buffer;
 global LPDIRECTSOUNDBUFFER g_secondary_buffer;
 global i64 g_perf_count_freq;
+global u32 g_shader_program;
 
 // NOTE: Opengl definitions
 typedef i64 GLsizeiptr;
 typedef char GLchar;
 #define GL_ARRAY_BUFFER                   0x8892
+#define GL_ELEMENT_ARRAY_BUFFER           0x8893
 #define GL_STATIC_DRAW                    0x88E4
 #define GL_VERTEX_SHADER                  0x8B31
 #define GL_FRAGMENT_SHADER                0x8B30
@@ -62,6 +64,14 @@ typedef void glgetprogramiv(GLuint program, GLenum pname, GLint *params);
 global glgetprogramiv *glGetProgramiv;
 typedef void glgetprograminfolog(GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
 global glgetprograminfolog *glGetProgramInfoLog;
+typedef void glvertexattribpointer(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
+global glvertexattribpointer *glVertexAttribPointer;
+typedef void glenablevertexattribarray(GLuint index);
+global glenablevertexattribarray *glEnableVertexAttribArray;
+typedef void glgenvertexarrays(GLsizei n, GLuint *arrays);
+global glgenvertexarrays *glGenVertexArrays;
+typedef void glbindvertexarray(GLuint array);
+global glbindvertexarray *glBindVertexArray;
 
 static debug_file_result DEBUG_read_entire_file(thread_context *thread, char *file_name)
 {
@@ -219,16 +229,49 @@ static void win32_init_opengl(HWND window_handle)
         glLinkProgram = (gllinkprogram *)wglGetProcAddress("glLinkProgram");
         glUseProgram = (gluseprogram *)wglGetProcAddress("glUseProgram");
         glDeleteShader = (gldeleteshader *)wglGetProcAddress("glDeleteShader");
+        glGetProgramiv = (glgetprogramiv *)wglGetProcAddress("glGetProgramiv");
+        glGetProgramInfoLog = (glgetprograminfolog *)wglGetProcAddress("glGetProgramInfoLog");
+        glVertexAttribPointer = (glvertexattribpointer *)wglGetProcAddress("glVertexAttribPointer");
+        glEnableVertexAttribArray = (glenablevertexattribarray *)wglGetProcAddress("glEnableVertexAttribArray");
+        glGenVertexArrays = (glgenvertexarrays *)wglGetProcAddress("glGenVertexArrays");
+        glBindVertexArray = (glbindvertexarray *)wglGetProcAddress("glBindVertexArray");
 
+        // Vertex Data
+        // v3 vertices[] = {
+        //     { -0.5f, -0.5f, 0.0f },
+        //     { 0.5f, -0.5f, 0.0f },
+        //     { 0.0f, 0.5f, 0.0f },
+        // };
         v3 vertices[] = {
-            { -0.5f, -0.5f, 0.0f },
-            { 0.5f, -0.5f, 0.0f },
-            { 0.0f, 0.5f, 0.0f },
+            { 0.5f, 0.5f, 0.0f },   // top-right
+            { 0.5f, -0.5f, 0.0f },  // bottom-right
+            { -0.5f, -0.5f, 0.0f }, // bottom-left
+            { -0.5f, 0.5f, 0.0f },  // top-left
         };
-        u32 VBO;
+        u32 indices[] = {
+            0, 1, 3,    // T1
+            1, 2, 3     // T2
+        };
+
+        // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject and (E)lement (B)uffer (O)bject
+        u32 VBO, VAO, EBO;
+        glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+
+        // Bind VAO, tnhe bind and set VBOs, then config vertex attribs
+        glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        // Copy indices to EBO
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+        // Tell opengl how to interpret our vertex data
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (void *)0);
+        glEnableVertexAttribArray(0);
+
+        // Create shaders
         const char *vertexShaderSource = "#version 330 core\n"
             "layout (location = 0) in vec3 aPos;\n"
             "void main()\n"
@@ -266,23 +309,21 @@ static void win32_init_opengl(HWND window_handle)
                         info);
             OutputDebugStringA(put_string);
         }
-        u32 shader_program = glCreateProgram();
-        glAttachShader(shader_program, vertex_shader);
-        glAttachShader(shader_program, fragment_shader);
-        glLinkProgram(shader_program);
-        glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+        // Create shader program
+        g_shader_program = glCreateProgram();
+        glAttachShader(g_shader_program, vertex_shader);
+        glAttachShader(g_shader_program, fragment_shader);
+        glLinkProgram(g_shader_program);
+        glGetProgramiv(g_shader_program, GL_LINK_STATUS, &success);
         if(!success) {
             char put_string[512];
-            glGetProgramInfoLog(shader_program, arr_count(info), NULL, info);
+            glGetProgramInfoLog(g_shader_program, arr_count(info), NULL, info);
             _snprintf_s(put_string, sizeof(put_string), "Failed shader program link: %s\n",
                         info);
             OutputDebugStringA(put_string);
         }
-        glUseProgram(shader_program);
         glDeleteShader(vertex_shader);
         glDeleteShader(fragment_shader);
-        // TODO: Linking Vertex Attributes part
-
     }
     else
     {
@@ -360,6 +401,14 @@ static void win32_update_win_with_buffer(HDC device_context,
     glViewport(0, 0, win_width, win_height);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+
+    // DRAW
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glUseProgram(g_shader_program);
+    // glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    // TODO: Look up what swapbuffers should be used
     SwapBuffers(device_context);
 }
 static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
@@ -405,7 +454,6 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
       }
 
       default: {
-        // OutputDebugStringA("default");
         result = DefWindowProc(win_handle, message, WParam, LParam);
       }
   }
@@ -615,7 +663,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     win_class.hInstance = win_instance;
     win_class.lpszClassName = "MainWindowClass";
 
-    win32_resize_DIB_section(&g_bm_buffer, 960, 540);
+    // win32_resize_DIB_section(&g_bm_buffer, 960, 540);
 
     if (!RegisterClassA(&win_class))
         return false;
@@ -745,14 +793,14 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
         }
 
         thread_context thread = {};
-        // This pulls from our platform-independent code from nebula.h
-        engine_bitmap_buffer buffer = {};
-        buffer.memory = g_bm_buffer.memory;
-        buffer.width = g_bm_buffer.width;
-        buffer.height = g_bm_buffer.height;
-        buffer.pitch = g_bm_buffer.pitch;
-        buffer.bytes_per_pixel = g_bm_buffer.bytes_per_pixel;
-        update_and_render(&thread, &app_memory, new_input, &buffer);
+        // // This pulls from our platform-independent code from nebula.h
+        // engine_bitmap_buffer buffer = {};
+        // buffer.memory = g_bm_buffer.memory;
+        // buffer.width = g_bm_buffer.width;
+        // buffer.height = g_bm_buffer.height;
+        // buffer.pitch = g_bm_buffer.pitch;
+        // buffer.bytes_per_pixel = g_bm_buffer.bytes_per_pixel;
+        // update_and_render(&thread, &app_memory, new_input, &buffer);
 
         // NOTE: Go to HHD020 to see comment about how audio sync will work.
 
@@ -868,42 +916,15 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
         f32 ms_per_frame = 1000.0f * win32_get_seconds_elapsed(start_counter, end_counter);
         start_counter = end_counter;
 
-        win32_win_dimensions win_size = win32_get_win_dimensions(window);
-// #if NEO_INTERNAL
-//         win32_render_debug_display_sync(&g_bm_buffer, arr_count(debug_cursors), debug_cursors,
-//                                         &sound_settings, target_seconds_per_frame);
-// #endif
-        win32_update_win_with_buffer(device_context, &g_bm_buffer, win_size.width,
-                                     win_size.height);
+        // win32_win_dimensions win_size = win32_get_win_dimensions(window);
+        // win32_update_win_with_buffer(device_context, &g_bm_buffer, win_size.width,
+        //                              win_size.height);
 
         // TODO: SOUND FLIP HERE
 
         engine_input *temp = new_input;
         new_input = old_input;
         old_input = temp;
-
-#if NEO_INTERNAL
-        {
-            DWORD write_cursor_;
-            DWORD play_cursor_;
-            if (SUCCEEDED(g_secondary_buffer->GetCurrentPosition(&play_cursor_,
-                                                           &write_cursor_)))
-            {
-                debug_cursors[debug_cursor_index++] = play_cursor_;
-                if (debug_cursor_index == arr_count(debug_cursors))
-                {
-                    debug_cursor_index = 0;
-                }
-            }
-        }
-#endif
-#if 0
-        i32 fps = 0;
-        char perf_record[256];
-        _snprintf_s(perf_record, sizeof(perf_record), "MS / frame: %.02fms/f | FPS: %d\n", ms_per_frame, fps);
-        OutputDebugStringA(perf_record);
-#endif
-
     }
 
     return 0;
