@@ -72,6 +72,10 @@ typedef void glgenvertexarrays(GLsizei n, GLuint *arrays);
 global glgenvertexarrays *glGenVertexArrays;
 typedef void glbindvertexarray(GLuint array);
 global glbindvertexarray *glBindVertexArray;
+typedef GLint glgetuniformlocation(GLuint program, const GLchar *name);
+global glgetuniformlocation *glGetUniformLocation;
+typedef void gluniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
+global gluniform4f *glUniform4f;
 
 static debug_file_result DEBUG_read_entire_file(thread_context *thread, char *file_name)
 {
@@ -235,6 +239,8 @@ static void win32_init_opengl(HWND window_handle)
         glEnableVertexAttribArray = (glenablevertexattribarray *)wglGetProcAddress("glEnableVertexAttribArray");
         glGenVertexArrays = (glgenvertexarrays *)wglGetProcAddress("glGenVertexArrays");
         glBindVertexArray = (glbindvertexarray *)wglGetProcAddress("glBindVertexArray");
+        glGetUniformLocation = (glgetuniformlocation *)wglGetProcAddress("glGetUniformLocation");
+        glUniform4f = (gluniform4f *)wglGetProcAddress("glUniform4f");
 
         // Vertex Data
         // v3 vertices[] = {
@@ -274,9 +280,11 @@ static void win32_init_opengl(HWND window_handle)
         // Create shaders
         const char *vertexShaderSource = "#version 330 core\n"
             "layout (location = 0) in vec3 aPos;\n"
+            "out vec4 vertexColor;\n"
             "void main()\n"
             "{\n"
             "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+            "    vertexColor = vec4(0.5, 0.0, 0.0, 1.0);\n"
             "}\0";
         u32 vertex_shader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertex_shader, 1, &vertexShaderSource, NULL);
@@ -294,9 +302,10 @@ static void win32_init_opengl(HWND window_handle)
         }
         const char *fragmentShaderSource = "#version 330 core\n"
             "out vec4 FragColor;\n"
+            "uniform vec4 ourColor;\n"
             "void main()\n"
             "{\n"
-            "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+            "   FragColor = ourColor;\n"
             "}\0";
         u32 fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragment_shader, 1, &fragmentShaderSource, NULL);
@@ -370,6 +379,20 @@ static void win32_resize_DIB_section(win32_bitmap_buffer *buffer, int _width,
 
   buffer->pitch = buffer->bytes_per_pixel * _width;
 }
+
+inline LARGE_INTEGER win32_get_seconds_wallclock()
+{
+    LARGE_INTEGER result;
+    QueryPerformanceCounter(&result);
+    return result;
+}
+
+inline f32 win32_get_seconds_elapsed(LARGE_INTEGER start, LARGE_INTEGER end)
+{
+    f32 result = ((f32) (end.QuadPart - start.QuadPart) / (f32) g_perf_count_freq);
+    return result;
+}
+
 // This is needed to force rePaint to get a set fps
 static void win32_update_win_with_buffer(HDC device_context,
                                          win32_bitmap_buffer *buffer,
@@ -402,9 +425,14 @@ static void win32_update_win_with_buffer(HDC device_context,
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+
     // DRAW
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // glPolygonMode(GL_FRONT, GL_LINE);
     glUseProgram(g_shader_program);
+    f32 tv = (f32)(win32_get_seconds_wallclock().QuadPart);
+    f32 greenVal = (f32)((f32)sin((f32)tv) / 2.0f) + 0.5f;
+    i32 vertex_color_loc = glGetUniformLocation(g_shader_program, "ourColor");
+    glUniform4f(vertex_color_loc, 0.0f, greenVal, 0.0f, 1.0f);
     // glDrawArrays(GL_TRIANGLES, 0, 3);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
@@ -436,16 +464,6 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
       case WM_KEYDOWN:
       case WM_KEYUP: {
         assert(!"NO INPUT HERE");
-      }
-
-      case WM_PAINT: {
-        PAINTSTRUCT s_paint;
-        HDC device_context = BeginPaint(win_handle, &s_paint);
-        win32_win_dimensions win_size = win32_get_win_dimensions(win_handle);
-        win32_update_win_with_buffer(device_context, &g_bm_buffer, win_size.width,
-                                     win_size.height);
-        EndPaint(win_handle, &s_paint);
-        break;
       }
 
       case WM_ACTIVATEAPP: {
@@ -633,19 +651,6 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
      }
 }
 
-inline LARGE_INTEGER win32_get_seconds_wallclock()
-{
-    LARGE_INTEGER result;
-    QueryPerformanceCounter(&result);
-    return result;
-}
-
-inline f32 win32_get_seconds_elapsed(LARGE_INTEGER start, LARGE_INTEGER end)
-{
-    f32 result = ((f32) (end.QuadPart - start.QuadPart) / (f32) g_perf_count_freq);
-    return result;
-}
-
 INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
                    PSTR cmd_line, INT show_command)
 {
@@ -656,14 +661,12 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     QueryPerformanceFrequency(&perf_count_freq);
     g_perf_count_freq = perf_count_freq.QuadPart;
 
-    // Creates a window class that defines what a window is
+    // Creates a window class that defines a window
     WNDCLASSA win_class = {};
     win_class.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC; // necessary flags to redraw the entire window.
     win_class.lpfnWndProc = win32_main_window_callback;
     win_class.hInstance = win_instance;
     win_class.lpszClassName = "MainWindowClass";
-
-    // win32_resize_DIB_section(&g_bm_buffer, 960, 540);
 
     if (!RegisterClassA(&win_class))
         return false;
@@ -690,28 +693,28 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     f32 target_seconds_per_frame = 1.0f / update_hz;
 
     // Set up our sound config
-    win32_sound_settings sound_settings = {};
-    sound_settings.samples_per_sec = 48000;
-    sound_settings.bytes_per_sample = sizeof(i16) * 2;
-    sound_settings.secondary_buffer_size =
-      sound_settings.samples_per_sec * sound_settings.bytes_per_sample;
-    // NOTE: Seems that the latency is at least 3 times our samples/update cycle.
-    // TODO: Need to calculate the variance on the sound to find what the proper value of cushion we need.
-    sound_settings.cushion_bytes = (DWORD)(((f32)(sound_settings.samples_per_sec * sound_settings.bytes_per_sample) / update_hz) / 3.0f);
-
-    // Start up directsound
-    win32_init_dsound(window, sound_settings.secondary_buffer_size,
-                    sound_settings.samples_per_sec);
-    win32_clear_sound_buffer(&sound_settings);
-    g_secondary_buffer->Play(0, 0, DSBPLAY_LOOPING);
-
-    // TODO:
-    // Pool this with bitmap also, once I have an idea about how I want the core of this engine to be,
-    // I might want to change how I do these virtualallocs (especially if casey never gets to it)
-    i16 *samples =
-      (i16 *)VirtualAlloc(0, sound_settings.secondary_buffer_size,
-                              MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-
+    // win32_sound_settings sound_settings = {};
+    // sound_settings.samples_per_sec = 48000;
+    // sound_settings.bytes_per_sample = sizeof(i16) * 2;
+    // sound_settings.secondary_buffer_size =
+    //   sound_settings.samples_per_sec * sound_settings.bytes_per_sample;
+    // // NOTE: Seems that the latency is at least 3 times our samples/update cycle.
+    // // TODO: Need to calculate the variance on the sound to find what the proper value of cushion we need.
+    // sound_settings.cushion_bytes = (DWORD)(((f32)(sound_settings.samples_per_sec * sound_settings.bytes_per_sample) / update_hz) / 3.0f);
+    //
+    // // Start up directsound
+    // win32_init_dsound(window, sound_settings.secondary_buffer_size,
+    //                 sound_settings.samples_per_sec);
+    // win32_clear_sound_buffer(&sound_settings);
+    // g_secondary_buffer->Play(0, 0, DSBPLAY_LOOPING);
+    //
+    // // TODO:
+    // // Pool this with bitmap also, once I have an idea about how I want the core of this engine to be,
+    // // I might want to change how I do these virtualallocs (especially if casey never gets to it)
+    // i16 *samples =
+    //   (i16 *)VirtualAlloc(0, sound_settings.secondary_buffer_size,
+    //                           MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    //
     // TODO:
     // For now, we are just setting up the memory space for my machine.
     // Later this will need to handled to in some other way by looking at what we
@@ -744,9 +747,9 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     int debug_cursor_index = 0;
     DWORD debug_cursors[30] = {};
 
-    DWORD audio_latency_bytes = 0;
-    f32 audio_latency_seconds = 0.0f;
-    b32 valid_sound = false;
+    // DWORD audio_latency_bytes = 0;
+    // f32 audio_latency_seconds = 0.0f;
+    // b32 valid_sound = false;
 
     // Global Loop
     while (g_running)
@@ -792,7 +795,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
         }
 
-        thread_context thread = {};
+        // thread_context thread = {};
         // // This pulls from our platform-independent code from nebula.h
         // engine_bitmap_buffer buffer = {};
         // buffer.memory = g_bm_buffer.memory;
@@ -805,122 +808,120 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
         // NOTE: Go to HHD020 to see comment about how audio sync will work.
 
         // SOUND
-        DWORD play_cursor = 0;
-        DWORD write_cursor = 0;
-        if (SUCCEEDED(g_secondary_buffer->GetCurrentPosition(&play_cursor,
-                                                           &write_cursor)))
-        {
-            if (!valid_sound)
-            {
-                sound_settings.running_sample_index = write_cursor / sound_settings.bytes_per_sample;
-                valid_sound = true;
-            }
-
-            DWORD bytes_to_lock = ((sound_settings.running_sample_index *
-                              sound_settings.bytes_per_sample) %
-                             sound_settings.secondary_buffer_size);
-
-
-            DWORD expected_sound_bytes_per_frame = (DWORD)((f32)(sound_settings.samples_per_sec * sound_settings.bytes_per_sample) / update_hz);
-            DWORD expected_frame_boundary_byte = play_cursor + expected_sound_bytes_per_frame;
-
-            DWORD safe_write_cursor = write_cursor;
-            if (safe_write_cursor < play_cursor)
-            {
-                safe_write_cursor += sound_settings.secondary_buffer_size;
-            }
-            safe_write_cursor += sound_settings.cushion_bytes;
-            assert(safe_write_cursor >= play_cursor);
-
-            b32 latent_audio = (safe_write_cursor >= expected_frame_boundary_byte);
-            DWORD target_cursor = 0;
-            if (latent_audio)
-            {
-                target_cursor = write_cursor + expected_sound_bytes_per_frame + sound_settings.cushion_bytes;
-            }
-            else
-            {
-                target_cursor = expected_frame_boundary_byte + expected_sound_bytes_per_frame;
-            }
-            target_cursor = target_cursor % sound_settings.secondary_buffer_size;
-
-
-            DWORD bytes_to_write = 0;
-            if (bytes_to_lock > target_cursor)
-            {
-                bytes_to_write = sound_settings.secondary_buffer_size - bytes_to_lock;
-                bytes_to_write += target_cursor;
-            }
-            else
-            {
-                bytes_to_write = target_cursor - bytes_to_lock;
-            }
-
-            engine_sound_buffer sound_buffer = {};
-            sound_buffer.samples_per_second = sound_settings.samples_per_sec;
-            sound_buffer.sample_count =
-                bytes_to_write / sound_settings.bytes_per_sample;
-            sound_buffer.samples = samples;
-            app_get_sound_samples(&thread, &app_memory, &sound_buffer);
-
-            win32_fill_sound_buffer(&sound_settings, bytes_to_lock, bytes_to_write,
-                                  &sound_buffer);
-        }
-        else
-        {
-            valid_sound = false;
-        }
+        // DWORD play_cursor = 0;
+        // DWORD write_cursor = 0;
+        // if (SUCCEEDED(g_secondary_buffer->GetCurrentPosition(&play_cursor,
+        //                                                    &write_cursor)))
+        // {
+        //     if (!valid_sound)
+        //     {
+        //         sound_settings.running_sample_index = write_cursor / sound_settings.bytes_per_sample;
+        //         valid_sound = true;
+        //     }
+        //
+        //     DWORD bytes_to_lock = ((sound_settings.running_sample_index *
+        //                       sound_settings.bytes_per_sample) %
+        //                      sound_settings.secondary_buffer_size);
+        //
+        //
+        //     DWORD expected_sound_bytes_per_frame = (DWORD)((f32)(sound_settings.samples_per_sec * sound_settings.bytes_per_sample) / update_hz);
+        //     DWORD expected_frame_boundary_byte = play_cursor + expected_sound_bytes_per_frame;
+        //
+        //     DWORD safe_write_cursor = write_cursor;
+        //     if (safe_write_cursor < play_cursor)
+        //     {
+        //         safe_write_cursor += sound_settings.secondary_buffer_size;
+        //     }
+        //     safe_write_cursor += sound_settings.cushion_bytes;
+        //     assert(safe_write_cursor >= play_cursor);
+        //
+        //     b32 latent_audio = (safe_write_cursor >= expected_frame_boundary_byte);
+        //     DWORD target_cursor = 0;
+        //     if (latent_audio)
+        //     {
+        //         target_cursor = write_cursor + expected_sound_bytes_per_frame + sound_settings.cushion_bytes;
+        //     }
+        //     else
+        //     {
+        //         target_cursor = expected_frame_boundary_byte + expected_sound_bytes_per_frame;
+        //     }
+        //     target_cursor = target_cursor % sound_settings.secondary_buffer_size;
+        //
+        //
+        //     DWORD bytes_to_write = 0;
+        //     if (bytes_to_lock > target_cursor)
+        //     {
+        //         bytes_to_write = sound_settings.secondary_buffer_size - bytes_to_lock;
+        //         bytes_to_write += target_cursor;
+        //     }
+        //     else
+        //     {
+        //         bytes_to_write = target_cursor - bytes_to_lock;
+        //     }
+        //
+        //     engine_sound_buffer sound_buffer = {};
+        //     sound_buffer.samples_per_second = sound_settings.samples_per_sec;
+        //     sound_buffer.sample_count =
+        //         bytes_to_write / sound_settings.bytes_per_sample;
+        //     sound_buffer.samples = samples;
+        //     app_get_sound_samples(&thread, &app_memory, &sound_buffer);
+        //
+        //     win32_fill_sound_buffer(&sound_settings, bytes_to_lock, bytes_to_write,
+        //                           &sound_buffer);
+        // }
+        // else
+        // {
+        //     valid_sound = false;
+        // }
 
         // NOTE: TIMING OUR RUNNING LOOP
-        LARGE_INTEGER current_counter = win32_get_seconds_wallclock();
-        f32 current_seconds_elapsed = win32_get_seconds_elapsed(start_counter, current_counter);
+        // LARGE_INTEGER current_counter = win32_get_seconds_wallclock();
+        // f32 current_seconds_elapsed = win32_get_seconds_elapsed(start_counter, current_counter);
+        //
+        // // Stall out if frame is ready sooner than target time
+        // f32 secs_elapsed_for_frame = current_seconds_elapsed;
+        // if (secs_elapsed_for_frame < target_seconds_per_frame)
+        // {
+        //     if (granular_sleep)
+        //     {
+        //         // NOTE:
+        //         // For some reason, the sleep is not accurate enough to wake in time. [HHD018]
+        //         // Thus, I am sleeping 1ms less to make sure we lock at 33.33ms
+        //         DWORD sleep_time = (DWORD) ((1000.0f * (target_seconds_per_frame - secs_elapsed_for_frame)) - 1.0f);
+        //         if (sleep_time > 0)
+        //         {
+        //             Sleep(sleep_time);
+        //         }
+        //     }
+        //
+        //     // NOTE:
+        //     // Should not assert pieces of code that we know WILL happen.
+        //     // Try to only assert when we want to make sure we crash IF the thing happens!!!
+        //     f32 test_secs_elapsed_for_frame = win32_get_seconds_elapsed(current_counter, win32_get_seconds_wallclock());
+        //     if (test_secs_elapsed_for_frame < target_seconds_per_frame)
+        //     {
+        //         // TODO: LOGGING HERE!
+        //         // MISSED SLEEP
+        //     }
+        //
+        //     while (secs_elapsed_for_frame < target_seconds_per_frame)
+        //     {
+        //         secs_elapsed_for_frame = win32_get_seconds_elapsed(start_counter, win32_get_seconds_wallclock());
+        //     }
+        // }
+        // else
+        // {
+        //     // TODO: Took too long to process current frame!
+        //     // Logging here
+        // }
+        //
+        // LARGE_INTEGER end_counter = win32_get_seconds_wallclock();
+        // f32 ms_per_frame = 1000.0f * win32_get_seconds_elapsed(start_counter, end_counter);
+        // start_counter = end_counter;
 
-        // Stall out if frame is ready sooner than target time
-        f32 secs_elapsed_for_frame = current_seconds_elapsed;
-        if (secs_elapsed_for_frame < target_seconds_per_frame)
-        {
-            if (granular_sleep)
-            {
-                // NOTE:
-                // For some reason, the sleep is not accurate enough to wake in time. [HHD018]
-                // Thus, I am sleeping 1ms less to make sure we lock at 33.33ms
-                DWORD sleep_time = (DWORD) ((1000.0f * (target_seconds_per_frame - secs_elapsed_for_frame)) - 1.0f);
-                if (sleep_time > 0)
-                {
-                    Sleep(sleep_time);
-                }
-            }
-
-            // NOTE:
-            // Should not assert pieces of code that we know WILL happen.
-            // Try to only assert when we want to make sure we crash IF the thing happens!!!
-            f32 test_secs_elapsed_for_frame = win32_get_seconds_elapsed(current_counter, win32_get_seconds_wallclock());
-            if (test_secs_elapsed_for_frame < target_seconds_per_frame)
-            {
-                // TODO: LOGGING HERE!
-                // MISSED SLEEP
-            }
-
-            while (secs_elapsed_for_frame < target_seconds_per_frame)
-            {
-                secs_elapsed_for_frame = win32_get_seconds_elapsed(start_counter, win32_get_seconds_wallclock());
-            }
-        }
-        else
-        {
-            // TODO: Took too long to process current frame!
-            // Logging here
-        }
-
-        LARGE_INTEGER end_counter = win32_get_seconds_wallclock();
-        f32 ms_per_frame = 1000.0f * win32_get_seconds_elapsed(start_counter, end_counter);
-        start_counter = end_counter;
-
-        // win32_win_dimensions win_size = win32_get_win_dimensions(window);
-        // win32_update_win_with_buffer(device_context, &g_bm_buffer, win_size.width,
-        //                              win_size.height);
-
-        // TODO: SOUND FLIP HERE
+        win32_win_dimensions win_size = win32_get_win_dimensions(window);
+        win32_update_win_with_buffer(device_context, &g_bm_buffer, win_size.width,
+                                     win_size.height);
 
         engine_input *temp = new_input;
         new_input = old_input;
