@@ -243,48 +243,50 @@ static void win32_init_opengl(HWND window_handle)
         glUniform4f = (gluniform4f *)wglGetProcAddress("glUniform4f");
 
         // Vertex Data
-        // v3 vertices[] = {
-        //     { -0.5f, -0.5f, 0.0f },
-        //     { 0.5f, -0.5f, 0.0f },
-        //     { 0.0f, 0.5f, 0.0f },
-        // };
         v3 vertices[] = {
-            { 0.5f, 0.5f, 0.0f },   // top-right
-            { 0.5f, -0.5f, 0.0f },  // bottom-right
-            { -0.5f, -0.5f, 0.0f }, // bottom-left
-            { -0.5f, 0.5f, 0.0f },  // top-left
+            { -0.5f, -0.5f, 0.0f }, // V1 pos data
+            { 1.0f, 0.0f, 0.0f }, // V1 color data
+            { 0.5f, -0.5f, 0.0f }, // V2 pos data
+            { 0.0f, 1.0f, 0.0f }, // V2 color data
+            { 0.0f, 0.5f, 0.0f }, // V3 pos data
+            { 0.0f, 0.0f, 1.0f }, // V3 color data
         };
+        // v3 vertices[] = {
+        //     { 0.5f, 0.5f, 0.0f },   // top-right
+        //     { 0.5f, -0.5f, 0.0f },  // bottom-right
+        //     { -0.5f, -0.5f, 0.0f }, // bottom-left
+        //     { -0.5f, 0.5f, 0.0f },  // top-left
+        // };
         u32 indices[] = {
             0, 1, 3,    // T1
             1, 2, 3     // T2
         };
 
-        // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject and (E)lement (B)uffer (O)bject
-        u32 VBO, VAO, EBO;
+        // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
+        u32 VBO, VAO;
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
 
         // Bind VAO, tnhe bind and set VBOs, then config vertex attribs
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        // Copy indices to EBO
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-        // Tell opengl how to interpret our vertex data
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), (void *)0);
+        // Tell opengl how to interpret our vertex data by setting pointers to the attribr
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void *)0);
         glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void *)(3 * sizeof(f32)));
+        glEnableVertexAttribArray(1);
 
         // Create shaders
         const char *vertexShaderSource = "#version 330 core\n"
             "layout (location = 0) in vec3 aPos;\n"
-            "out vec4 vertexColor;\n"
+            "layout (location = 1) in vec3 aColor;\n"
+            "out vec3 outColor;\n"
             "void main()\n"
             "{\n"
-            "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-            "    vertexColor = vec4(0.5, 0.0, 0.0, 1.0);\n"
+            "   gl_Position = vec4(aPos, 1.0);\n"
+            "   outColor = aColor;\n"
             "}\0";
         u32 vertex_shader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertex_shader, 1, &vertexShaderSource, NULL);
@@ -302,10 +304,10 @@ static void win32_init_opengl(HWND window_handle)
         }
         const char *fragmentShaderSource = "#version 330 core\n"
             "out vec4 FragColor;\n"
-            "uniform vec4 ourColor;\n"
+            "in vec3 outColor;\n"
             "void main()\n"
             "{\n"
-            "   FragColor = ourColor;\n"
+            "   FragColor = vec4(outColor, 1.0);\n"
             "}\0";
         u32 fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragment_shader, 1, &fragmentShaderSource, NULL);
@@ -429,12 +431,7 @@ static void win32_update_win_with_buffer(HDC device_context,
     // DRAW
     // glPolygonMode(GL_FRONT, GL_LINE);
     glUseProgram(g_shader_program);
-    f32 tv = (f32)(win32_get_seconds_wallclock().QuadPart);
-    f32 greenVal = (f32)((f32)sin((f32)tv) / 2.0f) + 0.5f;
-    i32 vertex_color_loc = glGetUniformLocation(g_shader_program, "ourColor");
-    glUniform4f(vertex_color_loc, 0.0f, greenVal, 0.0f, 1.0f);
-    // glDrawArrays(GL_TRIANGLES, 0, 3);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
 
     // TODO: Look up what swapbuffers should be used
     SwapBuffers(device_context);
