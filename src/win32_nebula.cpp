@@ -20,8 +20,9 @@
 global b32 g_running = false;
 global win32_bitmap_buffer g_bm_buffer;
 global LPDIRECTSOUNDBUFFER g_secondary_buffer;
+global thread_context g_thread_context = {};
 global i64 g_perf_count_freq;
-global u32 g_shader_program;
+global GLuint g_shader_program;
 
 // NOTE: Opengl definitions
 typedef i64 GLsizeiptr;
@@ -77,6 +78,14 @@ global glgetuniformlocation *glGetUniformLocation;
 typedef void gluniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
 global gluniform4f *glUniform4f;
 
+static void DEBUG_free_file(thread_context *thread, void *file)
+{
+    if (file)
+    {
+        VirtualFree(&file, 0, MEM_RELEASE);
+    }
+}
+
 static debug_file_result DEBUG_read_entire_file(thread_context *thread, char *file_name)
 {
     debug_file_result result = {};
@@ -129,14 +138,6 @@ static b32 DEBUG_write_entire_file(thread_context *thread, char *file_name, void
 
     CloseHandle(file_handle);
     return result;
-}
-
-static void DEBUG_free_file(thread_context *thread, void *file)
-{
-    if (file)
-    {
-        VirtualFree(&file, 0, MEM_RELEASE);
-    }
 }
 
 // TODO: Should I replace this once I want to actually add sound?
@@ -202,6 +203,61 @@ static void win32_init_dsound(HWND win_handle, i32 buffer_size,
   }
 }
 
+static GLuint create_ogl_shader_program(char *vertex_file_name, char *fragment_file_name)
+{
+    GLuint prog_id = 0;
+    debug_file_result s_vertex_file = DEBUG_read_entire_file(&g_thread_context, vertex_file_name);
+    debug_file_result s_fragment_file = DEBUG_read_entire_file(&g_thread_context, fragment_file_name);
+
+    // Create shaders
+    const char *vertexShaderSource = (char *)s_vertex_file.contents;
+    u32 vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex_shader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertex_shader);
+    // Check the shader was compiled successfully
+    i32 success;
+    char info[512];
+    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
+    if(!success) {
+        char put_string[512];
+        glGetShaderInfoLog(vertex_shader, arr_count(info), NULL, info);
+        _snprintf_s(put_string, sizeof(put_string), "Failed vertex shader compilation: %s\n",
+                    info);
+        OutputDebugStringA(put_string);
+    }
+    const char *fragmentShaderSource = (char *)s_fragment_file.contents;
+    u32 fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment_shader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragment_shader);
+    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
+    if(!success) {
+        char put_string[512];
+        glGetShaderInfoLog(fragment_shader, arr_count(info), NULL, info);
+        _snprintf_s(put_string, sizeof(put_string), "Failed fragment shader compilation: %s\n",
+                    info);
+        OutputDebugStringA(put_string);
+    }
+    // Create shader program
+    prog_id = glCreateProgram();
+    glAttachShader(prog_id, vertex_shader);
+    glAttachShader(prog_id, fragment_shader);
+    glLinkProgram(prog_id);
+    glGetProgramiv(prog_id, GL_LINK_STATUS, &success);
+    if(!success) {
+        char put_string[512];
+        glGetProgramInfoLog(prog_id, arr_count(info), NULL, info);
+        _snprintf_s(put_string, sizeof(put_string), "Failed shader program link: %s\n",
+                    info);
+        OutputDebugStringA(put_string);
+    }
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+    DEBUG_free_file(&g_thread_context, s_vertex_file.contents);
+    DEBUG_free_file(&g_thread_context, s_fragment_file.contents);
+
+    return prog_id;
+}
+
 static void win32_init_opengl(HWND window_handle)
 {
     HDC window_dc = GetDC(window_handle);
@@ -242,6 +298,8 @@ static void win32_init_opengl(HWND window_handle)
         glGetUniformLocation = (glgetuniformlocation *)wglGetProcAddress("glGetUniformLocation");
         glUniform4f = (gluniform4f *)wglGetProcAddress("glUniform4f");
 
+        // Create Shader Program
+        g_shader_program = create_ogl_shader_program("..\\test.vs", "..\\test.fs");
         // Vertex Data
         v3 vertices[] = {
             { -0.5f, -0.5f, 0.0f }, // V1 pos data
@@ -278,63 +336,6 @@ static void win32_init_opengl(HWND window_handle)
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void *)(3 * sizeof(f32)));
         glEnableVertexAttribArray(1);
 
-        // Create shaders
-        const char *vertexShaderSource = "#version 330 core\n"
-            "layout (location = 0) in vec3 aPos;\n"
-            "layout (location = 1) in vec3 aColor;\n"
-            "out vec3 outColor;\n"
-            "void main()\n"
-            "{\n"
-            "   gl_Position = vec4(aPos, 1.0);\n"
-            "   outColor = aColor;\n"
-            "}\0";
-        u32 vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertex_shader, 1, &vertexShaderSource, NULL);
-        glCompileShader(vertex_shader);
-        // Check the shader was compiled successfully
-        i32 success;
-        char info[512];
-        glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-        if(!success) {
-            char put_string[512];
-            glGetShaderInfoLog(vertex_shader, arr_count(info), NULL, info);
-            _snprintf_s(put_string, sizeof(put_string), "Failed vertex shader compilation: %s\n",
-                        info);
-            OutputDebugStringA(put_string);
-        }
-        const char *fragmentShaderSource = "#version 330 core\n"
-            "out vec4 FragColor;\n"
-            "in vec3 outColor;\n"
-            "void main()\n"
-            "{\n"
-            "   FragColor = vec4(outColor, 1.0);\n"
-            "}\0";
-        u32 fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragment_shader, 1, &fragmentShaderSource, NULL);
-        glCompileShader(fragment_shader);
-        glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-        if(!success) {
-            char put_string[512];
-            glGetShaderInfoLog(fragment_shader, arr_count(info), NULL, info);
-            _snprintf_s(put_string, sizeof(put_string), "Failed fragment shader compilation: %s\n",
-                        info);
-            OutputDebugStringA(put_string);
-        }
-        // Create shader program
-        g_shader_program = glCreateProgram();
-        glAttachShader(g_shader_program, vertex_shader);
-        glAttachShader(g_shader_program, fragment_shader);
-        glLinkProgram(g_shader_program);
-        glGetProgramiv(g_shader_program, GL_LINK_STATUS, &success);
-        if(!success) {
-            char put_string[512];
-            glGetProgramInfoLog(g_shader_program, arr_count(info), NULL, info);
-            _snprintf_s(put_string, sizeof(put_string), "Failed shader program link: %s\n",
-                        info);
-            OutputDebugStringA(put_string);
-        }
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
     }
     else
     {
@@ -426,7 +427,6 @@ static void win32_update_win_with_buffer(HDC device_context,
     glViewport(0, 0, win_width, win_height);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-
 
     // DRAW
     // glPolygonMode(GL_FRONT, GL_LINE);
