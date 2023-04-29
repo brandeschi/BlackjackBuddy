@@ -95,6 +95,82 @@ inline static void new_hand_deal(deck *deck, u32 players = 2)
     // return cards_removed;
 }
 
+// NOTE: CPP is not obligated to pack structs the way we want so sometimes this is necessary
+#pragma pack(push, 1) // Push how closely to pack bytes
+struct bmp_header
+{
+    u16 file_type;
+    u32 file_size;
+    u16 res_1;
+    u16 res_2;
+    u32 bitmap_offset;
+    u32 size;
+    i32 width;
+    i32 height;
+    u16 planes;
+    u16 bits_per_pixel;
+    u32 compression;
+    u32 size_of_bitmap;
+    i32 horz_resolution;
+    i32 vert_resolution;
+    u32 colors_used;
+    u32 colors_important;
+
+    u32 red_mask;
+    u32 green_mask;
+    u32 blue_mask;
+};
+#pragma pack(pop) // Pop back to how the compiler was packing previously
+
+// TODO: This is not final jpg loading code!
+static loaded_jpg DEBUG_load_jpg(thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name)
+{
+    loaded_jpg result = {};
+    debug_file_result read_result = read_entire_file(thread, file_name);
+    int x = 0;
+    // if (read_result.contents_size != 0)
+    // {
+    //     bmp_header *header = (bmp_header *)read_result.contents;
+    //     u32 *pixels = (u32 *)((u8 *)read_result.contents + header->bitmap_offset);
+    //
+    //     // NOTE: For some reason I did not have to do any shifting of the bits for my bmp file?
+    //     result.pixels = pixels;
+    //     result.width = header->width;
+    //     result.height = header->height;
+    //
+    //     assert(header->compression == 3);
+    //
+    //     // NOTE: Byte order of the bmp pixels in memory is deteremined by the header itself!
+    //     u32 alpha_mask = ~(header->red_mask | header->green_mask | header->blue_mask);
+    //
+    //     bit_scan_result red_shift = find_least_sig_set_bit_32(header->red_mask);
+    //     bit_scan_result green_shift = find_least_sig_set_bit_32(header->green_mask);
+    //     bit_scan_result blue_shift = find_least_sig_set_bit_32(header->blue_mask);
+    //     bit_scan_result alpha_shift = find_least_sig_set_bit_32(alpha_mask);
+    //
+    //     assert(red_shift.found);
+    //     assert(green_shift.found);
+    //     assert(blue_shift.found);
+    //     assert(alpha_shift.found);
+    //
+    //     u32 *src_dest = pixels;
+    //     for (i32 Y = 0; Y < header->height; Y++)
+    //     {
+    //         for (i32 X = 0; X < header->width; X++)
+    //         {
+    //             u32 color = *src_dest;
+    //             *src_dest++ = ((((color >> alpha_shift.index) & 0xFF) << 24) |
+    //                            (((color >> red_shift.index) & 0xFF) << 16) |
+    //                            (((color >> green_shift.index) & 0xFF) << 8) |
+    //                            (((color >> blue_shift.index) & 0xFF) << 0)
+    //                           );
+    //         }
+    //     }
+    // }
+
+    return result;
+}
+
 static void output_sound(app_state *game_state, engine_sound_buffer *sound_buffer)
 {
 #if 0
@@ -190,9 +266,10 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
 
     if(!memory->is_init)
     {
+        // game_state->DEBUG_read_entire_file;
         memory->is_init = true;
     }
-
+    #if 0
     for (int controller_index = 0;
          controller_index < arr_count(input->controllers);
          controller_index++)
@@ -211,6 +288,6 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     // Draw debug backgroun in client area.
     draw_rect(bitmap_buffer, 0.0f, (f32)bitmap_buffer->width, 0.0f, (f32)bitmap_buffer->height,
               0.8f, 0.56f, 0.64f);
-
+        #endif
 }
 

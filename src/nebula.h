@@ -55,13 +55,6 @@ struct thread_context
     int placeholder;
 };
 
-#if NEO_INTERNAL
-struct debug_file_result
-{
-    u32 contents_size;
-    void *contents;
-};
-
 inline u32 safe_truncate_int64(u64 value)
 {
     assert(value <= 0xFFFFFFFF);
@@ -69,10 +62,22 @@ inline u32 safe_truncate_int64(u64 value)
     return result;
 }
 
-static debug_file_result DEBUG_read_entire_file(thread_context *thread, char *file_name);
-static void DEBUG_free_file(thread_context *thread, void *file);
-static b32 DEBUG_write_entire_file(thread_context *thread, char *file_name, void *file, u32 file_size);
-#endif
+// #if NEO_INTERNAL
+struct debug_file_result
+{
+    u32 contents_size;
+    void *contents;
+};
+
+#define DEBUG_FREE_FILE_MEMORY(name) void name(thread_context *thread, void *file)
+typedef DEBUG_FREE_FILE_MEMORY(debug_free_file);
+
+#define DEBUG_READ_ENTIRE_FILE(name) debug_file_result name(thread_context *thread, char *file_name)
+typedef DEBUG_READ_ENTIRE_FILE(debug_read_entire_file);
+
+#define DEBUG_WRITE_ENTIRE_FILE(name) b32 name(thread_context *thread, char *file_name, void *file, u32 file_size)
+typedef DEBUG_WRITE_ENTIRE_FILE(debug_write_entire_file);
+// #endif
 
 struct engine_bitmap_buffer
 {
@@ -209,9 +214,20 @@ void *push_size_(memory_arena *ma, mem_index size)
 }
 
 #include "neo_math.h"
+#include "math_utils.h"
+
+struct loaded_jpg
+{
+    i32 width;
+    i32 height;
+    u32 *pixels;
+};
 
 struct app_state
 {
+    // debug_free_file *DEBUG_free_file;
+    // debug_read_entire_file *DEBUG_read_entire_file;
+    // debug_write_entire_file *DEBUG_write_entire_file;
 };
 
 static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input,

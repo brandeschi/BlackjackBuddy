@@ -78,7 +78,7 @@ global glgetuniformlocation *glGetUniformLocation;
 typedef void gluniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
 global gluniform4f *glUniform4f;
 
-static void DEBUG_free_file(thread_context *thread, void *file)
+DEBUG_FREE_FILE_MEMORY(DEBUG_free_file)
 {
     if (file)
     {
@@ -86,7 +86,7 @@ static void DEBUG_free_file(thread_context *thread, void *file)
     }
 }
 
-static debug_file_result DEBUG_read_entire_file(thread_context *thread, char *file_name)
+DEBUG_READ_ENTIRE_FILE(DEBUG_read_entire_file)
 {
     debug_file_result result = {};
     HANDLE file_handle = CreateFile(file_name, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
@@ -117,7 +117,7 @@ static debug_file_result DEBUG_read_entire_file(thread_context *thread, char *fi
     return result;
 }
 
-static b32 DEBUG_write_entire_file(thread_context *thread, char *file_name, void *file, u32 file_size)
+DEBUG_WRITE_ENTIRE_FILE(DEBUG_write_entire_file)
 {
     b32 result = false;
     HANDLE file_handle = CreateFile(file_name, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
@@ -139,6 +139,7 @@ static b32 DEBUG_write_entire_file(thread_context *thread, char *file_name, void
     CloseHandle(file_handle);
     return result;
 }
+// debug_read_entire_file *DEBUG_read_entire_file;
 
 // TODO: Should I replace this once I want to actually add sound?
 #define DIRECT_SOUND_CREATE(fn_name) HRESULT WINAPI fn_name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter) // Macro to define a function that matches the signature of DirectSound Create func
@@ -260,6 +261,8 @@ static GLuint create_ogl_shader_program(char *vertex_file_name, char *fragment_f
 
 static void win32_init_opengl(HWND window_handle)
 {
+    loaded_jpg crate_tex = DEBUG_load_jpg(&g_thread_context, DEBUG_read_entire_file, "test/container.jpg");
+
     HDC window_dc = GetDC(window_handle);
 
     PIXELFORMATDESCRIPTOR desired_pixel_format = {};
@@ -309,6 +312,19 @@ static void win32_init_opengl(HWND window_handle)
             { 0.0f, 0.5f, 0.0f }, // V3 pos data
             { 0.0f, 0.0f, 1.0f }, // V3 color data
         };
+
+        v2 tex_coords[] = {
+            { 0.0f, 0.0f },
+            { 1.0f, 0.0f },
+            { 0.5f, 1.0f },
+        };
+
+        // Setting Texture wrapping method
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+        // Setting Texture filtering methods
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         // v3 vertices[] = {
         //     { 0.5f, 0.5f, 0.0f },   // top-right
         //     { 0.5f, -0.5f, 0.0f },  // bottom-right
@@ -794,13 +810,14 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
         // thread_context thread = {};
         // // This pulls from our platform-independent code from nebula.h
-        // engine_bitmap_buffer buffer = {};
-        // buffer.memory = g_bm_buffer.memory;
-        // buffer.width = g_bm_buffer.width;
-        // buffer.height = g_bm_buffer.height;
-        // buffer.pitch = g_bm_buffer.pitch;
-        // buffer.bytes_per_pixel = g_bm_buffer.bytes_per_pixel;
+        engine_bitmap_buffer buffer = {};
+        buffer.memory = g_bm_buffer.memory;
+        buffer.width = g_bm_buffer.width;
+        buffer.height = g_bm_buffer.height;
+        buffer.pitch = g_bm_buffer.pitch;
+        buffer.bytes_per_pixel = g_bm_buffer.bytes_per_pixel;
         // update_and_render(&thread, &app_memory, new_input, &buffer);
+        update_and_render(&g_thread_context, &app_memory, new_input, &buffer);
 
         // NOTE: Go to HHD020 to see comment about how audio sync will work.
 
