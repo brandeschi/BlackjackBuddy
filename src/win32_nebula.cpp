@@ -7,11 +7,11 @@
 #define pi32 3.14159265359f
 #define KEEB_COUNT 1
 
+#include <Windows.h>
+#include <stdio.h>
 #include "nebula.h"
 #include "nebula.cpp"
 
-#include <Windows.h>
-#include <stdio.h>
 #include <dsound.h>
 #include <gl/GL.h>
 

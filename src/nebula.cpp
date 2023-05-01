@@ -96,6 +96,7 @@ inline static void new_hand_deal(deck *deck, u32 players = 2)
 }
 
 // NOTE: CPP is not obligated to pack structs the way we want so sometimes this is necessary
+#if 0
 #pragma pack(push, 1) // Push how closely to pack bytes
 struct bmp_header
 {
@@ -121,52 +122,121 @@ struct bmp_header
     u32 blue_mask;
 };
 #pragma pack(pop) // Pop back to how the compiler was packing previously
+#endif
+// Decode the Huffman data
+// Un-Quantize by multiplying by the Quantization table
+// Inverse the DCT
+// All of this done for each 8x8 image
+#pragma pack(push, 1) // Push how closely to pack bytes
+// Exif JPG
+struct jpg_header
+{
+    u16 file_type; // always 0xFFD8
+    u16 file_type_marker; // APP1 marker; always 0xFFE1
+    u16 file_size;
+    u32 res_1; // Exif header part1
+    u16 res_2; // Exif header part2
+    u16 byte_alignment; // Either "I I" or "MM"                                     //
+    u16 tag_mark; // reserved for after alignment                                   // TIFF Header
+    u32 first_ifd_offset; // 1st Image File Directory offset (usually 0x00000008)   //
 
+
+};
+#pragma pack(pop) // Pop back to how the compiler was packing previously
+
+#define JPG_SOI (u16)0xFFD8
+#define JPG_SOF (u16)0xFFC0
+#define JPG_DHT (u16)0xFFC4
+#define JPG_DQT (u16)0xFFDB
+#define JPG_DRI (u16)0xFFDD
+#define JPG_SOS (u16)0xFFDA
+#define JPG_EOI (u16)0xFFD9
+
+static u16 endian_swap_word(u16 word)
+{
+    u16 result = ((word & 0xFF00) >> 8) | ((word & 0x00FF) << 8);
+    return result;
+}
+static u16 read_next_word(u16 *bytes)
+{
+    u16 result = endian_swap_word(*bytes++);
+    return result;
+}
 // TODO: This is not final jpg loading code!
 static loaded_jpg DEBUG_load_jpg(thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name)
 {
     loaded_jpg result = {};
     debug_file_result read_result = read_entire_file(thread, file_name);
-    int x = 0;
-    // if (read_result.contents_size != 0)
-    // {
-    //     bmp_header *header = (bmp_header *)read_result.contents;
-    //     u32 *pixels = (u32 *)((u8 *)read_result.contents + header->bitmap_offset);
-    //
-    //     // NOTE: For some reason I did not have to do any shifting of the bits for my bmp file?
-    //     result.pixels = pixels;
-    //     result.width = header->width;
-    //     result.height = header->height;
-    //
-    //     assert(header->compression == 3);
-    //
-    //     // NOTE: Byte order of the bmp pixels in memory is deteremined by the header itself!
-    //     u32 alpha_mask = ~(header->red_mask | header->green_mask | header->blue_mask);
-    //
-    //     bit_scan_result red_shift = find_least_sig_set_bit_32(header->red_mask);
-    //     bit_scan_result green_shift = find_least_sig_set_bit_32(header->green_mask);
-    //     bit_scan_result blue_shift = find_least_sig_set_bit_32(header->blue_mask);
-    //     bit_scan_result alpha_shift = find_least_sig_set_bit_32(alpha_mask);
-    //
-    //     assert(red_shift.found);
-    //     assert(green_shift.found);
-    //     assert(blue_shift.found);
-    //     assert(alpha_shift.found);
-    //
-    //     u32 *src_dest = pixels;
-    //     for (i32 Y = 0; Y < header->height; Y++)
-    //     {
-    //         for (i32 X = 0; X < header->width; X++)
-    //         {
-    //             u32 color = *src_dest;
-    //             *src_dest++ = ((((color >> alpha_shift.index) & 0xFF) << 24) |
-    //                            (((color >> red_shift.index) & 0xFF) << 16) |
-    //                            (((color >> green_shift.index) & 0xFF) << 8) |
-    //                            (((color >> blue_shift.index) & 0xFF) << 0)
-    //                           );
-    //         }
-    //     }
-    // }
+    if (read_result.contents_size != 0)
+    {
+        u8 *bytes = (u8 *)read_result.contents;
+        // while(read_next_word((u16 *)bytes) != (u16)0xFFD9)
+        // {
+        //     char test[64];
+        //     u16 marker = *(u16 *)bytes;
+        //     _snprintf_s(test, sizeof(test), "EOI: %x\n", marker);
+        //     OutputDebugStringA(test);
+        //     bytes = bytes + 2;
+        // }
+        if (read_next_word((u16 *)bytes) != JPG_SOI)
+        {
+            OutputDebugStringA("Not a JPG\n");
+            return result;
+        }
+
+        bytes = bytes + 2;
+        u16 current_word;
+        while((current_word = read_next_word((u16 *)bytes)) != (u16)0xFFD9)
+        {
+            switch(current_word)
+            {
+                case JPG_SOF:
+                {
+                    OutputDebugStringA("sof\n");
+                    bytes = bytes + 2;
+                    u16 length = read_next_word((u16 *)bytes);
+                    bytes = bytes + length;
+                } break;
+                case JPG_DHT:
+                {
+                    OutputDebugStringA("dht\n");
+                    bytes = bytes + 2;
+                    u16 length = read_next_word((u16 *)bytes);
+                    bytes = bytes + length;
+                } break;
+                case JPG_DQT:
+                {
+                    OutputDebugStringA("dqt\n");
+                    bytes = bytes + 2;
+                    u16 length = read_next_word((u16 *)bytes);
+                    bytes = bytes + length;
+                } break;
+                case JPG_DRI:
+                {
+                    OutputDebugStringA("dri\n");
+                    bytes = bytes + 2;
+                    u16 length = read_next_word((u16 *)bytes);
+                    bytes = bytes + length;
+                } break;
+                case JPG_SOS:
+                {
+                    OutputDebugStringA("sos\n");
+                    bytes = bytes + 2;
+                    u16 length = read_next_word((u16 *)bytes);
+                    bytes = bytes + length;
+                } goto exit_loop;
+                default:
+                {
+                    OutputDebugStringA("def\n");
+                    bytes = bytes + 2;
+                    u16 length = read_next_word((u16 *)bytes);
+                    bytes = bytes + length;
+                } break;
+
+            }
+        }
+    exit_loop: ;
+    }
 
     return result;
 }
