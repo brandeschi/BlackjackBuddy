@@ -261,8 +261,6 @@ static GLuint create_ogl_shader_program(char *vertex_file_name, char *fragment_f
 
 static void win32_init_opengl(HWND window_handle)
 {
-    loaded_jpg crate_tex = DEBUG_load_jpg(&g_thread_context, DEBUG_read_entire_file, "test/container.jpg");
-
     HDC window_dc = GetDC(window_handle);
 
     PIXELFORMATDESCRIPTOR desired_pixel_format = {};
@@ -748,6 +746,11 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
       base_address, total_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     app_memory.flex_mem_storage =
       ((u8 *) app_memory.perm_mem_storage + app_memory.perm_storage_space);
+
+    // FIXME: Refactor this based on platorm dependency
+    memory_arena global_arena = {};
+    init_arena(&global_arena, app_memory.perm_storage_space, (u8 *)app_memory.perm_mem_storage);
+    loaded_jpg crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/container.jpg");
 
     // TODO: Add check here to make sure we got our memory(samples, bitmap, app_mem)
     engine_input input[2] = {};

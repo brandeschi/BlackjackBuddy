@@ -218,8 +218,8 @@ void *push_size_(memory_arena *ma, mem_index size)
 
 struct loaded_jpg
 {
-    i32 width;
-    i32 height;
+    u16 width;
+    u16 height;
     u32 *pixels;
 };
 

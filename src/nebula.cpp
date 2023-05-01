@@ -96,53 +96,43 @@ inline static void new_hand_deal(deck *deck, u32 players = 2)
 }
 
 // NOTE: CPP is not obligated to pack structs the way we want so sometimes this is necessary
-#if 0
-#pragma pack(push, 1) // Push how closely to pack bytes
-struct bmp_header
-{
-    u16 file_type;
-    u32 file_size;
-    u16 res_1;
-    u16 res_2;
-    u32 bitmap_offset;
-    u32 size;
-    i32 width;
-    i32 height;
-    u16 planes;
-    u16 bits_per_pixel;
-    u32 compression;
-    u32 size_of_bitmap;
-    i32 horz_resolution;
-    i32 vert_resolution;
-    u32 colors_used;
-    u32 colors_important;
 
-    u32 red_mask;
-    u32 green_mask;
-    u32 blue_mask;
-};
-#pragma pack(pop) // Pop back to how the compiler was packing previously
-#endif
 // Decode the Huffman data
 // Un-Quantize by multiplying by the Quantization table
 // Inverse the DCT
 // All of this done for each 8x8 image
-#pragma pack(push, 1) // Push how closely to pack bytes
 // Exif JPG
-struct jpg_header
+// struct jpg_header
+// {
+//     u16 file_type; // always 0xFFD8
+//     u16 file_type_marker; // APP1 marker; always 0xFFE1
+//     u16 file_size;
+//     u32 res_1; // Exif header part1
+//     u16 res_2; // Exif header part2
+//     u16 byte_alignment; // Either "I I" or "MM"                                     //
+//     u16 tag_mark; // reserved for after alignment                                   // TIFF Header
+//     u32 first_ifd_offset; // 1st Image File Directory offset (usually 0x00000008)   //
+//
+//
+// };
+struct component_info
 {
-    u16 file_type; // always 0xFFD8
-    u16 file_type_marker; // APP1 marker; always 0xFFE1
-    u16 file_size;
-    u32 res_1; // Exif header part1
-    u16 res_2; // Exif header part2
-    u16 byte_alignment; // Either "I I" or "MM"                                     //
-    u16 tag_mark; // reserved for after alignment                                   // TIFF Header
-    u32 first_ifd_offset; // 1st Image File Directory offset (usually 0x00000008)   //
-
-
 };
-#pragma pack(pop) // Pop back to how the compiler was packing previously
+struct qt_table
+{
+    // NOTE: If 0, the table uses bytes... If 1, the table uses words...
+    u8 precision_index;
+    u8 table_values[64];
+};
+
+// TODO: Get a refresher on how best to order props of a struct
+struct jpg_info
+{
+    component_info components[3];
+    qt_table *qt_tables;
+    b32 grayscale;
+    u32 *pixels;
+};
 
 #define JPG_SOI (u16)0xFFD8
 #define JPG_SOF (u16)0xFFC0
@@ -152,7 +142,7 @@ struct jpg_header
 #define JPG_SOS (u16)0xFFDA
 #define JPG_EOI (u16)0xFFD9
 
-static u16 endian_swap_word(u16 word)
+inline static u16 endian_swap_word(u16 word)
 {
     u16 result = ((word & 0xFF00) >> 8) | ((word & 0x00FF) << 8);
     return result;
@@ -162,22 +152,45 @@ static u16 read_next_word(u16 *bytes)
     u16 result = endian_swap_word(*bytes++);
     return result;
 }
-// TODO: This is not final jpg loading code!
-static loaded_jpg DEBUG_load_jpg(thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name)
+inline static u8 get_upper_nibble(u8 byte)
 {
+    u8 result = (byte >> 4);
+    return result;
+}
+
+static void process_dqt(memory_arena *ma, u8 *base_address, u16 length_minus_lword, jpg_info *info)
+{
+    // Move past length word
+    base_address = base_address + 2;
+    u16 tables_to_add = length_minus_lword / (u16)65;
+    while (tables_to_add)
+    {
+        info->qt_tables = push_struct(ma, qt_table);
+        info->qt_tables->precision_index = get_upper_nibble(*base_address++);
+        if (info->qt_tables->precision_index == 0)
+        {
+            for (u8 byte = 0; byte < 64; ++byte, ++base_address)
+            {
+                info->qt_tables->table_values[byte] = *base_address;
+            }
+        }
+        ++info->qt_tables;
+        --tables_to_add;
+    }
+
+    // Move our ptr back to the first qt_table
+    info->qt_tables = info->qt_tables - tables_to_add;
+}
+
+// TODO: This is not final jpg loading code!
+static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name)
+{
+    jpg_info info = {};
     loaded_jpg result = {};
     debug_file_result read_result = read_entire_file(thread, file_name);
     if (read_result.contents_size != 0)
     {
         u8 *bytes = (u8 *)read_result.contents;
-        // while(read_next_word((u16 *)bytes) != (u16)0xFFD9)
-        // {
-        //     char test[64];
-        //     u16 marker = *(u16 *)bytes;
-        //     _snprintf_s(test, sizeof(test), "EOI: %x\n", marker);
-        //     OutputDebugStringA(test);
-        //     bytes = bytes + 2;
-        // }
         if (read_next_word((u16 *)bytes) != JPG_SOI)
         {
             OutputDebugStringA("Not a JPG\n");
@@ -209,6 +222,7 @@ static loaded_jpg DEBUG_load_jpg(thread_context *thread, debug_read_entire_file 
                     OutputDebugStringA("dqt\n");
                     bytes = bytes + 2;
                     u16 length = read_next_word((u16 *)bytes);
+                    process_dqt(ma, bytes, length - 2, &info);
                     bytes = bytes + length;
                 } break;
                 case JPG_DRI:
@@ -224,7 +238,7 @@ static loaded_jpg DEBUG_load_jpg(thread_context *thread, debug_read_entire_file 
                     bytes = bytes + 2;
                     u16 length = read_next_word((u16 *)bytes);
                     bytes = bytes + length;
-                } goto exit_loop;
+                } goto exit_loop; // Exit out of loop since we are now at the pixels
                 default:
                 {
                     OutputDebugStringA("def\n");
@@ -336,7 +350,6 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
 
     if(!memory->is_init)
     {
-        // game_state->DEBUG_read_entire_file;
         memory->is_init = true;
     }
     #if 0
