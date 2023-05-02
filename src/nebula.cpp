@@ -115,6 +115,17 @@ inline static void new_hand_deal(deck *deck, u32 players = 2)
 //
 //
 // };
+
+#define JPG_SOI (u16)0xFFD8
+#define JPG_SOF (u16)0xFFC0
+#define JPG_DHT (u16)0xFFC4
+#define JPG_DQT (u16)0xFFDB
+#define JPG_DRI (u16)0xFFDD
+#define JPG_SOS (u16)0xFFDA
+#define JPG_EOI (u16)0xFFD9
+
+// TODO: See if I akctually need to tightly pack like this
+// #pragma pack(push, 1)
 struct component_info
 {
 };
@@ -124,23 +135,23 @@ struct qt_table
     u8 precision_index;
     u8 table_values[64];
 };
+struct huff_table
+{
+    // NOTE: Read top nibble; if >0, then it is an AC table else it is a DC table
+    u8 table_type;
+    u8 *huff_values;
+};
+// #pragma pack(pop)
 
 // TODO: Get a refresher on how best to order props of a struct
 struct jpg_info
 {
     component_info components[3];
     qt_table *qt_tables;
+    huff_table *huff_tables;
     b32 grayscale;
     u32 *pixels;
 };
-
-#define JPG_SOI (u16)0xFFD8
-#define JPG_SOF (u16)0xFFC0
-#define JPG_DHT (u16)0xFFC4
-#define JPG_DQT (u16)0xFFDB
-#define JPG_DRI (u16)0xFFDD
-#define JPG_SOS (u16)0xFFDA
-#define JPG_EOI (u16)0xFFD9
 
 inline static u16 endian_swap_word(u16 word)
 {
@@ -174,12 +185,45 @@ static void process_dqt(memory_arena *ma, u8 *base_address, u16 length_minus_lwo
                 info->qt_tables->table_values[byte] = *base_address;
             }
         }
-        ++info->qt_tables;
         --tables_to_add;
     }
 
     // Move our ptr back to the first qt_table
     info->qt_tables = info->qt_tables - tables_to_add;
+}
+static void process_dht(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_info *info)
+{
+    // Move past length word
+    bytes = bytes + 2;
+    u32 table_count = 0;
+    u32 read_bytes = 0;
+    huff_table *temp = 0;
+    while (length_wo_lbyte > read_bytes)
+    {
+        info->huff_tables = push_struct(ma, huff_table);
+        // Save beginning of huff_tables
+        if (table_count == 0)
+        {
+            temp = info->huff_tables;
+        }
+        info->huff_tables->table_type = *bytes++;
+        ++read_bytes;
+
+        // Read 16 bytes to get size of huff_table
+        u32 huff_size = 0;
+        for (u32 i = 0; i < 16; ++i, ++read_bytes)
+        {
+            huff_size += *bytes++;
+        }
+        info->huff_tables->huff_values = push_array(ma, huff_size, u8);
+        for (u32 i = 0; i < huff_size; ++i, ++read_bytes)
+        {
+            info->huff_tables->huff_values[i] = *bytes++;
+        }
+        ++table_count;
+    }
+
+    info->huff_tables = temp;
 }
 
 // TODO: This is not final jpg loading code!
@@ -215,6 +259,10 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                     OutputDebugStringA("dht\n");
                     bytes = bytes + 2;
                     u16 length = read_next_word((u16 *)bytes);
+                    // char test[512];
+                    // _snprintf_s(test, sizeof(test), "ma size before: %zu\n", sizeof(info.qt_tables));
+                    // OutputDebugStringA(test);
+                    process_dht(ma, bytes, length - 2, &info);
                     bytes = bytes + length;
                 } break;
                 case JPG_DQT:
@@ -252,6 +300,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
     exit_loop: ;
     }
 
+    // TODO: Print out all data from markers to verify?
     return result;
 }
 
