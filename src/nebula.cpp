@@ -122,6 +122,7 @@ inline static void new_hand_deal(deck *deck, u32 players = 2)
 #define JPG_DQT (u16)0xFFDB
 #define JPG_DRI (u16)0xFFDD
 #define JPG_SOS (u16)0xFFDA
+#define JPG_CME (u16)0xFFFE
 #define JPG_EOI (u16)0xFFD9
 
 // TODO: See if I akctually need to tightly pack like this
@@ -146,11 +147,12 @@ struct huff_table
 // TODO: Get a refresher on how best to order props of a struct
 struct jpg_info
 {
-    component_info components[3];
     qt_table *qt_tables;
     huff_table *huff_tables;
-    b32 grayscale;
     u32 *pixels;
+    u16 bytes_between_mcu;
+    b32 grayscale;
+    component_info components[3];
 };
 
 inline static u16 endian_swap_word(u16 word)
@@ -276,9 +278,9 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                 case JPG_DRI:
                 {
                     OutputDebugStringA("dri\n");
+                    bytes = bytes + 4;
+                    info.bytes_between_mcu = read_next_word((u16 *)bytes);
                     bytes = bytes + 2;
-                    u16 length = read_next_word((u16 *)bytes);
-                    bytes = bytes + length;
                 } break;
                 case JPG_SOS:
                 {
