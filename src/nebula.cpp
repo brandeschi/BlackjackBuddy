@@ -129,6 +129,10 @@ inline static void new_hand_deal(deck *deck, u32 players = 2)
 // #pragma pack(push, 1)
 struct component_info
 {
+    u8 id;
+    u8 h_sampling;
+    u8 v_sampling;
+    u8 qt_table_id;
 };
 struct qt_table
 {
@@ -152,6 +156,9 @@ struct jpg_info
     u32 *pixels;
     u16 bytes_between_mcu;
     b32 grayscale;
+    u8 bits_per_sample;
+    u16 image_width;
+    u16 image_height;
     component_info components[3];
 };
 
@@ -168,6 +175,11 @@ static u16 read_next_word(u16 *bytes)
 inline static u8 get_upper_nibble(u8 byte)
 {
     u8 result = (byte >> 4);
+    return result;
+}
+inline static u8 get_lower_nibble(u8 byte)
+{
+    u8 result = (byte & 0x0F);
     return result;
 }
 
@@ -228,6 +240,33 @@ static void process_dht(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_in
     info->huff_tables = temp;
 }
 
+static void process_sof(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_info *info)
+{
+    bytes = bytes + 2;
+    info->bits_per_sample = *bytes++;
+    // Swap endianess to get the proper word value
+    info->image_height = read_next_word((u16 *)bytes);
+    bytes += 2;
+    info->image_width = read_next_word((u16 *)bytes);
+    bytes += 2;
+    if (*bytes++ == 3)
+    {
+        info->grayscale = false;
+    }
+    else
+    {
+        info->grayscale = true;
+    }
+    // NOTE: Making an assumption that the jpeg is never grayscale
+    for (u32 i = 0; i < 3; ++i)
+    {
+        info->components[i].id = *bytes++;
+        info->components[i].h_sampling = get_upper_nibble(*bytes);
+        info->components[i].v_sampling = get_lower_nibble(*bytes++);
+        info->components[i].qt_table_id = *bytes++;
+    }
+}
+
 // TODO: This is not final jpg loading code!
 static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name)
 {
@@ -254,6 +293,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                     OutputDebugStringA("sof\n");
                     bytes = bytes + 2;
                     u16 length = read_next_word((u16 *)bytes);
+                    process_sof(ma, bytes, length - 2, &info);
                     bytes = bytes + length;
                 } break;
                 case JPG_DHT:
