@@ -133,6 +133,7 @@ struct component_info
     u8 h_sampling;
     u8 v_sampling;
     u8 qt_table_id;
+    u8 huff_table_id;
 };
 struct qt_table
 {
@@ -269,10 +270,13 @@ static void process_sof(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_in
 
 static void process_sos(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_info *info)
 {
-    u8 num_of_components = *bytes++;
+    bytes = bytes + 2;
+    u8 num_of_components = *bytes;
+    bytes = bytes + 2;
     for (u32 i = 0; i < num_of_components; ++i)
     {
-        // TODO: Add the props for this header into the jpg_info sruct (maybe a ptr to another sruct?)
+        info->components[i].huff_table_id = *bytes;
+        bytes = bytes + 2;
     }
 }
 
@@ -338,7 +342,8 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                     u16 length = read_next_word((u16 *)bytes);
                     process_sos(ma, bytes, length - 2, &info);
                     bytes = bytes + length;
-                } goto exit_loop; // Exit out of loop since we are now at the pixels
+                    // NOTE: At the pixel data now soo actually perform the decode!
+                } break; // Exit out of loop since we are now at the pixels
                 default:
                 {
                     OutputDebugStringA("def\n");
@@ -349,7 +354,6 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
 
             }
         }
-    exit_loop: ;
     }
 
     // TODO: Print out all data from markers to verify?
