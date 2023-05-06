@@ -267,6 +267,15 @@ static void process_sof(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_in
     }
 }
 
+static void process_sos(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_info *info)
+{
+    u8 num_of_components = *bytes++;
+    for (u32 i = 0; i < num_of_components; ++i)
+    {
+        // TODO: Add the props for this header into the jpg_info sruct (maybe a ptr to another sruct?)
+    }
+}
+
 // TODO: This is not final jpg loading code!
 static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name)
 {
@@ -327,6 +336,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                     OutputDebugStringA("sos\n");
                     bytes = bytes + 2;
                     u16 length = read_next_word((u16 *)bytes);
+                    process_sos(ma, bytes, length - 2, &info);
                     bytes = bytes + length;
                 } goto exit_loop; // Exit out of loop since we are now at the pixels
                 default:
