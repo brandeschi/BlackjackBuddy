@@ -133,15 +133,16 @@ inline static void new_hand_deal(deck *deck, u32 players = 2)
 struct component_info
 {
     u8 id;
-    u8 h_sampling;
-    u8 v_sampling;
     u8 qt_table_id;
     u8 huff_table_id;
+    u8 h_sampling;
+    u8 v_sampling;
 };
 struct qt_table
 {
     // NOTE: If 0, the table uses bytes... If 1, the table uses words...
     u8 precision_index;
+    u8 id;
     u8 table_values[64];
 };
 struct huff_table
@@ -162,6 +163,8 @@ struct jpg_info
     u32 *pixels;
     u16 bytes_between_mcu;
     b32 grayscale;
+    u8 num_of_qt_tables;
+    u8 num_of_huff_tables;
     u8 bits_per_sample;
     u16 image_width;
     u16 image_height;
@@ -189,33 +192,35 @@ inline static u8 get_lower_nibble(u8 byte)
     return result;
 }
 
-static void process_dqt(memory_arena *ma, u8 *base_address, u16 length_minus_lword, jpg_info *info)
+static void process_dqt(memory_arena *ma, u8 **bytes, jpg_info *info)
 {
-    // Move past length word
-    base_address = base_address + 2;
-    u16 tables_to_add = length_minus_lword / (u16)65;
+    u16 length = read_next_word((u16 *)(*bytes));
+    *bytes += 2;
+    u16 tables_to_add = length / (u16)65;
+    info->num_of_qt_tables = (u8)tables_to_add;
     while (tables_to_add)
     {
         info->qt_tables = push_struct(ma, qt_table);
-        info->qt_tables->precision_index = get_upper_nibble(*base_address++);
+        info->qt_tables->precision_index = get_upper_nibble(*(*bytes));
+        info->qt_tables->id = get_lower_nibble(*(*bytes)++);
         if (info->qt_tables->precision_index == 0)
         {
-            for (u8 byte = 0; byte < 64; ++byte, ++base_address)
+            for (u8 byte = 0; byte < 64; ++byte)
             {
-                info->qt_tables->table_values[byte] = *base_address;
+                info->qt_tables->table_values[byte] = *(*bytes)++;
             }
         }
         --tables_to_add;
     }
 
     // Move our ptr back to the first qt_table
-    info->qt_tables = info->qt_tables - tables_to_add;
+    info->qt_tables = info->qt_tables - (info->num_of_qt_tables - 1);
 }
 static void process_dht(memory_arena *ma, u8 **bytes, jpg_info *info)
 {
     u16 length = read_next_word((u16 *)(*bytes));
     *bytes += 2;
-    u32 table_count = 0;
+    u8 table_count = 0;
     u16 read_bytes = 0;
     huff_table *temp = 0;
     while ((length - 2) > read_bytes)
@@ -246,7 +251,7 @@ static void process_dht(memory_arena *ma, u8 **bytes, jpg_info *info)
         }
         ++table_count;
     }
-
+    info->num_of_huff_tables = table_count;
     info->huff_tables = temp;
 }
 
@@ -339,9 +344,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                     {
                         OutputDebugStringA("dqt\n");
                         bytes = bytes + 2;
-                        u16 length = read_next_word((u16 *)bytes);
-                        process_dqt(ma, bytes, length - 2, &info);
-                        bytes = bytes + length;
+                        process_dqt(ma, &bytes, &info);
                     } break;
                     case JPG_DRI:
                     {
@@ -378,7 +381,72 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
         }
     }
 
-    // TODO: Print out all data from markers to verify?
+    char buff[512];
+    // NOTE: QT_Tables
+    _snprintf_s(buff, sizeof(buff), "QT Tables Amt: %d\n", info.num_of_qt_tables);
+    OutputDebugStringA(buff);
+    for(u32 i = 0; i < info.num_of_qt_tables; ++i)
+    {
+        _snprintf_s(buff, sizeof(buff), "id: %d\n", info.qt_tables[i].id);
+        OutputDebugStringA(buff);
+        _snprintf_s(buff, sizeof(buff), "precision_index: %d\n", info.qt_tables[i].precision_index);
+        OutputDebugStringA(buff);
+        for(u32 j = 0; j < arr_count(info.qt_tables[i].table_values); ++j)
+        {
+            _snprintf_s(buff, sizeof(buff), "%d ", info.qt_tables[i].table_values[j]);
+            OutputDebugStringA(buff);
+        }
+        _snprintf_s(buff, sizeof(buff), "\n");
+        OutputDebugStringA(buff);
+    }
+    _snprintf_s(buff, sizeof(buff), "\n");
+    OutputDebugStringA(buff);
+
+    // NOTE: Huffman_Tables
+    _snprintf_s(buff, sizeof(buff), "Huffman Tables Amt: %d\n", info.num_of_huff_tables);
+    OutputDebugStringA(buff);
+    for(u32 i = 0; i < info.num_of_huff_tables; ++i)
+    {
+        _snprintf_s(buff, sizeof(buff), "table type: %02X\n", info.huff_tables[i].table_type);
+        OutputDebugStringA(buff);
+        _snprintf_s(buff, sizeof(buff), "huff_size: %d\n", info.huff_tables[i].huff_size);
+        OutputDebugStringA(buff);
+        _snprintf_s(buff, sizeof(buff), "Amt per code length: ");
+        OutputDebugStringA(buff);
+        for(u32 j = 0; j < arr_count(info.huff_tables[i].code_length_count); ++j)
+        {
+            _snprintf_s(buff, sizeof(buff), "%d ", info.huff_tables[i].code_length_count[j]);
+            OutputDebugStringA(buff);
+        }
+        _snprintf_s(buff, sizeof(buff), "\nHuff Values: ");
+        OutputDebugStringA(buff);
+        for(u32 j = 0; j < info.huff_tables[i].huff_size; ++j)
+        {
+            _snprintf_s(buff, sizeof(buff), "%d ", info.huff_tables[i].huff_values[j]);
+            OutputDebugStringA(buff);
+        }
+        _snprintf_s(buff, sizeof(buff), "\n");
+        OutputDebugStringA(buff);
+    }
+    _snprintf_s(buff, sizeof(buff), "\n");
+    OutputDebugStringA(buff);
+
+    // NOTE: Components Info
+    _snprintf_s(buff, sizeof(buff), "Color Space Components Count: %zu\n", arr_count(info.components));
+    OutputDebugStringA(buff);
+    for(u32 i = 0; i < arr_count(info.components); ++i)
+    {
+        _snprintf_s(buff, sizeof(buff), "ID: %d\n", info.components[i].id);
+        OutputDebugStringA(buff);
+        _snprintf_s(buff, sizeof(buff), "QTT_ID: %d\n", info.components[i].qt_table_id);
+        OutputDebugStringA(buff);
+        _snprintf_s(buff, sizeof(buff), "HT_ID: %02X\n", info.components[i].huff_table_id);
+        OutputDebugStringA(buff);
+        _snprintf_s(buff, sizeof(buff), "H_Sampling: %d\n", info.components[i].h_sampling);
+        OutputDebugStringA(buff);
+        _snprintf_s(buff, sizeof(buff), "V_Sampling: %d\n", info.components[i].v_sampling);
+        OutputDebugStringA(buff);
+    }
     return result;
 }
 
