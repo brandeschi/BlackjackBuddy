@@ -150,7 +150,7 @@ struct huff_table
     u8 table_type;
     u16 huff_size;
     u8 code_length_count[16];
-    u8 *huff_values;
+    u8 huff_values[256];
 };
 // #pragma pack(pop)
 
@@ -211,14 +211,14 @@ static void process_dqt(memory_arena *ma, u8 *base_address, u16 length_minus_lwo
     // Move our ptr back to the first qt_table
     info->qt_tables = info->qt_tables - tables_to_add;
 }
-static void process_dht(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_info *info)
+static void process_dht(memory_arena *ma, u8 **bytes, jpg_info *info)
 {
-    // Move past length word
-    bytes = bytes + 2;
+    u16 length = read_next_word((u16 *)(*bytes));
+    *bytes += 2;
     u32 table_count = 0;
-    u32 read_bytes = 0;
+    u16 read_bytes = 0;
     huff_table *temp = 0;
-    while (length_wo_lbyte > read_bytes)
+    while ((length - 2) > read_bytes)
     {
         info->huff_tables = push_struct(ma, huff_table);
         // Save beginning of huff_tables
@@ -226,7 +226,7 @@ static void process_dht(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_in
         {
             temp = info->huff_tables;
         }
-        info->huff_tables->table_type = *bytes++;
+        info->huff_tables->table_type = *(*bytes)++;
         ++read_bytes;
 
         // Read 16 bytes to get size of huff_table, must be <=256
@@ -236,14 +236,13 @@ static void process_dht(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_in
         u16 huff_size = 0;
         for (u32 i = 0; i < 16; ++i, ++read_bytes)
         {
-            info->huff_tables->code_length_count[i] = *bytes;
-            huff_size += *bytes++;
+            info->huff_tables->code_length_count[i] = *(*bytes);
+            huff_size += *(*bytes)++;
         }
         info->huff_tables->huff_size = huff_size;
-        info->huff_tables->huff_values = push_array(ma, huff_size, u8);
         for (u32 i = 0; i < huff_size; ++i, ++read_bytes)
         {
-            info->huff_tables->huff_values[i] = *bytes++;
+            info->huff_tables->huff_values[i] = *(*bytes)++;
         }
         ++table_count;
     }
@@ -331,12 +330,10 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                     {
                         OutputDebugStringA("dht\n");
                         bytes = bytes + 2;
-                        u16 length = read_next_word((u16 *)bytes);
                         // char test[512];
                         // _snprintf_s(test, sizeof(test), "ma size before: %zu\n", sizeof(info.qt_tables));
                         // OutputDebugStringA(test);
-                        process_dht(ma, bytes, length - 2, &info);
-                        bytes = bytes + length;
+                        process_dht(ma, &bytes, &info);
                     } break;
                     case JPG_DQT:
                     {
