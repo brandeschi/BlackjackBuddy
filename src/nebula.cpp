@@ -251,16 +251,17 @@ static void process_dht(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_in
     info->huff_tables = temp;
 }
 
-static void process_sof(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_info *info)
+static void process_sof(memory_arena *ma, u8 **bytes, jpg_info *info)
 {
-    bytes = bytes + 2;
-    info->bits_per_sample = *bytes++;
+    // Move over length since it is not needed
+    *bytes += 2;
+    info->bits_per_sample = *(*bytes)++;
     // Swap endianess to get the proper word value
-    info->image_height = read_next_word((u16 *)bytes);
-    bytes += 2;
-    info->image_width = read_next_word((u16 *)bytes);
-    bytes += 2;
-    if (*bytes++ == 3)
+    info->image_height = read_next_word((u16 *)(*bytes));
+    *bytes += 2;
+    info->image_width = read_next_word((u16 *)(*bytes));
+    *bytes += 2;
+    if (*(*bytes)++ == 3)
     {
         info->grayscale = false;
     }
@@ -271,10 +272,10 @@ static void process_sof(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_in
     // NOTE: Making an assumption that the jpeg is never grayscale
     for (u32 i = 0; i < 3; ++i)
     {
-        info->components[i].id = *bytes++;
-        info->components[i].h_sampling = get_upper_nibble(*bytes);
-        info->components[i].v_sampling = get_lower_nibble(*bytes++);
-        info->components[i].qt_table_id = *bytes++;
+        info->components[i].id = *(*bytes)++;
+        info->components[i].h_sampling = get_upper_nibble(*(*bytes));
+        info->components[i].v_sampling = get_lower_nibble(*(*bytes)++);
+        info->components[i].qt_table_id = *(*bytes)++;
     }
 }
 
@@ -304,34 +305,32 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
             OutputDebugStringA("Not a JPG\n");
             return result;
         }
-
         bytes = bytes + 2;
+
         while((bytes - (u8 *)read_result.contents) < read_result.contents_size)
         {
             if(*bytes == 0xFF)
             {
-                u16 marker = read_next_word((u16 *)bytes++);
+                u16 marker = read_next_word((u16 *)bytes);
                 switch(marker)
                 {
                     case JPG_APP1:
                     case JPG_APP13:
                     case JPG_APP14:
                     {
-                        ++bytes;
+                        bytes = bytes + 2;
                         bytes = bytes + read_next_word((u16 *)bytes);
                     } break;
                     case JPG_SOF:
                     {
                         OutputDebugStringA("sof\n");
-                        ++bytes;
-                        u16 length = read_next_word((u16 *)bytes);
-                        process_sof(ma, bytes, length - 2, &info);
-                        bytes = bytes + length;
+                        bytes = bytes + 2;
+                        process_sof(ma, &bytes, &info);
                     } break;
                     case JPG_DHT:
                     {
                         OutputDebugStringA("dht\n");
-                        ++bytes;
+                        bytes = bytes + 2;
                         u16 length = read_next_word((u16 *)bytes);
                         // char test[512];
                         // _snprintf_s(test, sizeof(test), "ma size before: %zu\n", sizeof(info.qt_tables));
@@ -342,7 +341,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                     case JPG_DQT:
                     {
                         OutputDebugStringA("dqt\n");
-                        ++bytes;
+                        bytes = bytes + 2;
                         u16 length = read_next_word((u16 *)bytes);
                         process_dqt(ma, bytes, length - 2, &info);
                         bytes = bytes + length;
@@ -352,17 +351,26 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                         OutputDebugStringA("dri\n");
                         bytes = bytes + 4;
                         info.bytes_between_mcu = read_next_word((u16 *)bytes);
-                        ++bytes;
+                        bytes = bytes + 2;
                     } break;
                     case JPG_SOS:
                     {
                         OutputDebugStringA("sos\n");
-                        ++bytes;
+                        bytes = bytes + 2;
                         u16 length = read_next_word((u16 *)bytes);
                         process_sos(ma, bytes, length - 2, &info);
                         bytes = bytes + length;
                         // Read byte by byte for 0xFF?
                         // NOTE: At the pixel data now soo actually perform the decode!
+                    } break;
+                    case JPG_EOI:
+                    {
+                        OutputDebugStringA("end\n");
+                        bytes = bytes + 2;
+                    } break;
+                    default:
+                    {
+                        ++bytes;
                     } break;
                 }
             }
