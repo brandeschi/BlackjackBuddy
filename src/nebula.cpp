@@ -161,6 +161,7 @@ struct jpg_info
     qt_table *qt_tables;
     huff_table *huff_tables;
     u32 *pixels;
+    u8 *raw_img_data;
     u16 bytes_between_mcu;
     b32 grayscale;
     u8 num_of_qt_tables;
@@ -357,9 +358,12 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                     {
                         OutputDebugStringA("sos\n");
                         bytes = bytes + 2;
-                        u16 length = read_next_word((u16 *)bytes);
-                        process_sos(ma, bytes, length - 2, &info);
-                        bytes = bytes + length;
+                        process_sos(ma, &bytes, &info);
+                        u8 *ba_image_data = bytes;
+                        u8 *ba_file = (u8 *)read_result.contents;
+                        u32 image_data_size = (u32)(read_result.contents_size - (ba_image_data - ba_file));
+                        info.raw_img_data = push_array(ma, image_data_size, u8);
+                        // decode_raw_image_data(info.raw_img_data);
                         // Read byte by byte for 0xFF?
                         // NOTE: At the pixel data now soo actually perform the decode!
                     } break;
