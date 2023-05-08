@@ -284,16 +284,22 @@ static void process_sof(memory_arena *ma, u8 **bytes, jpg_info *info)
     }
 }
 
-static void process_sos(memory_arena *ma, u8 *bytes, u16 length_wo_lbyte, jpg_info *info)
+static void process_sos(memory_arena *ma, u8 **bytes, jpg_info *info)
 {
-    bytes = bytes + 2;
-    u8 num_of_components = *bytes;
-    bytes = bytes + 2;
+    *bytes += 2;
+    u8 num_of_components = *(*bytes);
+    *bytes += 2;
     for (u32 i = 0; i < num_of_components; ++i)
     {
-        info->components[i].huff_table_id = *bytes;
-        bytes = bytes + 2;
+        info->components[i].huff_table_id = *(*bytes);
+        *bytes += 2;
     }
+    // Move bytes up to start of image data
+    *bytes += 2;
+}
+
+static void decode_raw_image_data(u8 *img_data)
+{
 }
 
 // TODO: This is not final jpg loading code!
