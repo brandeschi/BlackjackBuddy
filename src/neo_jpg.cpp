@@ -27,23 +27,27 @@ static void process_dqt(memory_arena *ma, u8 **bytes, jpg_info *info)
     *bytes += 2;
     u16 tables_to_add = length / (u16)65;
     info->num_of_qt_tables = (u8)tables_to_add;
-    while (tables_to_add)
+    for(u32 i = 0; i < tables_to_add; ++i)
     {
-        info->qt_tables = push_struct(ma, qt_table);
-        info->qt_tables->precision_index = get_upper_nibble(*(*bytes));
-        info->qt_tables->id = get_lower_nibble(*(*bytes)++);
-        if (info->qt_tables->precision_index == 0)
+        info->quant_tables[i].precision_index = get_upper_nibble(*(*bytes));
+        info->quant_tables[i].id = get_lower_nibble(*(*bytes)++);
+        if (info->quant_tables[i].precision_index == 0)
         {
-            for (u8 byte = 0; byte < 64; ++byte)
+            for (u32 byte = 0; byte < 64; ++byte)
             {
-                info->qt_tables->table_values[byte] = *(*bytes)++;
+                info->quant_tables[i].table_values[byte] = *(*bytes)++;
             }
         }
-        --tables_to_add;
-    }
+        else
+        {
+            for (u32 word = 0; word < 64; ++word, *bytes+=2)
+            {
+                u16 word_value = *((u16 *)(*bytes));
+                info->quant_tables[i].table_values[word] = word_value;
+            }
 
-    // Move our ptr back to the first qt_table
-    info->qt_tables = info->qt_tables - (info->num_of_qt_tables - 1);
+        }
+    }
 }
 static void process_dht(memory_arena *ma, u8 **bytes, jpg_info *info)
 {
@@ -171,7 +175,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                         OutputDebugStringA("dht\n");
                         bytes = bytes + 2;
                         // char test[512];
-                        // _snprintf_s(test, sizeof(test), "ma size before: %zu\n", sizeof(info.qt_tables));
+                        // _snprintf_s(test, sizeof(test), "ma size before: %zu\n", sizeof(info.quant_tables));
                         // OutputDebugStringA(test);
                         process_dht(ma, &bytes, &info);
                     } break;
@@ -225,13 +229,13 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
     OutputDebugStringA(buff);
     for(u32 i = 0; i < info.num_of_qt_tables; ++i)
     {
-        _snprintf_s(buff, sizeof(buff), "id: %d\n", info.qt_tables[i].id);
+        _snprintf_s(buff, sizeof(buff), "id: %d\n", info.quant_tables[i].id);
         OutputDebugStringA(buff);
-        _snprintf_s(buff, sizeof(buff), "precision_index: %d\n", info.qt_tables[i].precision_index);
+        _snprintf_s(buff, sizeof(buff), "precision_index: %d\n", info.quant_tables[i].precision_index);
         OutputDebugStringA(buff);
-        for(u32 j = 0; j < arr_count(info.qt_tables[i].table_values); ++j)
+        for(u32 j = 0; j < arr_count(info.quant_tables[i].table_values); ++j)
         {
-            _snprintf_s(buff, sizeof(buff), "%d ", info.qt_tables[i].table_values[j]);
+            _snprintf_s(buff, sizeof(buff), "%d ", info.quant_tables[i].table_values[j]);
             OutputDebugStringA(buff);
         }
         _snprintf_s(buff, sizeof(buff), "\n");

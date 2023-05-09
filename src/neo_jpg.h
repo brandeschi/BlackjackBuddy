@@ -19,12 +19,12 @@ struct component_info
     u8 h_sampling;
     u8 v_sampling;
 };
-struct qt_table
+struct quant_table
 {
     // NOTE: If 0, the table uses bytes... If 1, the table uses words...
     u8 precision_index;
     u8 id;
-    u8 table_values[64];
+    u32 table_values[64];
 };
 struct huff_table
 {
@@ -37,7 +37,7 @@ struct huff_table
 
 struct jpg_info
 {
-    qt_table *qt_tables;
+    quant_table quant_tables[4];
     huff_table *huff_tables;
     u32 *pixels;
     u8 *raw_img_data;
