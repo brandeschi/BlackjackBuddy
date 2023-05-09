@@ -35,7 +35,7 @@ static void process_dqt(memory_arena *ma, u8 **bytes, jpg_info *info)
         {
             for (u32 byte = 0; byte < 64; ++byte)
             {
-                info->quant_tables[i].table_values[byte] = *(*bytes)++;
+                info->quant_tables[i].table_values[zz_grouping[byte]] = *(*bytes)++;
             }
         }
         else
@@ -43,7 +43,7 @@ static void process_dqt(memory_arena *ma, u8 **bytes, jpg_info *info)
             for (u32 word = 0; word < 64; ++word, *bytes+=2)
             {
                 u16 word_value = *((u16 *)(*bytes));
-                info->quant_tables[i].table_values[word] = word_value;
+                info->quant_tables[i].table_values[zz_grouping[word]] = word_value;
             }
 
         }
@@ -225,24 +225,25 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
 
     char buff[512];
     // NOTE: QT_Tables
-    _snprintf_s(buff, sizeof(buff), "QT Tables Amt: %d\n", info.num_of_qt_tables);
+    _snprintf_s(buff, sizeof(buff), "QT Tables Amt: %d\n\n", info.num_of_qt_tables);
     OutputDebugStringA(buff);
     for(u32 i = 0; i < info.num_of_qt_tables; ++i)
     {
         _snprintf_s(buff, sizeof(buff), "id: %d\n", info.quant_tables[i].id);
         OutputDebugStringA(buff);
-        _snprintf_s(buff, sizeof(buff), "precision_index: %d\n", info.quant_tables[i].precision_index);
+        _snprintf_s(buff, sizeof(buff), "precision_index: %d", info.quant_tables[i].precision_index);
         OutputDebugStringA(buff);
         for(u32 j = 0; j < arr_count(info.quant_tables[i].table_values); ++j)
         {
+            if (j % 8 == 0)
+            {
+                OutputDebugStringA("\n");
+            }
             _snprintf_s(buff, sizeof(buff), "%d ", info.quant_tables[i].table_values[j]);
             OutputDebugStringA(buff);
         }
-        _snprintf_s(buff, sizeof(buff), "\n");
-        OutputDebugStringA(buff);
+        OutputDebugStringA("\n\n");
     }
-    _snprintf_s(buff, sizeof(buff), "\n");
-    OutputDebugStringA(buff);
 
     // NOTE: Huffman_Tables
     _snprintf_s(buff, sizeof(buff), "Huffman Tables Amt: %d\n", info.num_of_huff_tables);
@@ -267,11 +268,9 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
             _snprintf_s(buff, sizeof(buff), "%d ", info.huff_tables[i].huff_values[j]);
             OutputDebugStringA(buff);
         }
-        _snprintf_s(buff, sizeof(buff), "\n");
-        OutputDebugStringA(buff);
+        OutputDebugStringA("\n");
     }
-    _snprintf_s(buff, sizeof(buff), "\n");
-    OutputDebugStringA(buff);
+    OutputDebugStringA("\n");
 
     // NOTE: Components Info
     _snprintf_s(buff, sizeof(buff), "Color Space Components Count: %zu\n", arr_count(info.components));
