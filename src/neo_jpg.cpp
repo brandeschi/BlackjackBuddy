@@ -53,39 +53,43 @@ static void process_dht(memory_arena *ma, u8 **bytes, jpg_info *info)
 {
     u16 length = read_next_word((u16 *)(*bytes));
     *bytes += 2;
-    u8 table_count = 0;
-    u16 read_bytes = 0;
-    huff_table *temp = 0;
-    while ((length - 2) > read_bytes)
+    while((length - 2) > 0)
     {
-        info->huff_tables = push_struct(ma, huff_table);
-        // Save beginning of huff_tables
-        if (table_count == 0)
+        b32 AC_table = get_upper_nibble(*(*bytes));
+        u8 table_id = get_lower_nibble(*(*bytes)++);
+        --length;
+        if(table_id > 3)
         {
-            temp = info->huff_tables;
+            OutputDebugStringA("Too many huff_tables\n");
+            return;
         }
-        info->huff_tables->table_type = *(*bytes)++;
-        ++read_bytes;
 
+        huff_table *ht;
+        if(AC_table)
+        {
+            ht = &info->ac_tables[table_id];
+        }
+        else
+        {
+            ht = &info->dc_tables[table_id];
+        }
+        ht->id = table_id;
         // Read 16 bytes to get size of huff_table, must be <=256
         // NOTE: These 16 bytes tell us the # of values (symbols) per bit index
         // i.e. 00 00 06 02 03 01 00 00 00 00 00 00 00 00 00 00 is
         //      1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 bit(s) also known as code length
-        u16 huff_size = 0;
-        for (u32 i = 0; i < 16; ++i, ++read_bytes)
+        u16 num_of_symbols = 0;
+        for(u32 i = 0; i < 16; ++i, --length)
         {
-            info->huff_tables->code_length_count[i] = *(*bytes);
-            huff_size += *(*bytes)++;
+            ht->code_length_count[i] = *(*bytes);
+            num_of_symbols += *(*bytes)++;
         }
-        info->huff_tables->huff_size = huff_size;
-        for (u32 i = 0; i < huff_size; ++i, ++read_bytes)
+        ht->num_of_symbols = num_of_symbols;
+        for(u32 i = 0; i < num_of_symbols; ++i, --length)
         {
-            info->huff_tables->huff_values[i] = *(*bytes)++;
+            ht->huff_symbols[i] = *(*bytes)++;
         }
-        ++table_count;
     }
-    info->num_of_huff_tables = table_count;
-    info->huff_tables = temp;
 }
 
 static void process_sof(memory_arena *ma, u8 **bytes, jpg_info *info)
@@ -150,6 +154,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
         }
         bytes = bytes + 2;
 
+        // TODO: Need to change this to only parse headers and stop if something goes wrong
         while((bytes - (u8 *)read_result.contents) < read_result.contents_size)
         {
             if(*bytes == 0xFF)
@@ -174,9 +179,6 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                     {
                         OutputDebugStringA("dht\n");
                         bytes = bytes + 2;
-                        // char test[512];
-                        // _snprintf_s(test, sizeof(test), "ma size before: %zu\n", sizeof(info.quant_tables));
-                        // OutputDebugStringA(test);
                         process_dht(ma, &bytes, &info);
                     } break;
                     case JPG_DQT:
@@ -189,7 +191,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                     {
                         OutputDebugStringA("dri\n");
                         bytes = bytes + 4;
-                        info.bytes_between_mcu = read_next_word((u16 *)bytes);
+                        info.restart_inverval_between_mcus = read_next_word((u16 *)bytes);
                         bytes = bytes + 2;
                     } break;
                     case JPG_SOS:
@@ -246,29 +248,60 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
     }
 
     // NOTE: Huffman_Tables
-    _snprintf_s(buff, sizeof(buff), "Huffman Tables Amt: %d\n", info.num_of_huff_tables);
-    OutputDebugStringA(buff);
-    for(u32 i = 0; i < info.num_of_huff_tables; ++i)
+    OutputDebugStringA("DC Huffman Tables:\n");
+    for(u32 i = 0; i < arr_count(info.dc_tables); ++i)
     {
-        _snprintf_s(buff, sizeof(buff), "table type: %02X\n", info.huff_tables[i].table_type);
+        if(info.dc_tables[i].num_of_symbols == 0)
+        {
+            continue;
+        }
+        _snprintf_s(buff, sizeof(buff), "ID: %d\n", info.dc_tables[i].id);
         OutputDebugStringA(buff);
-        _snprintf_s(buff, sizeof(buff), "huff_size: %d\n", info.huff_tables[i].huff_size);
+        _snprintf_s(buff, sizeof(buff), "num_of_symbols: %d\n", info.dc_tables[i].num_of_symbols);
         OutputDebugStringA(buff);
         _snprintf_s(buff, sizeof(buff), "Amt per code length: ");
         OutputDebugStringA(buff);
-        for(u32 j = 0; j < arr_count(info.huff_tables[i].code_length_count); ++j)
+        for(u32 j = 0; j < arr_count(info.dc_tables[i].code_length_count); ++j)
         {
-            _snprintf_s(buff, sizeof(buff), "%d ", info.huff_tables[i].code_length_count[j]);
+            _snprintf_s(buff, sizeof(buff), "%d ", info.dc_tables[i].code_length_count[j]);
             OutputDebugStringA(buff);
         }
-        _snprintf_s(buff, sizeof(buff), "\nHuff Values: ");
+        _snprintf_s(buff, sizeof(buff), "\nHuff Symbols: ");
         OutputDebugStringA(buff);
-        for(u32 j = 0; j < info.huff_tables[i].huff_size; ++j)
+        for(u32 j = 0; j < info.dc_tables[i].num_of_symbols; ++j)
         {
-            _snprintf_s(buff, sizeof(buff), "%d ", info.huff_tables[i].huff_values[j]);
+            _snprintf_s(buff, sizeof(buff), "%02X ", info.dc_tables[i].huff_symbols[j]);
             OutputDebugStringA(buff);
         }
         OutputDebugStringA("\n");
+    }
+    OutputDebugStringA("AC Huffman Tables:\n");
+    for(u32 i = 0; i < arr_count(info.ac_tables); ++i)
+    {
+        if(info.ac_tables[i].num_of_symbols == 0)
+        {
+            continue;
+        }
+        _snprintf_s(buff, sizeof(buff), "ID: %d\n", info.ac_tables[i].id);
+        OutputDebugStringA(buff);
+        _snprintf_s(buff, sizeof(buff), "num_of_symbols: %d\n", info.ac_tables[i].num_of_symbols);
+        OutputDebugStringA(buff);
+        _snprintf_s(buff, sizeof(buff), "Amt per code length: ");
+        OutputDebugStringA(buff);
+        for(u32 j = 0; j < arr_count(info.ac_tables[i].code_length_count); ++j)
+        {
+            _snprintf_s(buff, sizeof(buff), "%d ", info.ac_tables[i].code_length_count[j]);
+            OutputDebugStringA(buff);
+        }
+        _snprintf_s(buff, sizeof(buff), "\nHuff Symbols: ");
+        OutputDebugStringA(buff);
+        for(u32 j = 0; j < info.ac_tables[i].num_of_symbols; ++j)
+        {
+            _snprintf_s(buff, sizeof(buff), "%02X ", info.ac_tables[i].huff_symbols[j]);
+            OutputDebugStringA(buff);
+        }
+        OutputDebugStringA("\n");
+
     }
     OutputDebugStringA("\n");
 

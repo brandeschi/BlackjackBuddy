@@ -26,6 +26,8 @@ struct component_info
 {
     u8 id;
     u8 qt_table_id;
+    u8 huff_DCtable_id;
+    u8 huff_ACtable_id;
     u8 huff_table_id;
     u8 h_sampling;
     u8 v_sampling;
@@ -40,22 +42,22 @@ struct quant_table
 struct huff_table
 {
     // NOTE: Read top nibble; if >0, then it is an AC table else it is a DC table
-    u8 table_type;
-    u16 huff_size;
+    u8 id;
+    u16 num_of_symbols;
     u8 code_length_count[16];
-    u8 huff_values[256];
+    u8 huff_symbols[162];
 };
 
 struct jpg_info
 {
     quant_table quant_tables[4];
-    huff_table *huff_tables;
+    huff_table dc_tables[4];
+    huff_table ac_tables[4];
     u32 *pixels;
     u8 *raw_img_data;
-    u16 bytes_between_mcu;
+    u16 restart_inverval_between_mcus;
     b32 grayscale;
     u8 num_of_qt_tables;
-    u8 num_of_huff_tables;
     u8 bits_per_sample;
     u16 image_width;
     u16 image_height;
