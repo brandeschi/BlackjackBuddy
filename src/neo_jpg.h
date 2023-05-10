@@ -28,7 +28,6 @@ struct component_info
     u8 qt_table_id;
     u8 huff_DCtable_id;
     u8 huff_ACtable_id;
-    u8 huff_table_id;
     u8 h_sampling;
     u8 v_sampling;
 };
@@ -54,7 +53,8 @@ struct jpg_info
     huff_table dc_tables[4];
     huff_table ac_tables[4];
     u32 *pixels;
-    u8 *raw_img_data;
+    u8 *parsed_huff_data;
+    u32 parsed_huff_data_size;
     u16 restart_inverval_between_mcus;
     b32 grayscale;
     u8 num_of_qt_tables;
