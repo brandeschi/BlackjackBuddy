@@ -137,7 +137,7 @@ static void process_sos(memory_arena *ma, u8 **bytes, jpg_info *info)
     *bytes += 2;
 }
 
-static u32 decode_raw_image_data(u8 **img_data, u8 *huff_data)
+static u32 store_raw_huff_data(u8 **img_data, u8 *huff_data)
 {
     // TODO: I am not sure what the best way is with my current memory setup
     // to make a properly sized array in the mem arena. Thus, I am going to
@@ -183,6 +183,42 @@ static u32 decode_raw_image_data(u8 **img_data, u8 *huff_data)
             ++result;
         }
     }
+}
+
+static void gen_huff_codes(huff_table ht)
+{
+    u32 code = 0;
+    u32 idx_in_codes = 0;
+    for(u32 i = 0; i < 16; ++i)
+    {
+        for(u32 j = 0; j < ht.code_length_count[i]; ++j)
+        {
+            ht.huff_codes[idx_in_codes++] = code++;
+        }
+        code <<= 1;
+    }
+}
+
+static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
+{
+    // NOTE: For now I am going to assume all the jpgs are going to be divisible by 8
+    if (info->image_width % 8 != 0 || info->image_height % 8 != 0)
+    {
+        OutputDebugStringA("WARN: jpg does not equally divide into 8x8 mcus... Will not decode properly.");
+    }
+    // NOTE: Gets the number of mcu image tiles
+    u32 mcu_height = info->image_height / 8;
+    u32 mcu_width = info->image_width / 8;
+    mcu *result = push_array(ma, (mcu_height*mcu_width), mcu);
+
+    // NOTE: Get huff codes from symbols
+    for(u32 i = 0; i < 4; ++i)
+    {
+        gen_huff_codes(info->dc_tables[i]);
+        gen_huff_codes(info->ac_tables[i]);
+    }
+
+    return result;
 }
 
 // TODO: This is not final jpg loading code!
@@ -249,8 +285,8 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                         u8 *ba_image_data = bytes;
                         u8 *ba_file = (u8 *)read_result.contents;
                         u32 image_data_size = (u32)(read_result.contents_size - (ba_image_data - ba_file));
-                        info.parsed_huff_data = push_array(ma, image_data_size, u8);
-                        info.parsed_huff_data_size = decode_raw_image_data(&bytes, info.parsed_huff_data);
+                        info.raw_huff_data = push_array(ma, image_data_size, u8);
+                        info.raw_huff_data_size = store_raw_huff_data(&bytes, info.raw_huff_data);
                         // NOTE: At the pixel data now so goto decode img data loop!
                     } break;
                     case JPG_EOI:
@@ -365,6 +401,9 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
         _snprintf_s(buff, sizeof(buff), "V_Sampling: %d\n", info.components[i].v_sampling);
         OutputDebugStringA(buff);
     }
+    // Decode Huffman Data
+    mcu *mcus = decode_huff_data(ma, &info);
+
     return result;
 }
 

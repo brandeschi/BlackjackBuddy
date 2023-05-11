@@ -45,6 +45,23 @@ struct huff_table
     u16 num_of_symbols;
     u8 code_length_count[16];
     u8 huff_symbols[162];
+    u32 huff_codes[162];
+};
+struct mcu
+{
+    union {
+        i32 y[64];
+        i32 r[64];
+    };
+    union {
+        i32 cb[64];
+        i32 g[64];
+
+    };
+    union {
+        i32 cr[64];
+        i32 b[64];
+    };
 };
 
 struct jpg_info
@@ -53,8 +70,8 @@ struct jpg_info
     huff_table dc_tables[4];
     huff_table ac_tables[4];
     u32 *pixels;
-    u8 *parsed_huff_data;
-    u32 parsed_huff_data_size;
+    u8 *raw_huff_data;
+    u32 raw_huff_data_size;
     u16 restart_inverval_between_mcus;
     b32 grayscale;
     u8 num_of_qt_tables;
