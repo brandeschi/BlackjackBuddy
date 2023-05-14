@@ -165,7 +165,7 @@ static u32 store_raw_huff_data(u8 **img_data, u8 *huff_data)
                 (*img_data) += 2;
             }
             // Ignore multi 0xFFs
-            else if(word == 0xFF)
+            else if(word == 0xFFFF)
             {
                 // Move up one byte and test again
                 (*img_data)++;
@@ -185,18 +185,50 @@ static u32 store_raw_huff_data(u8 **img_data, u8 *huff_data)
     }
 }
 
-static void gen_huff_codes(huff_table ht)
+// NOTE: Either I should make a struct to store the metadata on huff data or
+// just pass all the data around?
+static inline i32 readBit(u8 *bytes, u32 bytes_size, u32 *current_bit)
+{
+    i32 result = (*bytes >> (7 - *current_bit++)) & 1;
+    if(*current_bit == 8)
+    {
+        ++bytes;
+        *current_bit = 0;
+    }
+    return result;
+}
+
+static inline i32 readBits(u8 *bytes, u32 bytes_size, u32 *current_bit, u32 length)
+{
+    i32 result = 0;
+    for(u32 i = 0; i < length; ++i)
+    {
+        i32 bit = readBit(bytes, bytes_size, current_bit);
+        result = (result << 1) | bit;
+    }
+
+    return result;
+}
+
+// NOTE: I believe this is what would 'traverse' the huffman b-tree
+static void gen_huff_codes(huff_table *ht)
 {
     u32 code = 0;
     u32 idx_in_codes = 0;
     for(u32 i = 0; i < 16; ++i)
     {
-        for(u32 j = 0; j < ht.code_length_count[i]; ++j)
+        for(u32 j = 0; j < ht->code_length_count[i]; ++j)
         {
-            ht.huff_codes[idx_in_codes++] = code++;
+            ht->huff_codes[idx_in_codes++] = code++;
         }
         code <<= 1;
     }
+}
+
+static void process_mcu_component(i32 *color_comp, u8 *huff_data, u32 hdata_size,
+                                  u8 dc_table_id, u8 ac_table_id)
+{
+
 }
 
 static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
@@ -214,10 +246,17 @@ static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
     // NOTE: Get huff codes from symbols
     for(u32 i = 0; i < 4; ++i)
     {
-        gen_huff_codes(info->dc_tables[i]);
-        gen_huff_codes(info->ac_tables[i]);
+        gen_huff_codes(&info->dc_tables[i]);
+        gen_huff_codes(&info->ac_tables[i]);
     }
 
+    // NOTE: Extract coeff for each color component
+    // for(u32 i = 0; i < (mcu_height*mcu_width); ++i)
+    // {
+    //     process_mcu_component(result[i].y, info->raw_huff_data, info->raw_huff_data_size, info->dc_tables[info->components[0].id], info->ac_tables[info->components[0].id]);
+    //     process_mcu_component(result[i].cb, info->raw_huff_data, info->raw_huff_data_size, info->dc_tables[info->components[1].id], info->ac_tables[info->components[1].id]);
+    //     process_mcu_component(result[i].cr, info->raw_huff_data, info->raw_huff_data_size, info->dc_tables[info->components[2].id], info->ac_tables[info->components[2].id]);
+    // }
     return result;
 }
 
