@@ -195,6 +195,7 @@ static inline i32 read_bit(jpg_img_data *img_data)
     if(img_data->current_bit == 8)
     {
         ++img_data->data;
+        ++img_data->bytes_read;
         img_data->current_bit = 0;
     }
     return result;
@@ -208,7 +209,7 @@ static inline i32 read_bits(jpg_img_data *img_data, u8 length)
         i32 bit = read_bit(img_data);
         if(bit == -1)
         {
-            OutputDebugStringA("At the end of img_data");
+            OutputDebugStringA("At the end of img_data\n");
             return -1;
         }
         result = (result << 1) | bit;
