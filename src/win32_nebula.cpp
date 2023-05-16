@@ -459,13 +459,13 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
   switch (message)
   {
       case WM_CLOSE: {
-        OutputDebugStringA("WM_CLOSE");
+        OutputDebugStringA("WM_CLOSE\n");
         g_running = false;
         break;
       }
 
       case WM_DESTROY: {
-        OutputDebugStringA("WM_DESTROY");
+        OutputDebugStringA("WM_DESTROY\n");
         g_running = false;
         break;
       }
@@ -478,7 +478,7 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
       }
 
       case WM_ACTIVATEAPP: {
-        OutputDebugStringA("WM_ACTIVATEAPP");
+        OutputDebugStringA("WM_ACTIVATEAPP\n");
         break;
       }
 

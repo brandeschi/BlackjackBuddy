@@ -365,9 +365,9 @@ static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
             prev_dc_coeff[2] = 0;
             align_bytes(info->img_data);
         }
-        process_mcu_component(info->img_data, result[i].y, &prev_dc_coeff[0], info->dc_tables[info->components[0].id], info->ac_tables[info->components[0].id]);
-        process_mcu_component(info->img_data, result[i].cb, &prev_dc_coeff[1], info->dc_tables[info->components[1].id], info->ac_tables[info->components[1].id]);
-        process_mcu_component(info->img_data, result[i].cr, &prev_dc_coeff[2], info->dc_tables[info->components[2].id], info->ac_tables[info->components[2].id]);
+        process_mcu_component(info->img_data, result[i].y, &prev_dc_coeff[0], info->dc_tables[info->components[0].huff_DCtable_id], info->ac_tables[info->components[0].huff_ACtable_id]);
+        process_mcu_component(info->img_data, result[i].cb, &prev_dc_coeff[1], info->dc_tables[info->components[1].huff_DCtable_id], info->ac_tables[info->components[1].huff_ACtable_id]);
+        process_mcu_component(info->img_data, result[i].cr, &prev_dc_coeff[2], info->dc_tables[info->components[2].huff_DCtable_id], info->ac_tables[info->components[2].huff_ACtable_id]);
     }
     return result;
 }
