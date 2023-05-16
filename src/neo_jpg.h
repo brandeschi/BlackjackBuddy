@@ -64,14 +64,21 @@ struct mcu
     };
 };
 
+struct jpg_img_data
+{
+    u8 *data;
+    u32 data_size;
+    u32 bytes_read;
+    u32 current_bit;
+};
+
 struct jpg_info
 {
     quant_table quant_tables[4];
     huff_table dc_tables[4];
     huff_table ac_tables[4];
+    jpg_img_data *img_data;
     u32 *pixels;
-    u8 *raw_huff_data;
-    u32 raw_huff_data_size;
     u16 restart_inverval_between_mcus;
     b32 grayscale;
     u8 num_of_qt_tables;

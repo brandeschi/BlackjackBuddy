@@ -185,29 +185,49 @@ static u32 store_raw_huff_data(u8 **img_data, u8 *huff_data)
     }
 }
 
-// NOTE: Either I should make a struct to store the metadata on huff data or
-// just pass all the data around?
-static inline i32 readBit(u8 *bytes, u32 bytes_size, u32 *current_bit)
+static inline i32 read_bit(jpg_img_data *img_data)
 {
-    i32 result = (*bytes >> (7 - *current_bit++)) & 1;
-    if(*current_bit == 8)
+    if(img_data->bytes_read >= img_data->data_size)
     {
-        ++bytes;
-        *current_bit = 0;
+        return -1;
+    }
+    i32 result = (*img_data->data >> (7 - img_data->current_bit++)) & 1;
+    if(img_data->current_bit == 8)
+    {
+        ++img_data->data;
+        img_data->current_bit = 0;
     }
     return result;
 }
 
-static inline i32 readBits(u8 *bytes, u32 bytes_size, u32 *current_bit, u32 length)
+static inline i32 read_bits(jpg_img_data *img_data, u8 length)
 {
     i32 result = 0;
     for(u32 i = 0; i < length; ++i)
     {
-        i32 bit = readBit(bytes, bytes_size, current_bit);
+        i32 bit = read_bit(img_data);
+        if(bit == -1)
+        {
+            OutputDebugStringA("At the end of img_data");
+            return -1;
+        }
         result = (result << 1) | bit;
     }
 
     return result;
+}
+
+static inline void align_bytes(jpg_img_data *img_data)
+{
+    if(img_data->bytes_read >= img_data->data_size)
+    {
+        return;
+    }
+    if(img_data->current_bit != 0)
+    {
+        img_data->current_bit = 0;
+        ++img_data->data;
+    }
 }
 
 // NOTE: I believe this is what would 'traverse' the huffman b-tree
@@ -225,10 +245,92 @@ static void gen_huff_codes(huff_table *ht)
     }
 }
 
-static void process_mcu_component(i32 *color_comp, u8 *huff_data, u32 hdata_size,
-                                  u8 dc_table_id, u8 ac_table_id)
+static u8 get_next_symbol(jpg_img_data *img_data, huff_table *ht)
 {
+    u32 code = 0;
+    u32 idx_in_codes = 0;
+    for(u32 i = 0; i < 16; ++i)
+    {
+        i32 bit = read_bit(img_data);
+        if(bit == -1)
+        {
+            return 255;
+        }
+        code = (code << 1) | bit;
+        for(u32 j = 0; j < ht->code_length_count[i]; ++j)
+        {
+            if(code == ht->huff_codes[idx_in_codes++])
+            {
+                return ht->huff_symbols[--idx_in_codes];
+            }
+        }
+    }
+    return 255;
+}
 
+// TODO: Need to think about error checking with this
+static void process_mcu_component(jpg_img_data *img_data, i32 *color_comp, i32 *prev_dc_coeff,
+                                  huff_table dc_table, huff_table ac_table)
+{
+    // Read huffman code and translate it to a symbol
+    u8 length = get_next_symbol(img_data, &dc_table);
+    i32 dc_coeff = read_bits(img_data, length);
+    if(dc_coeff == -1)
+    {
+        OutputDebugStringA("Error reading bits for DC_COEFFICIENT\n");
+        return;
+    }
+    if(length && dc_coeff < (1 << (length - 1)))
+    {
+        dc_coeff -= (1 << length) - 1;
+    }
+    color_comp[0] = dc_coeff + *prev_dc_coeff;
+    *prev_dc_coeff = color_comp[0];
+
+    // AC values for MCU
+    for(u32 i = 1; i < 64; ++i)
+    {
+        u8 symbol = get_next_symbol(img_data, &ac_table);
+        // Remaining symbols are zero
+        if(symbol == 0x00)
+        {
+            for(; i < 64; ++i)
+            {
+                color_comp[zz_grouping[i]] = 0;
+            }
+            return; // Done once we fill with zeros
+        }
+
+        u8 num_of_zeros = get_upper_nibble(symbol);
+        u8 ac_coeff_length = get_lower_nibble(symbol);
+        i32 ac_coeff = 0;
+        if(symbol == 0xF0)
+        {
+            num_of_zeros = 16;
+        }
+        // Zero run length could exceed mcu?
+
+        for(u32 j = 0; j < num_of_zeros; ++j, ++i)
+        {
+            color_comp[zz_grouping[i]] = 0;
+        }
+        // AC coeff len cannot be >10
+
+        if(ac_coeff_length)
+        {
+            ac_coeff = read_bits(img_data, ac_coeff_length);
+            if(ac_coeff == -1)
+            {
+                OutputDebugStringA("Error reading ac_coeff bits\n");
+                return;
+            }
+            if(ac_coeff < (1 << (ac_coeff_length - 1)))
+            {
+                ac_coeff -= (1 << ac_coeff_length) - 1;
+            }
+            color_comp[zz_grouping[i]] = ac_coeff;
+        }
+    }
 }
 
 static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
@@ -250,13 +352,22 @@ static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
         gen_huff_codes(&info->ac_tables[i]);
     }
 
+    // Handles using prev DC coeff to get true DC coeff
+    i32 prev_dc_coeff[3] = {};
     // NOTE: Extract coeff for each color component
-    // for(u32 i = 0; i < (mcu_height*mcu_width); ++i)
-    // {
-    //     process_mcu_component(result[i].y, info->raw_huff_data, info->raw_huff_data_size, info->dc_tables[info->components[0].id], info->ac_tables[info->components[0].id]);
-    //     process_mcu_component(result[i].cb, info->raw_huff_data, info->raw_huff_data_size, info->dc_tables[info->components[1].id], info->ac_tables[info->components[1].id]);
-    //     process_mcu_component(result[i].cr, info->raw_huff_data, info->raw_huff_data_size, info->dc_tables[info->components[2].id], info->ac_tables[info->components[2].id]);
-    // }
+    for(u32 i = 0; i < (mcu_height*mcu_width); ++i)
+    {
+        if(info->restart_inverval_between_mcus && i % info->restart_inverval_between_mcus == 0)
+        {
+            prev_dc_coeff[0] = 0;
+            prev_dc_coeff[1] = 0;
+            prev_dc_coeff[2] = 0;
+            align_bytes(info->img_data);
+        }
+        process_mcu_component(info->img_data, result[i].y, &prev_dc_coeff[0], info->dc_tables[info->components[0].id], info->ac_tables[info->components[0].id]);
+        process_mcu_component(info->img_data, result[i].cb, &prev_dc_coeff[1], info->dc_tables[info->components[1].id], info->ac_tables[info->components[1].id]);
+        process_mcu_component(info->img_data, result[i].cr, &prev_dc_coeff[2], info->dc_tables[info->components[2].id], info->ac_tables[info->components[2].id]);
+    }
     return result;
 }
 
@@ -321,11 +432,13 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                         OutputDebugStringA("sos\n");
                         bytes = bytes + 2;
                         process_sos(ma, &bytes, &info);
+
+                        info.img_data = push_struct(ma, jpg_img_data);
                         u8 *ba_image_data = bytes;
                         u8 *ba_file = (u8 *)read_result.contents;
                         u32 image_data_size = (u32)(read_result.contents_size - (ba_image_data - ba_file));
-                        info.raw_huff_data = push_array(ma, image_data_size, u8);
-                        info.raw_huff_data_size = store_raw_huff_data(&bytes, info.raw_huff_data);
+                        info.img_data->data = push_array(ma, image_data_size, u8);
+                        info.img_data->data_size = store_raw_huff_data(&bytes, info.img_data->data);
                         // NOTE: At the pixel data now so goto decode img data loop!
                     } break;
                     case JPG_EOI:
