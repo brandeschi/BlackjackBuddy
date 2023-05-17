@@ -372,6 +372,31 @@ static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
     return result;
 }
 
+static void dequantize(jpg_info *info, mcu *mcus)
+{
+    u32 mcu_height = info->image_height / 8;
+    u32 mcu_width = info->image_width / 8;
+    quant_table qt = {};
+    for(u32 i = 0; i < (mcu_width*mcu_height); ++i)
+    {
+        qt = info->quant_tables[info->components[0].qt_table_id];
+        for(u32 j = 0; j < 64; ++j)
+        {
+            mcus[i].y[j] *= qt.table_values[j];
+        }
+        qt = info->quant_tables[info->components[1].qt_table_id];
+        for(u32 j = 0; j < 64; ++j)
+        {
+            mcus[i].cb[j] *= qt.table_values[j];
+        }
+        qt = info->quant_tables[info->components[2].qt_table_id];
+        for(u32 j = 0; j < 64; ++j)
+        {
+            mcus[i].cr[j] *= qt.table_values[j];
+        }
+    }
+}
+
 // TODO: This is not final jpg loading code!
 static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name)
 {
@@ -556,6 +581,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
     }
     // Decode Huffman Data
     mcu *mcus = decode_huff_data(ma, &info);
+    dequantize(&info, mcus);
 
     return result;
 }
