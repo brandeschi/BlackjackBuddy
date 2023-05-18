@@ -154,6 +154,7 @@ static void app_get_sound_samples(thread_context *thread, app_memory *memory, en
     // output_sound(game_state, sound_buffer);
 }
 
+#if 0
 inline i32 round_f32_to_i32(f32 real)
 {
     return (i32) (real + 0.5f);
@@ -163,6 +164,7 @@ inline u32 round_f32_to_u32(f32 real)
 {
     return (u32) (real + 0.5f);
 }
+#endif
 
 static void draw_rect(engine_bitmap_buffer *buffer, f32 f_min_X, f32 f_max_X, f32 f_min_Y, f32 f_max_Y,
                       f32 r, f32 g, f32 b)

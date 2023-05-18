@@ -372,6 +372,50 @@ static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
     return result;
 }
 
+static void apply_IDCT(i32 *color_comp)
+{
+    i32 result[64] = {};
+    for(u32 y = 0; y < 8; ++y)
+    {
+        for(u32 x = 0; x < 8; ++x)
+        {
+            f64 sum = 0;
+            f64 coeff_u;
+            f64 coeff_v;
+            for(u32 v = 0; v < 8; ++v)
+            {
+                for(u32 u = 0; u < 8; ++u)
+                {
+                    coeff_u = (u == 0) ? (1 / sqrt(2.0)) : 1.0;
+                    coeff_v = (v == 0) ? (1 / sqrt(2.0)) : 1.0;
+                    sum += coeff_u*coeff_v*color_comp[v * 8 + u]*
+                           cosine64(((2.0*x + 1.0)*u*pi32) / 16)*
+                           cosine64(((2.0*y + 1.0)*v*pi32) / 16);
+                }
+            }
+            sum /= 4.0;
+            result[y * 8 + x] = (i32)sum;
+        }
+    }
+
+    for(u32 i = 0; i < 64; ++i)
+    {
+        color_comp[i] = result[i];
+    }
+}
+
+static void inverse_DCT(jpg_info *info, mcu *mcus)
+{
+    u32 mcu_height = info->image_height / 8;
+    u32 mcu_width = info->image_width / 8;
+    for(u32 i = 0; i < (mcu_width*mcu_height); ++i)
+    {
+        apply_IDCT(mcus[i].y);
+        apply_IDCT(mcus[i].cb);
+        apply_IDCT(mcus[i].cr);
+    }
+}
+
 static void dequantize(jpg_info *info, mcu *mcus)
 {
     u32 mcu_height = info->image_height / 8;
@@ -579,10 +623,11 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
         _snprintf_s(buff, sizeof(buff), "V_Sampling: %d\n", info.components[i].v_sampling);
         OutputDebugStringA(buff);
     }
-    // Decode Huffman Data
+
+    // Begin Decoding
     mcu *mcus = decode_huff_data(ma, &info);
     dequantize(&info, mcus);
-
+    inverse_DCT(&info, mcus);
     return result;
 }
 
