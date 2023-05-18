@@ -376,11 +376,139 @@ static void apply_IDCT(i32 *color_comp)
 {
     for(u32 col = 0; col < 8; ++col)
     {
+        f32 g0 = color_comp[0*8 + col] * s0;
+        f32 g1 = color_comp[4*8 + col] * s4;
+        f32 g2 = color_comp[2*8 + col] * s2;
+        f32 g3 = color_comp[6*8 + col] * s6;
+        f32 g4 = color_comp[5*8 + col] * s5;
+        f32 g5 = color_comp[1*8 + col] * s1;
+        f32 g6 = color_comp[7*8 + col] * s7;
+        f32 g7 = color_comp[3*8 + col] * s3;
 
+        f32 f0 = g0;
+        f32 f1 = g1;
+        f32 f2 = g2;
+        f32 f3 = g3;
+        f32 f4 = g4 - g7;
+        f32 f5 = g5 + g6;
+        f32 f6 = g5 - g6;
+        f32 f7 = g4 + g7;
+
+        f32 e0 = f0;
+        f32 e1 = f1;
+        f32 e2 = f2 - f3;
+        f32 e3 = f2 + f3;
+        f32 e4 = f4;
+        f32 e5 = f5 - f7;
+        f32 e6 = f6;
+        f32 e7 = f5 + f7;
+        f32 e8 = f4 + f6;
+
+        f32 d0 = e0;
+        f32 d1 = e1;
+        f32 d2 = e2 * m1;
+        f32 d3 = e3;
+        f32 d4 = e4 * m2;
+        f32 d5 = e5 * m3;
+        f32 d6 = e6 * m4;
+        f32 d7 = e7;
+        f32 d8 = e8 * m5;
+
+        f32 c0 = d0 + d1;
+        f32 c1 = d0 - d1;
+        f32 c2 = d2 - d3;
+        f32 c3 = d3;
+        f32 c4 = d4 + d8;
+        f32 c5 = d5 + d7;
+        f32 c6 = d6 - d8;
+        f32 c7 = d7;
+        f32 c8 = c5 - c6;
+
+        f32 b0 = c0 + c3;
+        f32 b1 = c1 + c2;
+        f32 b2 = c1 - c2;
+        f32 b3 = c0 - c3;
+        f32 b4 = c4 - c8;
+        f32 b5 = c8;
+        f32 b6 = c6 - c7;
+        f32 b7 = c7;
+
+        color_comp[0*8 + col] = (i32)(b0 + b7);
+        color_comp[1*8 + col] = (i32)(b1 + b6);
+        color_comp[2*8 + col] = (i32)(b2 + b5);
+        color_comp[3*8 + col] = (i32)(b3 + b4);
+        color_comp[4*8 + col] = (i32)(b3 - b4);
+        color_comp[5*8 + col] = (i32)(b2 - b5);
+        color_comp[6*8 + col] = (i32)(b1 - b6);
+        color_comp[7*8 + col] = (i32)(b0 - b7);
     }
     for(u32 row = 0; row < 8; ++row)
     {
+        f32 g0 = color_comp[0*8 + row] * s0;
+        f32 g1 = color_comp[4*8 + row] * s4;
+        f32 g2 = color_comp[2*8 + row] * s2;
+        f32 g3 = color_comp[6*8 + row] * s6;
+        f32 g4 = color_comp[5*8 + row] * s5;
+        f32 g5 = color_comp[1*8 + row] * s1;
+        f32 g6 = color_comp[7*8 + row] * s7;
+        f32 g7 = color_comp[3*8 + row] * s3;
 
+        f32 f0 = g0;
+        f32 f1 = g1;
+        f32 f2 = g2;
+        f32 f3 = g3;
+        f32 f4 = g4 - g7;
+        f32 f5 = g5 + g6;
+        f32 f6 = g5 - g6;
+        f32 f7 = g4 + g7;
+
+        f32 e0 = f0;
+        f32 e1 = f1;
+        f32 e2 = f2 - f3;
+        f32 e3 = f2 + f3;
+        f32 e4 = f4;
+        f32 e5 = f5 - f7;
+        f32 e6 = f6;
+        f32 e7 = f5 + f7;
+        f32 e8 = f4 + f6;
+
+        f32 d0 = e0;
+        f32 d1 = e1;
+        f32 d2 = e2 * m1;
+        f32 d3 = e3;
+        f32 d4 = e4 * m2;
+        f32 d5 = e5 * m3;
+        f32 d6 = e6 * m4;
+        f32 d7 = e7;
+        f32 d8 = e8 * m5;
+
+        f32 c0 = d0 + d1;
+        f32 c1 = d0 - d1;
+        f32 c2 = d2 - d3;
+        f32 c3 = d3;
+        f32 c4 = d4 + d8;
+        f32 c5 = d5 + d7;
+        f32 c6 = d6 - d8;
+        f32 c7 = d7;
+        f32 c8 = c5 - c6;
+
+        f32 b0 = c0 + c3;
+        f32 b1 = c1 + c2;
+        f32 b2 = c1 - c2;
+        f32 b3 = c0 - c3;
+        f32 b4 = c4 - c8;
+        f32 b5 = c8;
+        f32 b6 = c6 - c7;
+        f32 b7 = c7;
+
+        color_comp[row*8 + 0] = (i32)(b0 + b7);
+        color_comp[row*8 + 1] = (i32)(b1 + b6);
+        color_comp[row*8 + 2] = (i32)(b2 + b5);
+        color_comp[row*8 + 3] = (i32)(b3 + b4);
+        color_comp[row*8 + 4] = (i32)(b3 - b4);
+        color_comp[row*8 + 5] = (i32)(b2 - b5);
+        color_comp[row*8 + 6] = (i32)(b1 - b6);
+        color_comp[row*8 + 7] = (i32)(b0 - b7);
     }
 }
 
