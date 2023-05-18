@@ -374,33 +374,13 @@ static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
 
 static void apply_IDCT(i32 *color_comp)
 {
-    i32 result[64] = {};
-    for(u32 y = 0; y < 8; ++y)
+    for(u32 col = 0; col < 8; ++col)
     {
-        for(u32 x = 0; x < 8; ++x)
-        {
-            f64 sum = 0;
-            f64 coeff_u;
-            f64 coeff_v;
-            for(u32 v = 0; v < 8; ++v)
-            {
-                for(u32 u = 0; u < 8; ++u)
-                {
-                    coeff_u = (u == 0) ? (1 / sqrt(2.0)) : 1.0;
-                    coeff_v = (v == 0) ? (1 / sqrt(2.0)) : 1.0;
-                    sum += coeff_u*coeff_v*color_comp[v * 8 + u]*
-                           cosine64(((2.0*x + 1.0)*u*pi32) / 16)*
-                           cosine64(((2.0*y + 1.0)*v*pi32) / 16);
-                }
-            }
-            sum /= 4.0;
-            result[y * 8 + x] = (i32)sum;
-        }
-    }
 
-    for(u32 i = 0; i < 64; ++i)
+    }
+    for(u32 row = 0; row < 8; ++row)
     {
-        color_comp[i] = result[i];
+
     }
 }
 
@@ -408,6 +388,19 @@ static void inverse_DCT(jpg_info *info, mcu *mcus)
 {
     u32 mcu_height = info->image_height / 8;
     u32 mcu_width = info->image_width / 8;
+
+    // Precompute cosines
+    f32 idct_cosines[64] = {};
+    f32 coeff;
+    for(u32 x = 0; x < 8; ++x)
+    {
+        coeff = (x == 0) ? ((1.0f / sqrtf(2.0f)) / 2.0f) : (1.0f / 2.0f);
+        for(u32 u = 0; u < 8; ++u)
+        {
+            idct_cosines[x * 8 + u] = coeff*cosine(((2.0f*x + 1.0f)*u*pi32) / 16.0f); // NOTE: This could instead be x and u swapping positions in the eq
+        }
+    }
+
     for(u32 i = 0; i < (mcu_width*mcu_height); ++i)
     {
         apply_IDCT(mcus[i].y);

@@ -22,6 +22,24 @@ u8 zz_grouping[] = {
     53, 60, 61, 54, 47, 55, 62, 63
 };
 
+// IDCT scaling factors for AAN IDCT algo
+f32 m0 = 2.0f*cosine((1.0f / 16.0f)*2.0f*pi32);
+f32 m1 = 2.0f*cosine((2.0f / 16.0f)*2.0f*pi32);
+f32 m3 = 2.0f*cosine((2.0f / 16.0f)*2.0f*pi32);
+f32 m5 = 2.0f*cosine((2.0f / 16.0f)*2.0f*pi32);
+f32 m2 = m0 - m5;
+f32 m4 = m0 + m5;
+
+// Scaling factors
+f32 s0 = cosine(0.0f / 16.0f * pi32) / sqrtf(8.0f);
+f32 s1 = cosine(1.0f / 16.0f * pi32) / 2.0f;
+f32 s2 = cosine(2.0f / 16.0f * pi32) / 2.0f;
+f32 s3 = cosine(3.0f / 16.0f * pi32) / 2.0f;
+f32 s4 = cosine(4.0f / 16.0f * pi32) / 2.0f;
+f32 s5 = cosine(5.0f / 16.0f * pi32) / 2.0f;
+f32 s6 = cosine(6.0f / 16.0f * pi32) / 2.0f;
+f32 s7 = cosine(7.0f / 16.0f * pi32) / 2.0f;
+
 struct component_info
 {
     u8 id;
