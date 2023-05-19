@@ -376,22 +376,22 @@ static void apply_IDCT(i32 *color_comp)
 {
     for(u32 col = 0; col < 8; ++col)
     {
-        // f32 g0 = color_comp[0*8 + col] * s0;
-        // f32 g1 = color_comp[4*8 + col] * s4;
-        // f32 g2 = color_comp[2*8 + col] * s2;
-        // f32 g3 = color_comp[6*8 + col] * s6;
-        // f32 g4 = color_comp[5*8 + col] * s5;
-        // f32 g5 = color_comp[1*8 + col] * s1;
-        // f32 g6 = color_comp[7*8 + col] * s7;
-        // f32 g7 = color_comp[3*8 + col] * s3;
-        f32 g0 = (f32)color_comp[0*8 + col];
-        f32 g1 = (f32)color_comp[4*8 + col];
-        f32 g2 = (f32)color_comp[2*8 + col];
-        f32 g3 = (f32)color_comp[6*8 + col];
-        f32 g4 = (f32)color_comp[5*8 + col];
-        f32 g5 = (f32)color_comp[1*8 + col];
-        f32 g6 = (f32)color_comp[7*8 + col];
-        f32 g7 = (f32)color_comp[3*8 + col];
+        f32 g0 = color_comp[0*8 + col] * s0;
+        f32 g1 = color_comp[4*8 + col] * s4;
+        f32 g2 = color_comp[2*8 + col] * s2;
+        f32 g3 = color_comp[6*8 + col] * s6;
+        f32 g4 = color_comp[5*8 + col] * s5;
+        f32 g5 = color_comp[1*8 + col] * s1;
+        f32 g6 = color_comp[7*8 + col] * s7;
+        f32 g7 = color_comp[3*8 + col] * s3;
+        // f32 g0 = (f32)color_comp[0*8 + col];
+        // f32 g1 = (f32)color_comp[4*8 + col];
+        // f32 g2 = (f32)color_comp[2*8 + col];
+        // f32 g3 = (f32)color_comp[6*8 + col];
+        // f32 g4 = (f32)color_comp[5*8 + col];
+        // f32 g5 = (f32)color_comp[1*8 + col];
+        // f32 g6 = (f32)color_comp[7*8 + col];
+        // f32 g7 = (f32)color_comp[3*8 + col];
 
         f32 f0 = g0;
         f32 f1 = g1;
@@ -452,22 +452,22 @@ static void apply_IDCT(i32 *color_comp)
     }
     for(u32 row = 0; row < 8; ++row)
     {
-        // f32 g0 = color_comp[0*8 + row] * s0;
-        // f32 g1 = color_comp[4*8 + row] * s4;
-        // f32 g2 = color_comp[2*8 + row] * s2;
-        // f32 g3 = color_comp[6*8 + row] * s6;
-        // f32 g4 = color_comp[5*8 + row] * s5;
-        // f32 g5 = color_comp[1*8 + row] * s1;
-        // f32 g6 = color_comp[7*8 + row] * s7;
-        // f32 g7 = color_comp[3*8 + row] * s3;
-        f32 g0 = (f32)color_comp[0*8 + row];
-        f32 g1 = (f32)color_comp[4*8 + row];
-        f32 g2 = (f32)color_comp[2*8 + row];
-        f32 g3 = (f32)color_comp[6*8 + row];
-        f32 g4 = (f32)color_comp[5*8 + row];
-        f32 g5 = (f32)color_comp[1*8 + row];
-        f32 g6 = (f32)color_comp[7*8 + row];
-        f32 g7 = (f32)color_comp[3*8 + row];
+        f32 g0 = color_comp[0*8 + row] * s0;
+        f32 g1 = color_comp[4*8 + row] * s4;
+        f32 g2 = color_comp[2*8 + row] * s2;
+        f32 g3 = color_comp[6*8 + row] * s6;
+        f32 g4 = color_comp[5*8 + row] * s5;
+        f32 g5 = color_comp[1*8 + row] * s1;
+        f32 g6 = color_comp[7*8 + row] * s7;
+        f32 g7 = color_comp[3*8 + row] * s3;
+        // f32 g0 = (f32)color_comp[0*8 + row];
+        // f32 g1 = (f32)color_comp[4*8 + row];
+        // f32 g2 = (f32)color_comp[2*8 + row];
+        // f32 g3 = (f32)color_comp[6*8 + row];
+        // f32 g4 = (f32)color_comp[5*8 + row];
+        // f32 g5 = (f32)color_comp[1*8 + row];
+        // f32 g6 = (f32)color_comp[7*8 + row];
+        // f32 g7 = (f32)color_comp[3*8 + row];
 
         f32 f0 = g0;
         f32 f1 = g1;
@@ -551,108 +551,135 @@ static void dequantize(jpg_info *info, mcu *mcus)
         for(u32 j = 0; j < 64; ++j)
         {
             mcus[i].y[j] *= qt.table_values[j];
-            switch(j / 8)
-            {
-                case 0:
-                    mcus[i].y[j] *= (i32)s0;
-                    break;
-                case 1:
-                    mcus[i].y[j] *= (i32)s1;
-                    break;
-                case 2:
-                    mcus[i].y[j] *= (i32)s2;
-                    break;
-                case 3:
-                    mcus[i].y[j] *= (i32)s3;
-                    break;
-                case 4:
-                    mcus[i].y[j] *= (i32)s4;
-                    break;
-                case 5:
-                    mcus[i].y[j] *= (i32)s5;
-                    break;
-                case 6:
-                    mcus[i].y[j] *= (i32)s6;
-                    break;
-                case 7:
-                    mcus[i].y[j] *= (i32)s7;
-                    break;
-            }
+            // f32 temp = (f32)mcus[i].y[j];
+            // switch(j / 8)
+            // {
+            //     case 0:
+            //         temp *= s0;
+            //         mcus[i].y[j] *= (i32)temp;
+            //         break;
+            //     case 1:
+            //         temp *= s1;
+            //         mcus[i].y[j] *= (i32)temp;
+            //         break;
+            //     case 2:
+            //         temp *= s2;
+            //         mcus[i].y[j] *= (i32)temp;
+            //         break;
+            //     case 3:
+            //         temp *= s3;
+            //         mcus[i].y[j] *= (i32)temp;
+            //         break;
+            //     case 4:
+            //         temp *= s4;
+            //         mcus[i].y[j] *= (i32)temp;
+            //         break;
+            //     case 5:
+            //         temp *= s5;
+            //         mcus[i].y[j] *= (i32)temp;
+            //         break;
+            //     case 6:
+            //         temp *= s6;
+            //         mcus[i].y[j] *= (i32)temp;
+            //         break;
+            //     case 7:
+            //         temp *= s7;
+            //         mcus[i].y[j] *= (i32)temp;
+            //         break;
+            // }
         }
         qt = info->quant_tables[info->components[1].qt_table_id];
         for(u32 j = 0; j < 64; ++j)
         {
             mcus[i].cb[j] *= qt.table_values[j];
-            switch(j / 8)
-            {
-                case 0:
-                    mcus[i].cb[j] *= (i32)s0;
-                    break;
-                case 1:
-                    mcus[i].cb[j] *= (i32)s1;
-                    break;
-                case 2:
-                    mcus[i].cb[j] *= (i32)s2;
-                    break;
-                case 3:
-                    mcus[i].cb[j] *= (i32)s3;
-                    break;
-                case 4:
-                    mcus[i].cb[j] *= (i32)s4;
-                    break;
-                case 5:
-                    mcus[i].cb[j] *= (i32)s5;
-                    break;
-                case 6:
-                    mcus[i].cb[j] *= (i32)s6;
-                    break;
-                case 7:
-                    mcus[i].cb[j] *= (i32)s7;
-                    break;
-            }
+            // f32 temp = (f32)mcus[i].cb[j];
+            // switch(j / 8)
+            // {
+            //     case 0:
+            //         temp *= s0;
+            //         mcus[i].cb[j] *= (i32)temp;
+            //         break;
+            //     case 1:
+            //         temp *= s1;
+            //         mcus[i].cb[j] *= (i32)temp;
+            //         break;
+            //     case 2:
+            //         temp *= s2;
+            //         mcus[i].cb[j] *= (i32)temp;
+            //         break;
+            //     case 3:
+            //         temp *= s3;
+            //         mcus[i].cb[j] *= (i32)temp;
+            //         break;
+            //     case 4:
+            //         temp *= s4;
+            //         mcus[i].cb[j] *= (i32)temp;
+            //         break;
+            //     case 5:
+            //         temp *= s5;
+            //         mcus[i].cb[j] *= (i32)temp;
+            //         break;
+            //     case 6:
+            //         temp *= s6;
+            //         mcus[i].cb[j] *= (i32)temp;
+            //         break;
+            //     case 7:
+            //         temp *= s7;
+            //         mcus[i].cb[j] *= (i32)temp;
+            //         break;
+            // }
         }
         qt = info->quant_tables[info->components[2].qt_table_id];
         for(u32 j = 0; j < 64; ++j)
         {
             mcus[i].cr[j] *= qt.table_values[j];
-            switch(j / 8)
-            {
-                case 0:
-                    mcus[i].cr[j] *= (i32)s0;
-                    break;
-                case 1:
-                    mcus[i].cr[j] *= (i32)s1;
-                    break;
-                case 2:
-                    mcus[i].cr[j] *= (i32)s2;
-                    break;
-                case 3:
-                    mcus[i].cr[j] *= (i32)s3;
-                    break;
-                case 4:
-                    mcus[i].cr[j] *= (i32)s4;
-                    break;
-                case 5:
-                    mcus[i].cr[j] *= (i32)s5;
-                    break;
-                case 6:
-                    mcus[i].cr[j] *= (i32)s6;
-                    break;
-                case 7:
-                    mcus[i].cr[j] *= (i32)s7;
-                    break;
-            }
+            // f32 temp = (f32)mcus[i].cr[j];
+            // switch(j / 8)
+            // {
+            //     case 0:
+            //         temp *= s0;
+            //         mcus[i].cr[j] *= (i32)temp;
+            //         break;
+            //     case 1:
+            //         temp *= s1;
+            //         mcus[i].cr[j] *= (i32)temp;
+            //         break;
+            //     case 2:
+            //         temp *= s2;
+            //         mcus[i].cr[j] *= (i32)temp;
+            //         break;
+            //     case 3:
+            //         temp *= s3;
+            //         mcus[i].cr[j] *= (i32)temp;
+            //         break;
+            //     case 4:
+            //         temp *= s4;
+            //         mcus[i].cr[j] *= (i32)temp;
+            //         break;
+            //     case 5:
+            //         temp *= s5;
+            //         mcus[i].cr[j] *= (i32)temp;
+            //         break;
+            //     case 6:
+            //         temp *= s6;
+            //         mcus[i].cr[j] *= (i32)temp;
+            //         break;
+            //     case 7:
+            //         temp *= s7;
+            //         mcus[i].cr[j] *= (i32)temp;
+            //         break;
+            // }
         }
     }
 }
 
-static void convert_color_mcu(mcu current_mcu)
+static void convert_color_mcu(mcu *current_mcu)
 {
     for(u32 i = 0; i < 64; ++i)
     {
-        i32 r = (i32)(current_mcu.y[i] + 1.402f*(f32)current_mcu.cr[i] + 128);
-        i32 g = (i32)(current_mcu.y[i] - 0.344f*(f32)current_mcu.cb[i] - 0.714f*(f32)current_mcu.cr[i] + 128);
-        i32 b = (i32)(current_mcu.y[i] + 1.772f*(f32)current_mcu.cb[i] + 128);
+        i32 r = (i32)(current_mcu->y[i] + 1.402f*(f32)current_mcu->cr[i] + 128);
+        i32 g = (i32)(current_mcu->y[i] - 0.344f*(f32)current_mcu->cb[i] - 0.714f*(f32)current_mcu->cr[i] + 128);
+        i32 b = (i32)(current_mcu->y[i] + 1.772f*(f32)current_mcu->cb[i] + 128);
         // Clamp values between 0 & 255
         if(r < 0) r = 0;
         if(r > 255) r = 255;
@@ -660,9 +687,9 @@ static void convert_color_mcu(mcu current_mcu)
         if(g > 255) g = 255;
         if(b < 0) b = 0;
         if(b > 255) b = 255;
-        current_mcu.r[i] = r;
-        current_mcu.g[i] = g;
-        current_mcu.b[i] = b;
+        current_mcu->r[i] = r;
+        current_mcu->g[i] = g;
+        current_mcu->b[i] = b;
     }
 }
 
@@ -672,7 +699,7 @@ static void ycbcr_to_rgb(jpg_info *info, mcu *mcus)
     u32 mcu_width = info->image_width / 8;
     for(u32 i = 0; i < (mcu_width*mcu_height); ++i)
     {
-        convert_color_mcu(mcus[i]);
+        convert_color_mcu(&mcus[i]);
     }
 }
 
@@ -868,20 +895,22 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
 
     u32 mcu_height = info.image_height / 8;
     u32 mcu_width = info.image_width / 8;
+    result.pixels = push_array(ma, (info.image_height*info.image_width), u8);
+    u8 *pixels = result.pixels;
     for(u32 i = 0; i < mcu_height; ++i)
     {
         for(u32 j = 0; j < (mcu_width*8)*8; ++j)
         {
-            *result.pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].r[(j / (mcu_width*8))*8 + (j % 8)]);
-            *result.pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].g[(j / (mcu_width*8))*8 + (j % 8)]);
-            *result.pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].b[(j / (mcu_width*8))*8 + (j % 8)]);
+            *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].r[(j / (mcu_width*8))*8 + (j % 8)]);
+            *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].g[(j / (mcu_width*8))*8 + (j % 8)]);
+            *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].b[(j / (mcu_width*8))*8 + (j % 8)]);
         }
     }
     result.width = info.image_width;
     result.height = info.image_height;
 
     free_file(thread, read_result.contents);
-    ma->used_space = before_decoding_us;
+    // ma->used_space = before_decoding_us;
     return result;
 }
 
