@@ -677,10 +677,11 @@ static void ycbcr_to_rgb(jpg_info *info, mcu *mcus)
 }
 
 // TODO: This is not final jpg loading code!
-static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name)
+static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name, debug_free_file *free_file)
 {
     jpg_info info = {};
     loaded_jpg result = {};
+    mem_index before_decoding_us = ma->used_space;
     debug_file_result read_result = read_entire_file(thread, file_name);
     if (read_result.contents_size != 0)
     {
@@ -864,6 +865,23 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
     dequantize(&info, mcus);
     inverse_DCT(&info, mcus);
     ycbcr_to_rgb(&info, mcus);
+
+    u32 mcu_height = info.image_height / 8;
+    u32 mcu_width = info.image_width / 8;
+    for(u32 i = 0; i < mcu_height; ++i)
+    {
+        for(u32 j = 0; j < (mcu_width*8)*8; ++j)
+        {
+            *result.pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].r[(j / (mcu_width*8))*8 + (j % 8)]);
+            *result.pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].g[(j / (mcu_width*8))*8 + (j % 8)]);
+            *result.pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].b[(j / (mcu_width*8))*8 + (j % 8)]);
+        }
+    }
+    result.width = info.image_width;
+    result.height = info.image_height;
+
+    free_file(thread, read_result.contents);
+    ma->used_space = before_decoding_us;
     return result;
 }
 

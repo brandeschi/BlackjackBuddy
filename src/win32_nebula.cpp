@@ -82,7 +82,7 @@ DEBUG_FREE_FILE_MEMORY(DEBUG_free_file)
 {
     if (file)
     {
-        VirtualFree(&file, 0, MEM_RELEASE);
+        VirtualFree(file, 0, MEM_RELEASE);
     }
 }
 
@@ -750,7 +750,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     // FIXME: Refactor this based on platorm dependency
     memory_arena global_arena = {};
     init_arena(&global_arena, app_memory.perm_storage_space, (u8 *)app_memory.perm_mem_storage);
-    loaded_jpg crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/container.jpg");
+    loaded_jpg crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/container.jpg", DEBUG_free_file);
 
     // TODO: Add check here to make sure we got our memory(samples, bitmap, app_mem)
     engine_input input[2] = {};
