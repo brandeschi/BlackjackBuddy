@@ -34,6 +34,8 @@ typedef char GLchar;
 #define GL_FRAGMENT_SHADER                0x8B30
 #define GL_COMPILE_STATUS                 0x8B81
 #define GL_LINK_STATUS                    0x8B82
+#define GL_MIRRORED_REPEAT                0x8370
+#define GL_TEXTURE0                       0x84C0
 
 typedef void glgenbuffers(GLsizei n, GLuint *buffers);
 global glgenbuffers *glGenBuffers;
@@ -77,6 +79,12 @@ typedef GLint glgetuniformlocation(GLuint program, const GLchar *name);
 global glgetuniformlocation *glGetUniformLocation;
 typedef void gluniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
 global gluniform4f *glUniform4f;
+typedef void glgeneratemipmap(GLenum target);
+global glgeneratemipmap *glGenerateMipmap;
+typedef void glactivetexture(GLenum texture);
+global glactivetexture *glActiveTexture;
+typedef void gluniform1i(GLint location, GLint v0);
+global gluniform1i *glUniform1i;
 
 DEBUG_FREE_FILE_MEMORY(DEBUG_free_file)
 {
@@ -259,7 +267,7 @@ static GLuint create_ogl_shader_program(char *vertex_file_name, char *fragment_f
     return prog_id;
 }
 
-static void win32_init_opengl(HWND window_handle)
+static void win32_init_opengl(HWND window_handle, loaded_jpg tex)
 {
     HDC window_dc = GetDC(window_handle);
 
@@ -298,57 +306,85 @@ static void win32_init_opengl(HWND window_handle)
         glBindVertexArray = (glbindvertexarray *)wglGetProcAddress("glBindVertexArray");
         glGetUniformLocation = (glgetuniformlocation *)wglGetProcAddress("glGetUniformLocation");
         glUniform4f = (gluniform4f *)wglGetProcAddress("glUniform4f");
+        glGenerateMipmap = (glgeneratemipmap *)wglGetProcAddress("glGenerateMipmap");
+        glActiveTexture = (glactivetexture *)wglGetProcAddress("glActiveTexture");
+        glUniform1i = (gluniform1i *)wglGetProcAddress("glUniform1i");
 
         // Create Shader Program
         g_shader_program = create_ogl_shader_program("..\\test.vs", "..\\test.fs");
         // Vertex Data
-        v3 vertices[] = {
-            { -0.5f, -0.5f, 0.0f }, // V1 pos data
-            { 1.0f, 0.0f, 0.0f }, // V1 color data
-            { 0.5f, -0.5f, 0.0f }, // V2 pos data
-            { 0.0f, 1.0f, 0.0f }, // V2 color data
-            { 0.0f, 0.5f, 0.0f }, // V3 pos data
-            { 0.0f, 0.0f, 1.0f }, // V3 color data
-        };
+        // v3 vertices[] = {
+        //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
+        //     { 1.0f, 0.0f, 0.0f }, // V1 color data
+        //     { 0.5f, -0.5f, 0.0f }, // V2 pos data
+        //     { 0.0f, 1.0f, 0.0f }, // V2 color data
+        //     { 0.0f, 0.5f, 0.0f }, // V3 pos data
+        //     { 0.0f, 0.0f, 1.0f }, // V3 color data
+        // };
+        //
+        // v2 tex_coords[] = {
+        //     { 0.0f, 0.0f },
+        //     { 1.0f, 0.0f },
+        //     { 0.5f, 1.0f },
+        // };
 
-        v2 tex_coords[] = {
-            { 0.0f, 0.0f },
-            { 1.0f, 0.0f },
-            { 0.5f, 1.0f },
-        };
-
-        // Setting Texture wrapping method
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-        // Setting Texture filtering methods
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         // v3 vertices[] = {
         //     { 0.5f, 0.5f, 0.0f },   // top-right
         //     { 0.5f, -0.5f, 0.0f },  // bottom-right
         //     { -0.5f, -0.5f, 0.0f }, // bottom-left
         //     { -0.5f, 0.5f, 0.0f },  // top-left
         // };
+        f32 vertices[] = {
+            0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,   // top-right
+            0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  // bottom-right
+            -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom-left
+            -0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f   // top-left
+        };
         u32 indices[] = {
             0, 1, 3,    // T1
             1, 2, 3     // T2
         };
 
         // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
-        u32 VBO, VAO;
+        u32 VBO, VAO, EBO;
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
 
         // Bind VAO, tnhe bind and set VBOs, then config vertex attribs
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
         // Tell opengl how to interpret our vertex data by setting pointers to the attribr
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void *)0);
+        // pos attrib
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void *)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(f32), (void *)(3 * sizeof(f32)));
+        // color attrib
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void *)(3 * sizeof(f32)));
         glEnableVertexAttribArray(1);
+        // tex coord attrib
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void*)(6 * sizeof(f32)));
+        glEnableVertexAttribArray(2);
+
+        u32 texture;
+        glGenTextures(1, &texture);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        // Setting Texture wrapping method
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+        // Setting Texture filtering methods
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex.width, tex.height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex.pixels);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glUseProgram(g_shader_program);
+        glUniform1i(glGetUniformLocation(g_shader_program, "texture"), 0);
 
     }
     else
@@ -445,7 +481,8 @@ static void win32_update_win_with_buffer(HDC device_context,
     // DRAW
     // glPolygonMode(GL_FRONT, GL_LINE);
     glUseProgram(g_shader_program);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    // glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // TODO: Look up what swapbuffers should be used
     SwapBuffers(device_context);
@@ -689,8 +726,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     if(!window)
         return false;
 
-    // Opengl
-    win32_init_opengl(window);
     // Based on how the device context system functions, when specifying a
     // CS_OWNDC flag for the window, it is possible to get the DC for the window
     // and then never give it back because we now own it for the duration of the
@@ -750,7 +785,13 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     // FIXME: Refactor this based on platorm dependency
     memory_arena global_arena = {};
     init_arena(&global_arena, app_memory.perm_storage_space, (u8 *)app_memory.perm_mem_storage);
-    loaded_jpg crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/container.jpg", DEBUG_free_file);
+    loaded_jpg crate_tex = {};
+    crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/container.jpg", DEBUG_free_file);
+    if(crate_tex.pixels)
+    {
+        // Opengl
+        win32_init_opengl(window, crate_tex);
+    }
 
     // TODO: Add check here to make sure we got our memory(samples, bitmap, app_mem)
     engine_input input[2] = {};
