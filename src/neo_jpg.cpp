@@ -26,8 +26,7 @@ static void process_dqt(memory_arena *ma, u8 **bytes, jpg_info *info)
     u16 length = read_next_word((u16 *)(*bytes));
     *bytes += 2;
     u16 tables_to_add = length / (u16)65;
-    info->num_of_qt_tables = (u8)tables_to_add;
-    for(u32 i = 0; i < tables_to_add; ++i)
+    for(u32 i = 0 + info->current_qt_index; i < (u32)(tables_to_add + info->current_qt_index); ++i)
     {
         info->quant_tables[i].precision_index = get_upper_nibble(*(*bytes));
         info->quant_tables[i].id = get_lower_nibble(*(*bytes)++);
@@ -48,6 +47,7 @@ static void process_dqt(memory_arena *ma, u8 **bytes, jpg_info *info)
 
         }
     }
+    info->current_qt_index += (u8)tables_to_add;
 }
 static void process_dht(memory_arena *ma, u8 **bytes, jpg_info *info)
 {
@@ -316,6 +316,10 @@ static void process_mcu_component(jpg_img_data *img_data, i32 *color_comp, i32 *
             color_comp[zz_grouping[i]] = 0;
         }
         // AC coeff len cannot be >10
+        if(ac_coeff_length > 10)
+        {
+            invalid_code_path;
+        }
 
         if(ac_coeff_length)
         {
@@ -342,8 +346,8 @@ static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
         OutputDebugStringA("WARN: jpg does not equally divide into 8x8 mcus... Will not decode properly.");
     }
     // NOTE: Gets the number of mcu image tiles
-    u32 mcu_height = info->image_height / 8;
-    u32 mcu_width = info->image_width / 8;
+    u32 mcu_height = (info->image_height + 7) / 8;
+    u32 mcu_width = (info->image_width + 7) / 8;
     mcu *result = push_array(ma, (mcu_height*mcu_width), mcu);
 
     // NOTE: Get huff codes from symbols
@@ -376,14 +380,14 @@ static void apply_IDCT(i32 *color_comp)
 {
     for(u32 col = 0; col < 8; ++col)
     {
-        f32 g0 = color_comp[0*8 + col] * s0;
-        f32 g1 = color_comp[4*8 + col] * s4;
-        f32 g2 = color_comp[2*8 + col] * s2;
-        f32 g3 = color_comp[6*8 + col] * s6;
-        f32 g4 = color_comp[5*8 + col] * s5;
-        f32 g5 = color_comp[1*8 + col] * s1;
-        f32 g6 = color_comp[7*8 + col] * s7;
-        f32 g7 = color_comp[3*8 + col] * s3;
+        f32 g0 = (f32)color_comp[0*8 + col] * s0;
+        f32 g1 = (f32)color_comp[4*8 + col] * s4;
+        f32 g2 = (f32)color_comp[2*8 + col] * s2;
+        f32 g3 = (f32)color_comp[6*8 + col] * s6;
+        f32 g4 = (f32)color_comp[5*8 + col] * s5;
+        f32 g5 = (f32)color_comp[1*8 + col] * s1;
+        f32 g6 = (f32)color_comp[7*8 + col] * s7;
+        f32 g7 = (f32)color_comp[3*8 + col] * s3;
         // f32 g0 = (f32)color_comp[0*8 + col];
         // f32 g1 = (f32)color_comp[4*8 + col];
         // f32 g2 = (f32)color_comp[2*8 + col];
@@ -452,14 +456,14 @@ static void apply_IDCT(i32 *color_comp)
     }
     for(u32 row = 0; row < 8; ++row)
     {
-        f32 g0 = color_comp[0*8 + row] * s0;
-        f32 g1 = color_comp[4*8 + row] * s4;
-        f32 g2 = color_comp[2*8 + row] * s2;
-        f32 g3 = color_comp[6*8 + row] * s6;
-        f32 g4 = color_comp[5*8 + row] * s5;
-        f32 g5 = color_comp[1*8 + row] * s1;
-        f32 g6 = color_comp[7*8 + row] * s7;
-        f32 g7 = color_comp[3*8 + row] * s3;
+        f32 g0 = (f32)color_comp[0*8 + row] * s0;
+        f32 g1 = (f32)color_comp[4*8 + row] * s4;
+        f32 g2 = (f32)color_comp[2*8 + row] * s2;
+        f32 g3 = (f32)color_comp[6*8 + row] * s6;
+        f32 g4 = (f32)color_comp[5*8 + row] * s5;
+        f32 g5 = (f32)color_comp[1*8 + row] * s1;
+        f32 g6 = (f32)color_comp[7*8 + row] * s7;
+        f32 g7 = (f32)color_comp[3*8 + row] * s3;
         // f32 g0 = (f32)color_comp[0*8 + row];
         // f32 g1 = (f32)color_comp[4*8 + row];
         // f32 g2 = (f32)color_comp[2*8 + row];
@@ -530,8 +534,8 @@ static void apply_IDCT(i32 *color_comp)
 
 static void inverse_DCT(jpg_info *info, mcu *mcus)
 {
-    u32 mcu_height = info->image_height / 8;
-    u32 mcu_width = info->image_width / 8;
+    u32 mcu_height = (info->image_height + 7) / 8;
+    u32 mcu_width = (info->image_width + 7) / 8;
     for(u32 i = 0; i < (mcu_width*mcu_height); ++i)
     {
         apply_IDCT(mcus[i].y);
@@ -542,8 +546,8 @@ static void inverse_DCT(jpg_info *info, mcu *mcus)
 
 static void dequantize(jpg_info *info, mcu *mcus)
 {
-    u32 mcu_height = info->image_height / 8;
-    u32 mcu_width = info->image_width / 8;
+    u32 mcu_height = (info->image_height + 7) / 8;
+    u32 mcu_width = (info->image_width + 7) / 8;
     quant_table qt = {};
     for(u32 i = 0; i < (mcu_width*mcu_height); ++i)
     {
@@ -677,9 +681,9 @@ static void convert_color_mcu(mcu *current_mcu)
 {
     for(u32 i = 0; i < 64; ++i)
     {
-        i32 r = (i32)(current_mcu->y[i] + 1.402f*(f32)current_mcu->cr[i] + 128);
-        i32 g = (i32)(current_mcu->y[i] - 0.344f*(f32)current_mcu->cb[i] - 0.714f*(f32)current_mcu->cr[i] + 128);
-        i32 b = (i32)(current_mcu->y[i] + 1.772f*(f32)current_mcu->cb[i] + 128);
+        i32 r = (i32)((f32)current_mcu->y[i] + 1.402f*(f32)current_mcu->cr[i] + 128);
+        i32 g = (i32)((f32)current_mcu->y[i] - 0.344f*(f32)current_mcu->cb[i] - 0.714f*(f32)current_mcu->cr[i] + 128);
+        i32 b = (i32)((f32)current_mcu->y[i] + 1.772f*(f32)current_mcu->cb[i] + 128);
         // Clamp values between 0 & 255
         if(r < 0) r = 0;
         if(r > 255) r = 255;
@@ -695,8 +699,8 @@ static void convert_color_mcu(mcu *current_mcu)
 
 static void ycbcr_to_rgb(jpg_info *info, mcu *mcus)
 {
-    u32 mcu_height = info->image_height / 8;
-    u32 mcu_width = info->image_width / 8;
+    u32 mcu_height = (info->image_height + 7) / 8;
+    u32 mcu_width = (info->image_width + 7) / 8;
     for(u32 i = 0; i < (mcu_width*mcu_height); ++i)
     {
         convert_color_mcu(&mcus[i]);
@@ -752,6 +756,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
                         OutputDebugStringA("dqt\n");
                         bytes = bytes + 2;
                         process_dqt(ma, &bytes, &info);
+                        info.num_of_qt_tables = info.current_qt_index;
                     } break;
                     case JPG_DRI:
                     {
@@ -889,23 +894,44 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
 
     // Begin Decoding
     mcu *mcus = decode_huff_data(ma, &info);
-    dequantize(&info, mcus);
-    inverse_DCT(&info, mcus);
-    ycbcr_to_rgb(&info, mcus);
+    // dequantize(&info, mcus);
+    // inverse_DCT(&info, mcus);
+    // ycbcr_to_rgb(&info, mcus);
 
-    u32 mcu_height = info.image_height / 8;
-    u32 mcu_width = info.image_width / 8;
+    u32 mcu_height = (info.image_height + 7) / 8;
+    u32 mcu_width = (info.image_width + 7) / 8;
     result.pixels = push_array(ma, (info.image_height*info.image_width), u8);
     u8 *pixels = result.pixels;
-    for(u32 i = 0; i < mcu_height; ++i)
+    // for(u32 i = 0; i < mcu_height; ++i)
+    // {
+    //     for(u32 j = 0; j < (mcu_width*8)*8; ++j)
+    //     {
+    //         *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].b[(j / (mcu_width*8))*8 + (j % 8)]);
+    //         *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].g[(j / (mcu_width*8))*8 + (j % 8)]);
+    //         *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].r[(j / (mcu_width*8))*8 + (j % 8)]);
+    //     }
+    // }
+    u32 padding_size = info.image_width % 4;
+    for(u32 y = 0; y < info.image_height; ++y)
     {
-        for(u32 j = 0; j < (mcu_width*8)*8; ++j)
+        u32 mcuRow = y / 8;
+        u32 pixelRow = y % 8;
+        for(u32 x = 0; x < info.image_width; ++x)
         {
-            *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].r[(j / (mcu_width*8))*8 + (j % 8)]);
-            *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].g[(j / (mcu_width*8))*8 + (j % 8)]);
-            *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].b[(j / (mcu_width*8))*8 + (j % 8)]);
+            u32 mcuCol = x / 8;
+            u32 pixelCol = x % 8;
+            u32 mcuIndex = mcuRow*mcu_width + mcuCol;
+            u32 pixelIndex = pixelRow*8 + pixelCol;
+            *pixels++ = (u8)(mcus[mcuIndex].r[pixelIndex]);
+            *pixels++ = (u8)(mcus[mcuIndex].g[pixelIndex]);
+            *pixels++ = (u8)(mcus[mcuIndex].b[pixelIndex]);
+        }
+        for(u32 i = 0; i < padding_size; ++i)
+        {
+            *pixels++ = 0;
         }
     }
+
     result.width = info.image_width;
     result.height = info.image_height;
 

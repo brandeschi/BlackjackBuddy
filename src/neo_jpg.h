@@ -99,6 +99,7 @@ struct jpg_info
     u32 *pixels;
     u16 restart_inverval_between_mcus;
     b32 grayscale;
+    u8 current_qt_index;
     u8 num_of_qt_tables;
     u8 bits_per_sample;
     u16 image_width;
