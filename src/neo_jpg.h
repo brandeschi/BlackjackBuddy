@@ -61,11 +61,12 @@ struct huff_table
     // NOTE: Read top nibble; if >0, then it is an AC table else it is a DC table
     u8 id;
     u16 num_of_symbols;
+    b32 set;
     u8 code_length_count[16];
     u8 huff_symbols[162];
     u32 huff_codes[162];
 };
-struct mcu
+struct mcu // This is an mcu for nonsubsampled imgs else its a block
 {
     union {
         i32 y[64];
@@ -97,11 +98,19 @@ struct jpg_info
     huff_table ac_tables[4];
     jpg_img_data *img_data;
     u32 *pixels;
-    u16 restart_inverval_between_mcus;
     b32 grayscale;
+    u32 mcu_height;
+    u32 mcu_width;
+    u32 mcu_height_real;
+    u32 mcu_width_real;
+
+    u16 restart_inverval_between_mcus;
     u8 current_qt_index;
     u8 num_of_qt_tables;
     u8 bits_per_sample;
+    u8 h_sampling_factor;
+    u8 v_sampling_factor;
+
     u16 image_width;
     u16 image_height;
     component_info components[3];

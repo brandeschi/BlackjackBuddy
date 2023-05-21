@@ -68,10 +68,12 @@ static void process_dht(memory_arena *ma, u8 **bytes, jpg_info *info)
         if(AC_table)
         {
             ht = &info->ac_tables[table_id];
+            ht->set = true;
         }
         else
         {
             ht = &info->dc_tables[table_id];
+            ht->set = true;
         }
         ht->id = table_id;
         // Read 16 bytes to get size of huff_table, must be <=256
@@ -102,6 +104,12 @@ static void process_sof(memory_arena *ma, u8 **bytes, jpg_info *info)
     *bytes += 2;
     info->image_width = read_next_word((u16 *)(*bytes));
     *bytes += 2;
+
+    info->mcu_height = (info->image_height + 7) / 8;
+    info->mcu_width = (info->image_width + 7) / 8;
+    info->mcu_height_real = info->mcu_height;
+    info->mcu_width_real = info->mcu_width;
+
     if (*(*bytes)++ == 3)
     {
         info->grayscale = false;
@@ -117,6 +125,31 @@ static void process_sof(memory_arena *ma, u8 **bytes, jpg_info *info)
         info->components[i].id = *(*bytes)++;
         info->components[i].h_sampling = get_upper_nibble(*(*bytes));
         info->components[i].v_sampling = get_lower_nibble(*(*bytes)++);
+        if(info->components[i].id == 1)
+        {
+            if(info->components[i].h_sampling > 2 || info->components[i].v_sampling > 2)
+            {
+                invalid_code_path;
+            }
+            if(info->components[i].h_sampling == 2 && info->mcu_width % 2 == 1)
+            {
+                info->mcu_width_real += 1;
+            }
+            if(info->components[i].v_sampling == 2 && info->mcu_height % 2 == 1)
+            {
+                info->mcu_height_real += 1;
+            }
+            // NOTE: Assuming the luma is always the max sampling factors
+            info->h_sampling_factor = info->components[i].h_sampling;
+            info->v_sampling_factor = info->components[i].v_sampling;
+        }
+        else
+        {
+            if(info->components[i].h_sampling != 1 || info->components[i].v_sampling != 1)
+            {
+                invalid_code_path;
+            }
+        }
         info->components[i].qt_table_id = *(*bytes)++;
     }
 }
@@ -210,7 +243,9 @@ static inline i32 read_bits(jpg_img_data *img_data, u8 length)
         if(bit == -1)
         {
             OutputDebugStringA("At the end of img_data\n");
-            return -1;
+            // return -1;
+            result = -1;
+            break;
         }
         result = (result << 1) | bit;
     }
@@ -258,11 +293,11 @@ static u8 get_next_symbol(jpg_img_data *img_data, huff_table *ht)
             return 255;
         }
         code = (code << 1) | bit;
-        for(u32 j = 0; j < ht->code_length_count[i]; ++j)
+        for(u32 j = 0; j < ht->code_length_count[i]; ++j, ++idx_in_codes)
         {
-            if(code == ht->huff_codes[idx_in_codes++])
+            if(code == ht->huff_codes[idx_in_codes])
             {
-                return ht->huff_symbols[--idx_in_codes];
+                return ht->huff_symbols[idx_in_codes];
             }
         }
     }
@@ -271,15 +306,19 @@ static u8 get_next_symbol(jpg_img_data *img_data, huff_table *ht)
 
 // TODO: Need to think about error checking with this
 static void process_mcu_component(jpg_img_data *img_data, i32 *color_comp, i32 *prev_dc_coeff,
-                                  huff_table dc_table, huff_table ac_table)
+                                  huff_table *dc_table, huff_table *ac_table)
 {
     // Read huffman code and translate it to a symbol
-    u8 length = get_next_symbol(img_data, &dc_table);
+    u8 length = get_next_symbol(img_data, dc_table);
+    if(length == 255 || length > 11)
+    {
+        invalid_code_path;
+    }
     i32 dc_coeff = read_bits(img_data, length);
     if(dc_coeff == -1)
     {
         OutputDebugStringA("Error reading bits for DC_COEFFICIENT\n");
-        return;
+        invalid_code_path;
     }
     if(length && dc_coeff < (1 << (length - 1)))
     {
@@ -291,7 +330,11 @@ static void process_mcu_component(jpg_img_data *img_data, i32 *color_comp, i32 *
     // AC values for MCU
     for(u32 i = 1; i < 64; ++i)
     {
-        u8 symbol = get_next_symbol(img_data, &ac_table);
+        u8 symbol = get_next_symbol(img_data, ac_table);
+        if(symbol == 255)
+        {
+            invalid_code_path;
+        }
         // Remaining symbols are zero
         if(symbol == 0x00)
         {
@@ -310,6 +353,10 @@ static void process_mcu_component(jpg_img_data *img_data, i32 *color_comp, i32 *
             num_of_zeros = 16;
         }
         // Zero run length could exceed mcu?
+        if(i + num_of_zeros >= 64)
+        {
+            invalid_code_path;
+        }
 
         for(u32 j = 0; j < num_of_zeros; ++j, ++i)
         {
@@ -327,7 +374,7 @@ static void process_mcu_component(jpg_img_data *img_data, i32 *color_comp, i32 *
             if(ac_coeff == -1)
             {
                 OutputDebugStringA("Error reading ac_coeff bits\n");
-                return;
+                invalid_code_path;
             }
             if(ac_coeff < (1 << (ac_coeff_length - 1)))
             {
@@ -345,33 +392,58 @@ static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
     {
         OutputDebugStringA("WARN: jpg does not equally divide into 8x8 mcus... Will not decode properly.");
     }
-    // NOTE: Gets the number of mcu image tiles
-    u32 mcu_height = (info->image_height + 7) / 8;
-    u32 mcu_width = (info->image_width + 7) / 8;
-    mcu *result = push_array(ma, (mcu_height*mcu_width), mcu);
+    // TODO: Better understand this type of alloc
+    mcu *result = push_array(ma, (info->mcu_height_real*info->mcu_width_real), mcu);
 
     // NOTE: Get huff codes from symbols
     for(u32 i = 0; i < 4; ++i)
     {
-        gen_huff_codes(&info->dc_tables[i]);
-        gen_huff_codes(&info->ac_tables[i]);
+        if(info->dc_tables[i].set)
+        {
+            gen_huff_codes(&info->dc_tables[i]);
+        }
+        if(info->ac_tables[i].set)
+        {
+            gen_huff_codes(&info->ac_tables[i]);
+        }
     }
 
     // Handles using prev DC coeff to get true DC coeff
     i32 prev_dc_coeff[3] = {};
     // NOTE: Extract coeff for each color component
-    for(u32 i = 0; i < (mcu_height*mcu_width); ++i)
+    for(u32 y = 0; y < info->mcu_height; y += info->v_sampling_factor)
     {
-        if(info->restart_inverval_between_mcus && i % info->restart_inverval_between_mcus == 0)
+        for(u32 x = 0; x < info->mcu_width; x += info->h_sampling_factor)
         {
-            prev_dc_coeff[0] = 0;
-            prev_dc_coeff[1] = 0;
-            prev_dc_coeff[2] = 0;
-            align_bytes(info->img_data);
+            if(info->restart_inverval_between_mcus && (y*info->mcu_width_real + x) % info->restart_inverval_between_mcus == 0)
+            {
+                prev_dc_coeff[0] = 0;
+                prev_dc_coeff[1] = 0;
+                prev_dc_coeff[2] = 0;
+                align_bytes(info->img_data);
+            }
+            for(u32 v = 0; v < info->components[0].v_sampling; ++v)
+            {
+                for(u32 h = 0; h < info->components[0].h_sampling; ++h)
+                {
+                    process_mcu_component(info->img_data, result[(y + v)*info->mcu_width_real + (x + h)].y, &prev_dc_coeff[0], &info->dc_tables[info->components[0].huff_DCtable_id], &info->ac_tables[info->components[0].huff_ACtable_id]);
+                }
+            }
+            for(u32 v = 0; v < info->components[1].v_sampling; ++v)
+            {
+                for(u32 h = 0; h < info->components[1].h_sampling; ++h)
+                {
+                    process_mcu_component(info->img_data, result[(y + v)*info->mcu_width_real + (x + h)].cb, &prev_dc_coeff[1], &info->dc_tables[info->components[1].huff_DCtable_id], &info->ac_tables[info->components[1].huff_ACtable_id]);
+                }
+            }
+            for(u32 v = 0; v < info->components[2].v_sampling; ++v)
+            {
+                for(u32 h = 0; h < info->components[2].h_sampling; ++h)
+                {
+                    process_mcu_component(info->img_data, result[(y + v)*info->mcu_width_real + (x + h)].cr, &prev_dc_coeff[2], &info->dc_tables[info->components[2].huff_DCtable_id], &info->ac_tables[info->components[2].huff_ACtable_id]);
+                }
+            }
         }
-        process_mcu_component(info->img_data, result[i].y, &prev_dc_coeff[0], info->dc_tables[info->components[0].huff_DCtable_id], info->ac_tables[info->components[0].huff_ACtable_id]);
-        process_mcu_component(info->img_data, result[i].cb, &prev_dc_coeff[1], info->dc_tables[info->components[1].huff_DCtable_id], info->ac_tables[info->components[1].huff_ACtable_id]);
-        process_mcu_component(info->img_data, result[i].cr, &prev_dc_coeff[2], info->dc_tables[info->components[2].huff_DCtable_id], info->ac_tables[info->components[2].huff_ACtable_id]);
     }
     return result;
 }
@@ -534,176 +606,231 @@ static void apply_IDCT(i32 *color_comp)
 
 static void inverse_DCT(jpg_info *info, mcu *mcus)
 {
-    u32 mcu_height = (info->image_height + 7) / 8;
-    u32 mcu_width = (info->image_width + 7) / 8;
-    for(u32 i = 0; i < (mcu_width*mcu_height); ++i)
+    for(u32 y = 0; y < info->mcu_height; y += info->v_sampling_factor)
     {
-        apply_IDCT(mcus[i].y);
-        apply_IDCT(mcus[i].cb);
-        apply_IDCT(mcus[i].cr);
+        for(u32 x = 0; x < info->mcu_width; x += info->h_sampling_factor)
+        {
+            for(u32 v = 0; v < info->components[0].v_sampling; ++v)
+            {
+                for(u32 h = 0; h < info->components[0].h_sampling; ++h)
+                {
+                    apply_IDCT(mcus[(y + v)*info->mcu_width_real + (x + h)].y);
+                }
+            }
+            for(u32 v = 0; v < info->components[1].v_sampling; ++v)
+            {
+                for(u32 h = 0; h < info->components[1].h_sampling; ++h)
+                {
+                    apply_IDCT(mcus[(y + v)*info->mcu_width_real + (x + h)].cb);
+                }
+            }
+            for(u32 v = 0; v < info->components[2].v_sampling; ++v)
+            {
+                for(u32 h = 0; h < info->components[2].h_sampling; ++h)
+                {
+                    apply_IDCT(mcus[(y + v)*info->mcu_width_real + (x + h)].cr);
+                }
+            }
+        }
     }
 }
 
 static void dequantize(jpg_info *info, mcu *mcus)
 {
-    u32 mcu_height = (info->image_height + 7) / 8;
-    u32 mcu_width = (info->image_width + 7) / 8;
     quant_table qt = {};
-    for(u32 i = 0; i < (mcu_width*mcu_height); ++i)
+    for(u32 y = 0; y < info->mcu_height; y += info->v_sampling_factor)
     {
-        qt = info->quant_tables[info->components[0].qt_table_id];
-        for(u32 j = 0; j < 64; ++j)
+        for(u32 x = 0; x < info->mcu_width; x += info->h_sampling_factor)
         {
-            mcus[i].y[j] *= qt.table_values[j];
-            // f32 temp = (f32)mcus[i].y[j];
-            // switch(j / 8)
-            // {
-            //     case 0:
-            //         temp *= s0;
-            //         mcus[i].y[j] *= (i32)temp;
-            //         break;
-            //     case 1:
-            //         temp *= s1;
-            //         mcus[i].y[j] *= (i32)temp;
-            //         break;
-            //     case 2:
-            //         temp *= s2;
-            //         mcus[i].y[j] *= (i32)temp;
-            //         break;
-            //     case 3:
-            //         temp *= s3;
-            //         mcus[i].y[j] *= (i32)temp;
-            //         break;
-            //     case 4:
-            //         temp *= s4;
-            //         mcus[i].y[j] *= (i32)temp;
-            //         break;
-            //     case 5:
-            //         temp *= s5;
-            //         mcus[i].y[j] *= (i32)temp;
-            //         break;
-            //     case 6:
-            //         temp *= s6;
-            //         mcus[i].y[j] *= (i32)temp;
-            //         break;
-            //     case 7:
-            //         temp *= s7;
-            //         mcus[i].y[j] *= (i32)temp;
-            //         break;
-            // }
-        }
-        qt = info->quant_tables[info->components[1].qt_table_id];
-        for(u32 j = 0; j < 64; ++j)
-        {
-            mcus[i].cb[j] *= qt.table_values[j];
-            // f32 temp = (f32)mcus[i].cb[j];
-            // switch(j / 8)
-            // {
-            //     case 0:
-            //         temp *= s0;
-            //         mcus[i].cb[j] *= (i32)temp;
-            //         break;
-            //     case 1:
-            //         temp *= s1;
-            //         mcus[i].cb[j] *= (i32)temp;
-            //         break;
-            //     case 2:
-            //         temp *= s2;
-            //         mcus[i].cb[j] *= (i32)temp;
-            //         break;
-            //     case 3:
-            //         temp *= s3;
-            //         mcus[i].cb[j] *= (i32)temp;
-            //         break;
-            //     case 4:
-            //         temp *= s4;
-            //         mcus[i].cb[j] *= (i32)temp;
-            //         break;
-            //     case 5:
-            //         temp *= s5;
-            //         mcus[i].cb[j] *= (i32)temp;
-            //         break;
-            //     case 6:
-            //         temp *= s6;
-            //         mcus[i].cb[j] *= (i32)temp;
-            //         break;
-            //     case 7:
-            //         temp *= s7;
-            //         mcus[i].cb[j] *= (i32)temp;
-            //         break;
-            // }
-        }
-        qt = info->quant_tables[info->components[2].qt_table_id];
-        for(u32 j = 0; j < 64; ++j)
-        {
-            mcus[i].cr[j] *= qt.table_values[j];
-            // f32 temp = (f32)mcus[i].cr[j];
-            // switch(j / 8)
-            // {
-            //     case 0:
-            //         temp *= s0;
-            //         mcus[i].cr[j] *= (i32)temp;
-            //         break;
-            //     case 1:
-            //         temp *= s1;
-            //         mcus[i].cr[j] *= (i32)temp;
-            //         break;
-            //     case 2:
-            //         temp *= s2;
-            //         mcus[i].cr[j] *= (i32)temp;
-            //         break;
-            //     case 3:
-            //         temp *= s3;
-            //         mcus[i].cr[j] *= (i32)temp;
-            //         break;
-            //     case 4:
-            //         temp *= s4;
-            //         mcus[i].cr[j] *= (i32)temp;
-            //         break;
-            //     case 5:
-            //         temp *= s5;
-            //         mcus[i].cr[j] *= (i32)temp;
-            //         break;
-            //     case 6:
-            //         temp *= s6;
-            //         mcus[i].cr[j] *= (i32)temp;
-            //         break;
-            //     case 7:
-            //         temp *= s7;
-            //         mcus[i].cr[j] *= (i32)temp;
-            //         break;
-            // }
+            for(u32 v = 0; v < info->components[0].v_sampling; ++v)
+            {
+                for(u32 h = 0; h < info->components[0].h_sampling; ++h)
+                {
+                    qt = info->quant_tables[info->components[0].qt_table_id];
+                    for(u32 j = 0; j < 64; ++j)
+                    {
+                        mcus[(y + v)*info->mcu_width_real + (x + h)].y[j] *= qt.table_values[j];
+                        // f32 temp = (f32)mcus[i].y[j];
+                        // switch(j / 8)
+                        // {
+                        //     case 0:
+                        //         temp *= s0;
+                        //         mcus[i].y[j] *= (i32)temp;
+                        //         break;
+                        //     case 1:
+                        //         temp *= s1;
+                        //         mcus[i].y[j] *= (i32)temp;
+                        //         break;
+                        //     case 2:
+                        //         temp *= s2;
+                        //         mcus[i].y[j] *= (i32)temp;
+                        //         break;
+                        //     case 3:
+                        //         temp *= s3;
+                        //         mcus[i].y[j] *= (i32)temp;
+                        //         break;
+                        //     case 4:
+                        //         temp *= s4;
+                        //         mcus[i].y[j] *= (i32)temp;
+                        //         break;
+                        //     case 5:
+                        //         temp *= s5;
+                        //         mcus[i].y[j] *= (i32)temp;
+                        //         break;
+                        //     case 6:
+                        //         temp *= s6;
+                        //         mcus[i].y[j] *= (i32)temp;
+                        //         break;
+                        //     case 7:
+                        //         temp *= s7;
+                        //         mcus[i].y[j] *= (i32)temp;
+                        //         break;
+                        // }
+                    }
+                }
+            }
+            for(u32 v = 0; v < info->components[1].v_sampling; ++v)
+            {
+                for(u32 h = 0; h < info->components[1].h_sampling; ++h)
+                {
+                    qt = info->quant_tables[info->components[1].qt_table_id];
+                    for(u32 j = 0; j < 64; ++j)
+                    {
+                        mcus[(y + v)*info->mcu_width_real + (x + h)].cb[j] *= qt.table_values[j];
+                        // f32 temp = (f32)mcus[i].cb[j];
+                        // switch(j / 8)
+                        // {
+                        //     case 0:
+                        //         temp *= s0;
+                        //         mcus[i].cb[j] *= (i32)temp;
+                        //         break;
+                        //     case 1:
+                        //         temp *= s1;
+                        //         mcus[i].cb[j] *= (i32)temp;
+                        //         break;
+                        //     case 2:
+                        //         temp *= s2;
+                        //         mcus[i].cb[j] *= (i32)temp;
+                        //         break;
+                        //     case 3:
+                        //         temp *= s3;
+                        //         mcus[i].cb[j] *= (i32)temp;
+                        //         break;
+                        //     case 4:
+                        //         temp *= s4;
+                        //         mcus[i].cb[j] *= (i32)temp;
+                        //         break;
+                        //     case 5:
+                        //         temp *= s5;
+                        //         mcus[i].cb[j] *= (i32)temp;
+                        //         break;
+                        //     case 6:
+                        //         temp *= s6;
+                        //         mcus[i].cb[j] *= (i32)temp;
+                        //         break;
+                        //     case 7:
+                        //         temp *= s7;
+                        //         mcus[i].cb[j] *= (i32)temp;
+                        //         break;
+                        // }
+                    }
+                }
+            }
+            for(u32 v = 0; v < info->components[2].v_sampling; ++v)
+            {
+                for(u32 h = 0; h < info->components[2].h_sampling; ++h)
+                {
+                    qt = info->quant_tables[info->components[2].qt_table_id];
+                    for(u32 j = 0; j < 64; ++j)
+                    {
+                        mcus[(y + v)*info->mcu_width_real + (x + h)].cr[j] *= qt.table_values[j];
+                        // f32 temp = (f32)mcus[i].cr[j];
+                        // switch(j / 8)
+                        // {
+                        //     case 0:
+                        //         temp *= s0;
+                        //         mcus[i].cr[j] *= (i32)temp;
+                        //         break;
+                        //     case 1:
+                        //         temp *= s1;
+                        //         mcus[i].cr[j] *= (i32)temp;
+                        //         break;
+                        //     case 2:
+                        //         temp *= s2;
+                        //         mcus[i].cr[j] *= (i32)temp;
+                        //         break;
+                        //     case 3:
+                        //         temp *= s3;
+                        //         mcus[i].cr[j] *= (i32)temp;
+                        //         break;
+                        //     case 4:
+                        //         temp *= s4;
+                        //         mcus[i].cr[j] *= (i32)temp;
+                        //         break;
+                        //     case 5:
+                        //         temp *= s5;
+                        //         mcus[i].cr[j] *= (i32)temp;
+                        //         break;
+                        //     case 6:
+                        //         temp *= s6;
+                        //         mcus[i].cr[j] *= (i32)temp;
+                        //         break;
+                        //     case 7:
+                        //         temp *= s7;
+                        //         mcus[i].cr[j] *= (i32)temp;
+                        //         break;
+                        // }
+                    }
+                }
+            }
         }
     }
 }
 
-static void convert_color_mcu(mcu *current_mcu)
+static void convert_color_mcu(jpg_info *info, mcu *luma, mcu *cbcr, u32 v, u32 h)
 {
-    for(u32 i = 0; i < 64; ++i)
+    for(u32 y = 7; y > 0; --y)
     {
-        i32 r = (i32)((f32)current_mcu->y[i] + 1.402f*(f32)current_mcu->cr[i] + 128);
-        i32 g = (i32)((f32)current_mcu->y[i] - 0.344f*(f32)current_mcu->cb[i] - 0.714f*(f32)current_mcu->cr[i] + 128);
-        i32 b = (i32)((f32)current_mcu->y[i] + 1.772f*(f32)current_mcu->cb[i] + 128);
-        // Clamp values between 0 & 255
-        if(r < 0) r = 0;
-        if(r > 255) r = 255;
-        if(g < 0) g = 0;
-        if(g > 255) g = 255;
-        if(b < 0) b = 0;
-        if(b > 255) b = 255;
-        current_mcu->r[i] = r;
-        current_mcu->g[i] = g;
-        current_mcu->b[i] = b;
+        for(u32 x = 7; x > 0; --x)
+        {
+            u32 pixel = y*8 + x;
+            // Row & Col to read from cbcr mcu
+            u32 cbcr_row = (y / info->v_sampling_factor) + 4*v;
+            u32 cbcr_col = (x / info->h_sampling_factor) + 4*h;
+            u32 cbcr_pixel = cbcr_row*8 + cbcr_col;
+            i32 r = (i32)((f32)luma->y[pixel] + 1.402f*(f32)cbcr->cr[cbcr_pixel] + 128);
+            i32 g = (i32)((f32)luma->y[pixel] - 0.344f*(f32)cbcr->cb[cbcr_pixel] - 0.714f*(f32)cbcr->cr[cbcr_pixel] + 128);
+            i32 b = (i32)((f32)luma->y[pixel] + 1.772f*(f32)cbcr->cb[cbcr_pixel] + 128);
+            // Clamp values between 0 & 255
+            if(r < 0) r = 0;
+            if(r > 255) r = 255;
+            if(g < 0) g = 0;
+            if(g > 255) g = 255;
+            if(b < 0) b = 0;
+            if(b > 255) b = 255;
+            luma->r[pixel] = r;
+            luma->g[pixel] = g;
+            luma->b[pixel] = b;
+        }
     }
 }
 
 static void ycbcr_to_rgb(jpg_info *info, mcu *mcus)
 {
-    u32 mcu_height = (info->image_height + 7) / 8;
-    u32 mcu_width = (info->image_width + 7) / 8;
-    for(u32 i = 0; i < (mcu_width*mcu_height); ++i)
+    for(u32 y = 0; y < info->mcu_height; y += info->v_sampling_factor)
     {
-        convert_color_mcu(&mcus[i]);
+        for(u32 x = 0; x < info->mcu_width; x += info->h_sampling_factor)
+        {
+            mcu *cbcr = &mcus[y*info->mcu_width_real + x];
+            for(u32 v = info->v_sampling_factor - 1; v < info->v_sampling_factor; --v)
+            {
+                for(u32 h = info->h_sampling_factor - 1; h < info->h_sampling_factor; --h)
+                {
+                    mcu *luma = &mcus[(y + v)*info->mcu_width_real + (x + h)];
+                    convert_color_mcu(info, luma, cbcr, v, h);
+                }
+            }
+        }
     }
 }
 
@@ -894,9 +1021,38 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
 
     // Begin Decoding
     mcu *mcus = decode_huff_data(ma, &info);
-    // dequantize(&info, mcus);
+    dequantize(&info, mcus);
     // inverse_DCT(&info, mcus);
     // ycbcr_to_rgb(&info, mcus);
+    OutputDebugStringA("\n");
+    for(u32 i = 0; i < 3; ++i)
+    {
+        _snprintf_s(buff, sizeof(buff), "Comp_ID: %d\n", info.components[i].id);
+        OutputDebugStringA(buff);
+        for(u32 y = 0; y < 8; ++y)
+        {
+            for(u32 x = 0; x < 8; ++x)
+            {
+                if(i == 0)
+                {
+                    _snprintf_s(buff, sizeof(buff), "%d ", mcus[0].y[y*8 + x]);
+                    OutputDebugStringA(buff);
+                }
+                if(i == 1)
+                {
+                    _snprintf_s(buff, sizeof(buff), "%d ", mcus[0].cb[y*8 + x]);
+                    OutputDebugStringA(buff);
+                }
+                if(i == 2)
+                {
+                    _snprintf_s(buff, sizeof(buff), "%d ", mcus[0].cr[y*8 + x]);
+                    OutputDebugStringA(buff);
+                }
+            }
+            OutputDebugStringA("\n");
+        }
+        OutputDebugStringA("\n");
+    }
 
     u32 mcu_height = (info.image_height + 7) / 8;
     u32 mcu_width = (info.image_width + 7) / 8;
@@ -912,7 +1068,7 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
     //     }
     // }
     u32 padding_size = info.image_width % 4;
-    for(u32 y = 0; y < info.image_height; ++y)
+    for(u32 y = info.image_height - 1; y < info.image_height; --y)
     {
         u32 mcuRow = y / 8;
         u32 pixelRow = y % 8;
