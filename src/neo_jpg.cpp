@@ -450,16 +450,21 @@ static mcu *decode_huff_data(memory_arena *ma, jpg_info *info)
 
 static void apply_IDCT(i32 *color_comp)
 {
+    f32 working_arr[64] = {};
+    for(u32 i = 0; i < 64; ++i)
+    {
+        working_arr[i] = (f32)color_comp[i];
+    }
     for(u32 col = 0; col < 8; ++col)
     {
-        f32 g0 = (f32)color_comp[0*8 + col] * s0;
-        f32 g1 = (f32)color_comp[4*8 + col] * s4;
-        f32 g2 = (f32)color_comp[2*8 + col] * s2;
-        f32 g3 = (f32)color_comp[6*8 + col] * s6;
-        f32 g4 = (f32)color_comp[5*8 + col] * s5;
-        f32 g5 = (f32)color_comp[1*8 + col] * s1;
-        f32 g6 = (f32)color_comp[7*8 + col] * s7;
-        f32 g7 = (f32)color_comp[3*8 + col] * s3;
+        f32 g0 = working_arr[0*8 + col] * s0;
+        f32 g1 = working_arr[4*8 + col] * s4;
+        f32 g2 = working_arr[2*8 + col] * s2;
+        f32 g3 = working_arr[6*8 + col] * s6;
+        f32 g4 = working_arr[5*8 + col] * s5;
+        f32 g5 = working_arr[1*8 + col] * s1;
+        f32 g6 = working_arr[7*8 + col] * s7;
+        f32 g7 = working_arr[3*8 + col] * s3;
         // f32 g0 = (f32)color_comp[0*8 + col];
         // f32 g1 = (f32)color_comp[4*8 + col];
         // f32 g2 = (f32)color_comp[2*8 + col];
@@ -517,25 +522,33 @@ static void apply_IDCT(i32 *color_comp)
         f32 b6 = c6 - c7;
         f32 b7 = c7;
 
-        color_comp[0*8 + col] = (i32)(b0 + b7);
-        color_comp[1*8 + col] = (i32)(b1 + b6);
-        color_comp[2*8 + col] = (i32)(b2 + b5);
-        color_comp[3*8 + col] = (i32)(b3 + b4);
-        color_comp[4*8 + col] = (i32)(b3 - b4);
-        color_comp[5*8 + col] = (i32)(b2 - b5);
-        color_comp[6*8 + col] = (i32)(b1 - b6);
-        color_comp[7*8 + col] = (i32)(b0 - b7);
+        // color_comp[0*8 + col] = (i32)(b0 + b7);
+        // color_comp[1*8 + col] = (i32)(b1 + b6);
+        // color_comp[2*8 + col] = (i32)(b2 + b5);
+        // color_comp[3*8 + col] = (i32)(b3 + b4);
+        // color_comp[4*8 + col] = (i32)(b3 - b4);
+        // color_comp[5*8 + col] = (i32)(b2 - b5);
+        // color_comp[6*8 + col] = (i32)(b1 - b6);
+        // color_comp[7*8 + col] = (i32)(b0 - b7);
+        working_arr[0*8 + col] = (b0 + b7);
+        working_arr[1*8 + col] = (b1 + b6);
+        working_arr[2*8 + col] = (b2 + b5);
+        working_arr[3*8 + col] = (b3 + b4);
+        working_arr[4*8 + col] = (b3 - b4);
+        working_arr[5*8 + col] = (b2 - b5);
+        working_arr[6*8 + col] = (b1 - b6);
+        working_arr[7*8 + col] = (b0 - b7);
     }
     for(u32 row = 0; row < 8; ++row)
     {
-        f32 g0 = (f32)color_comp[0*8 + row] * s0;
-        f32 g1 = (f32)color_comp[4*8 + row] * s4;
-        f32 g2 = (f32)color_comp[2*8 + row] * s2;
-        f32 g3 = (f32)color_comp[6*8 + row] * s6;
-        f32 g4 = (f32)color_comp[5*8 + row] * s5;
-        f32 g5 = (f32)color_comp[1*8 + row] * s1;
-        f32 g6 = (f32)color_comp[7*8 + row] * s7;
-        f32 g7 = (f32)color_comp[3*8 + row] * s3;
+        f32 g0 = working_arr[row*8 + 0] * s0;
+        f32 g1 = working_arr[row*8 + 4] * s4;
+        f32 g2 = working_arr[row*8 + 2] * s2;
+        f32 g3 = working_arr[row*8 + 6] * s6;
+        f32 g4 = working_arr[row*8 + 5] * s5;
+        f32 g5 = working_arr[row*8 + 1] * s1;
+        f32 g6 = working_arr[row*8 + 7] * s7;
+        f32 g7 = working_arr[row*8 + 3] * s3;
         // f32 g0 = (f32)color_comp[0*8 + row];
         // f32 g1 = (f32)color_comp[4*8 + row];
         // f32 g2 = (f32)color_comp[2*8 + row];
@@ -593,14 +606,18 @@ static void apply_IDCT(i32 *color_comp)
         f32 b6 = c6 - c7;
         f32 b7 = c7;
 
-        color_comp[row*8 + 0] = (i32)(b0 + b7);
-        color_comp[row*8 + 1] = (i32)(b1 + b6);
-        color_comp[row*8 + 2] = (i32)(b2 + b5);
-        color_comp[row*8 + 3] = (i32)(b3 + b4);
-        color_comp[row*8 + 4] = (i32)(b3 - b4);
-        color_comp[row*8 + 5] = (i32)(b2 - b5);
-        color_comp[row*8 + 6] = (i32)(b1 - b6);
-        color_comp[row*8 + 7] = (i32)(b0 - b7);
+        working_arr[row*8 + 0] = (b0 + b7);
+        working_arr[row*8 + 1] = (b1 + b6);
+        working_arr[row*8 + 2] = (b2 + b5);
+        working_arr[row*8 + 3] = (b3 + b4);
+        working_arr[row*8 + 4] = (b3 - b4);
+        working_arr[row*8 + 5] = (b2 - b5);
+        working_arr[row*8 + 6] = (b1 - b6);
+        working_arr[row*8 + 7] = (b0 - b7);
+    }
+    for(u32 i = 0; i < 64; ++i)
+    {
+        color_comp[i] = (i32)working_arr[i];
     }
 }
 
@@ -789,9 +806,9 @@ static void dequantize(jpg_info *info, mcu *mcus)
 
 static void convert_color_mcu(jpg_info *info, mcu *luma, mcu *cbcr, u32 v, u32 h)
 {
-    for(u32 y = 7; y > 0; --y)
+    for(u32 y = 7; y < 8; --y)
     {
-        for(u32 x = 7; x > 0; --x)
+        for(u32 x = 7; x < 8; --x)
         {
             u32 pixel = y*8 + x;
             // Row & Col to read from cbcr mcu
@@ -1022,8 +1039,8 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
     // Begin Decoding
     mcu *mcus = decode_huff_data(ma, &info);
     dequantize(&info, mcus);
-    // inverse_DCT(&info, mcus);
-    // ycbcr_to_rgb(&info, mcus);
+    inverse_DCT(&info, mcus);
+    ycbcr_to_rgb(&info, mcus);
     OutputDebugStringA("\n");
     for(u32 i = 0; i < 3; ++i)
     {
@@ -1062,9 +1079,9 @@ static loaded_jpg DEBUG_load_jpg(memory_arena *ma, thread_context *thread, debug
     // {
     //     for(u32 j = 0; j < (mcu_width*8)*8; ++j)
     //     {
-    //         *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].b[(j / (mcu_width*8))*8 + (j % 8)]);
-    //         *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].g[(j / (mcu_width*8))*8 + (j % 8)]);
     //         *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].r[(j / (mcu_width*8))*8 + (j % 8)]);
+    //         *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].g[(j / (mcu_width*8))*8 + (j % 8)]);
+    //         *pixels++ = (u8)(mcus[i*mcu_width + (j / 8) % mcu_width].b[(j / (mcu_width*8))*8 + (j % 8)]);
     //     }
     // }
     u32 padding_size = info.image_width % 4;

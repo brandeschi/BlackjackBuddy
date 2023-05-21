@@ -41,12 +41,12 @@ typedef double f64;
 
 // Beta Assert FIXME
 #if NEO_SPEED
-#define assert(expression)
+#define neo_assert(expression)
 #else
-#define assert(expression) if (!(expression)) { *(int *)0 = 0; }
+#define neo_assert(expression) if (!(expression)) { *(int *)0 = 0; }
 #endif
 
-#define invalid_code_path assert(!"InvalidCodePath!");
+#define invalid_code_path neo_assert(!"InvalidCodePath!");
 
 #define arr_count(array) (sizeof(array) / sizeof((array)[0]))
 
@@ -57,7 +57,7 @@ struct thread_context
 
 inline u32 safe_truncate_int64(u64 value)
 {
-    assert(value <= 0xFFFFFFFF);
+    neo_assert(value <= 0xFFFFFFFF);
     u32 result = (u32) value;
     return result;
 }
@@ -144,7 +144,7 @@ struct engine_input
 inline engine_controller_input *get_controller(engine_input *input, int controller_index)
 {
     // NOTE: might want to make controller_index unsigned if we don't want neg arr access
-    assert(arr_count(input->controllers) > controller_index);
+    neo_assert(arr_count(input->controllers) > controller_index);
 
     engine_controller_input *result = &input->controllers[controller_index];
     return result;
@@ -207,7 +207,7 @@ static void init_arena(memory_arena *ma, mem_index size, u8 *base_address)
 #define push_array(ma, count, type) (type *)push_size_(ma, (count) * sizeof(type))
 void *push_size_(memory_arena *ma, mem_index size)
 {
-    assert((ma->used_space + size) <= ma->size);
+    neo_assert((ma->used_space + size) <= ma->size);
     void *result = ma->base_address + ma->used_space;
     ma->used_space += size;
     return result;
@@ -218,9 +218,10 @@ void *push_size_(memory_arena *ma, mem_index size)
 
 struct loaded_jpg
 {
+    u8 *pixels;
+    i32 channels;
     u16 width;
     u16 height;
-    u8 *pixels;
 };
 
 struct app_state

@@ -211,7 +211,7 @@ static void draw_rect(engine_bitmap_buffer *buffer, f32 f_min_X, f32 f_max_X, f3
 
 static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input, engine_bitmap_buffer *bitmap_buffer)
 {
-    assert(sizeof(app_state) <= memory->perm_storage_space);
+    neo_assert(sizeof(app_state) <= memory->perm_storage_space);
     app_state *game_state = (app_state *) memory->perm_mem_storage;
 
     if(!memory->is_init)

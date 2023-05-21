@@ -1,5 +1,7 @@
 #include <math.h>
 #include <stdint.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 // TODO: THIS FILE WILL NEED DIAGS ONCE A DIAG SYSTEM IS MADE
 
@@ -35,6 +37,7 @@ typedef char GLchar;
 #define GL_COMPILE_STATUS                 0x8B81
 #define GL_LINK_STATUS                    0x8B82
 #define GL_MIRRORED_REPEAT                0x8370
+#define GL_CLAMP_TO_BORDER                0x812D
 #define GL_TEXTURE0                       0x84C0
 
 typedef void glgenbuffers(GLsizei n, GLuint *buffers);
@@ -376,8 +379,10 @@ static void win32_init_opengl(HWND window_handle, loaded_jpg tex)
         // Setting Texture wrapping method
         // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
         // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
         // Setting Texture filtering methods
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
         // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -513,7 +518,7 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
       case WM_SYSKEYUP:
       case WM_KEYDOWN:
       case WM_KEYUP: {
-        assert(!"NO INPUT HERE");
+        neo_assert(!"NO INPUT HERE");
       }
 
       case WM_ACTIVATEAPP: {
@@ -786,14 +791,20 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
     // FIXME: Refactor this based on platorm dependency
     memory_arena global_arena = {};
-    init_arena(&global_arena, app_memory.perm_storage_space, (u8 *)app_memory.perm_mem_storage);
+    init_arena(&global_arena, total_size, (u8 *)app_memory.perm_mem_storage);
     loaded_jpg crate_tex = {};
-    crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/wdct.jpg", DEBUG_free_file);
+    // stbi_set_flip_vertically_on_load(true);
+    // crate_tex.pixels = stbi_load("test/cards.jpg", &(int)crate_tex.width, &(int)crate_tex.height, &crate_tex.channels, 0);
+    // OutputDebugStringA("HERE\n");
+    // OutputDebugStringA(stbi_failure_reason());
+    // OutputDebugStringA("\n");
+    crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/cards.jpg", DEBUG_free_file);
     if(crate_tex.pixels)
     {
         // Opengl
         win32_init_opengl(window, crate_tex);
     }
+    // stbi_image_free(crate_tex.pixels);
 
     // TODO: Add check here to make sure we got our memory(samples, bitmap, app_mem)
     engine_input input[2] = {};
@@ -893,7 +904,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
         //         safe_write_cursor += sound_settings.secondary_buffer_size;
         //     }
         //     safe_write_cursor += sound_settings.cushion_bytes;
-        //     assert(safe_write_cursor >= play_cursor);
+        //     neo_assert(safe_write_cursor >= play_cursor);
         //
         //     b32 latent_audio = (safe_write_cursor >= expected_frame_boundary_byte);
         //     DWORD target_cursor = 0;
