@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdint.h>
+#define STBI_ONLY_JPEG
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -150,7 +151,6 @@ DEBUG_WRITE_ENTIRE_FILE(DEBUG_write_entire_file)
     CloseHandle(file_handle);
     return result;
 }
-// debug_read_entire_file *DEBUG_read_entire_file;
 
 // TODO: Should I replace this once I want to actually add sound?
 #define DIRECT_SOUND_CREATE(fn_name) HRESULT WINAPI fn_name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter) // Macro to define a function that matches the signature of DirectSound Create func
@@ -354,44 +354,41 @@ static void win32_init_opengl(HWND window_handle, loaded_jpg tex)
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);
 
-        // Bind VAO, tnhe bind and set VBOs, then config vertex attribs
+        // Bind VAO, the bind and set VBOs, then config vertex attribs
         glBindVertexArray(VAO);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-        // Tell opengl how to interpret our vertex data by setting pointers to the attribr
+        // Tell opengl how to interpret our vertex data by setting pointers to the attribs
         // pos attrib
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void *)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
         glEnableVertexAttribArray(0);
         // color attrib
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void *)(3 * sizeof(f32)));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
         glEnableVertexAttribArray(1);
         // tex coord attrib
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(f32), (void*)(6 * sizeof(f32)));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
         glEnableVertexAttribArray(2);
 
         u32 texture;
         glGenTextures(1, &texture);
-        glActiveTexture(GL_TEXTURE0);
+        // glActiveTexture(GL_TEXTURE0 + 1);
         glBindTexture(GL_TEXTURE_2D, texture);
         // Setting Texture wrapping method
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
         // Setting Texture filtering methods
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex.width, tex.height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex.pixels);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         glUseProgram(g_shader_program);
-        glUniform1i(glGetUniformLocation(g_shader_program, "texture"), 0);
+        // Set the uniform location for the sampler2D in the shader
+        // glUniform1i(glGetUniformLocation(g_shader_program, "texture"), 0);
 
     }
     else
@@ -793,18 +790,15 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     memory_arena global_arena = {};
     init_arena(&global_arena, total_size, (u8 *)app_memory.perm_mem_storage);
     loaded_jpg crate_tex = {};
-    // stbi_set_flip_vertically_on_load(true);
-    // crate_tex.pixels = stbi_load("test/cards.jpg", &(int)crate_tex.width, &(int)crate_tex.height, &crate_tex.channels, 0);
-    // OutputDebugStringA("HERE\n");
-    // OutputDebugStringA(stbi_failure_reason());
-    // OutputDebugStringA("\n");
-    crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/cards.jpg", DEBUG_free_file);
+    stbi_set_flip_vertically_on_load(true);
+    crate_tex.pixels = stbi_load("test/container.jpg", &(int)crate_tex.width, &(int)crate_tex.height, &crate_tex.channels, 0);
+    // crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/cardback.jpeg", DEBUG_free_file);
     if(crate_tex.pixels)
     {
         // Opengl
         win32_init_opengl(window, crate_tex);
     }
-    // stbi_image_free(crate_tex.pixels);
+    stbi_image_free(crate_tex.pixels);
 
     // TODO: Add check here to make sure we got our memory(samples, bitmap, app_mem)
     engine_input input[2] = {};

@@ -220,8 +220,8 @@ struct loaded_jpg
 {
     u8 *pixels;
     i32 channels;
-    u16 width;
-    u16 height;
+    i32 width;
+    i32 height;
 };
 
 struct app_state

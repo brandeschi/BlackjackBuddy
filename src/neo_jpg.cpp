@@ -1,5 +1,3 @@
-// TODO: See if I akctually need to tightly pack like this
-// #pragma pack(push, 1)
 inline static u16 endian_swap_word(u16 word)
 {
     u16 result = ((word & 0xFF00) >> 8) | ((word & 0x00FF) << 8);

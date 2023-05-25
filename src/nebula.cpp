@@ -95,27 +95,6 @@ inline static void new_hand_deal(deck *deck, u32 players = 2)
     // return cards_removed;
 }
 
-// NOTE: CPP is not obligated to pack structs the way we want so sometimes this is necessary
-
-// Decode the Huffman data
-// Un-Quantize by multiplying by the Quantization table
-// Inverse the DCT
-// All of this done for each 8x8 image
-// Exif JPG
-// struct jpg_header
-// {
-//     u16 file_type; // always 0xFFD8
-//     u16 file_type_marker; // APP1 marker; always 0xFFE1
-//     u16 file_size;
-//     u32 res_1; // Exif header part1
-//     u16 res_2; // Exif header part2
-//     u16 byte_alignment; // Either "I I" or "MM"                                     //
-//     u16 tag_mark; // reserved for after alignment                                   // TIFF Header
-//     u32 first_ifd_offset; // 1st Image File Directory offset (usually 0x00000008)   //
-//
-//
-// };
-
 #include "neo_jpg.h"
 #include "neo_jpg.cpp"
 
