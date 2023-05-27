@@ -39,6 +39,25 @@ union v4
     f32 e[4];
 };
 
+union mat4
+{
+    struct
+    {
+        f32 row1[4];
+        f32 row2[4];
+        f32 row3[4];
+        f32 row4[4];
+    };
+    struct
+    {
+        f32 col1[4];
+        f32 col2[4];
+        f32 col3[4];
+        f32 col4[4];
+    };
+    f32 e[4][4];
+};
+
 // NOTE: A C++ 11 way of doing the below would be
 // v2 A = v2{1, 2};
 inline v2 V2(f32 x, f32 y)
