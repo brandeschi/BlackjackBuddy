@@ -1,8 +1,5 @@
 #include <math.h>
 #include <stdint.h>
-#define STBI_ONLY_JPEG
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
 
 // TODO: THIS FILE WILL NEED DIAGS ONCE A DIAG SYSTEM IS MADE
 
@@ -455,7 +452,7 @@ static void win32_update_win_with_buffer(HDC device_context,
                                          win32_bitmap_buffer *buffer,
                                          int win_width, int win_height)
 {
-#if 0
+#if 1
     // Clear the unused client pixels to black
     PatBlt(device_context, 0, buffer->height, win_width, win_height, BLACKNESS);
     PatBlt(device_context, buffer->width, 0, win_width, win_height, BLACKNESS);
@@ -476,8 +473,8 @@ static void win32_update_win_with_buffer(HDC device_context,
         buffer->memory, &buffer->info,
         DIB_RGB_COLORS, // iUsage - Use literal rgb values to color in the pixels
         SRCCOPY);       // Raster Operation Code - Copy our bitmap to the dest
-#endif
 
+#else
     glViewport(0, 0, win_width, win_height);
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -490,6 +487,7 @@ static void win32_update_win_with_buffer(HDC device_context,
 
     // TODO: Look up what swapbuffers should be used
     SwapBuffers(device_context);
+#endif
 }
 static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
                                                    UINT message, WPARAM WParam,
@@ -720,6 +718,8 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     win_class.hInstance = win_instance;
     win_class.lpszClassName = "MainWindowClass";
 
+    win32_resize_DIB_section(&g_bm_buffer, 960, 540);
+
     if (!RegisterClassA(&win_class))
         return false;
 
@@ -789,16 +789,15 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     // FIXME: Refactor this based on platorm dependency
     memory_arena global_arena = {};
     init_arena(&global_arena, total_size, (u8 *)app_memory.perm_mem_storage);
+#if 0
     loaded_jpg crate_tex = {};
-    stbi_set_flip_vertically_on_load(true);
-    crate_tex.pixels = stbi_load("test/container.jpg", &(int)crate_tex.width, &(int)crate_tex.height, &crate_tex.channels, 0);
-    // crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/cardback.jpeg", DEBUG_free_file);
+    crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/cardback.jpeg", DEBUG_free_file);
     if(crate_tex.pixels)
     {
         // Opengl
         win32_init_opengl(window, crate_tex);
     }
-    stbi_image_free(crate_tex.pixels);
+#endif
 
     // TODO: Add check here to make sure we got our memory(samples, bitmap, app_mem)
     engine_input input[2] = {};
@@ -859,16 +858,16 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
         }
 
-        // thread_context thread = {};
-        // // This pulls from our platform-independent code from nebula.h
+        thread_context thread = {};
+        // This pulls from our platform-independent code from nebula.h
         engine_bitmap_buffer buffer = {};
         buffer.memory = g_bm_buffer.memory;
         buffer.width = g_bm_buffer.width;
         buffer.height = g_bm_buffer.height;
         buffer.pitch = g_bm_buffer.pitch;
         buffer.bytes_per_pixel = g_bm_buffer.bytes_per_pixel;
-        // update_and_render(&thread, &app_memory, new_input, &buffer);
-        update_and_render(&g_thread_context, &app_memory, new_input, &buffer);
+        update_and_render(&thread, &app_memory, new_input, &buffer);
+        // update_and_render(&g_thread_context, &app_memory, new_input, &buffer);
 
         // NOTE: Go to HHD020 to see comment about how audio sync will work.
 

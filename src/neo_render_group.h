@@ -1,0 +1,2 @@
+struct render_group
+{};

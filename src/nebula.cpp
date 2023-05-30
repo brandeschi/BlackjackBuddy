@@ -95,8 +95,10 @@ inline static void new_hand_deal(deck *deck, u32 players = 2)
     // return cards_removed;
 }
 
+#if 0
 #include "neo_jpg.h"
 #include "neo_jpg.cpp"
+#endif
 
 static void output_sound(app_state *game_state, engine_sound_buffer *sound_buffer)
 {
@@ -132,18 +134,6 @@ static void app_get_sound_samples(thread_context *thread, app_memory *memory, en
     app_state *game_state = (app_state *) memory->perm_mem_storage;
     // output_sound(game_state, sound_buffer);
 }
-
-#if 0
-inline i32 round_f32_to_i32(f32 real)
-{
-    return (i32) (real + 0.5f);
-}
-
-inline u32 round_f32_to_u32(f32 real)
-{
-    return (u32) (real + 0.5f);
-}
-#endif
 
 static void draw_rect(engine_bitmap_buffer *buffer, f32 f_min_X, f32 f_max_X, f32 f_min_Y, f32 f_max_Y,
                       f32 r, f32 g, f32 b)
@@ -197,13 +187,11 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     {
         memory->is_init = true;
     }
-    #if 0
     for (int controller_index = 0;
          controller_index < arr_count(input->controllers);
          controller_index++)
     {
         engine_controller_input *controller = get_controller(input, controller_index);
-
         if (controller->is_analog)
         {
         }
@@ -216,6 +204,5 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     // Draw debug backgroun in client area.
     draw_rect(bitmap_buffer, 0.0f, (f32)bitmap_buffer->width, 0.0f, (f32)bitmap_buffer->height,
               0.8f, 0.56f, 0.64f);
-        #endif
 }
 
