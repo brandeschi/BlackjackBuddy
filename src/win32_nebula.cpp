@@ -778,6 +778,9 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     app_memory app_memory = {};
     app_memory.perm_storage_space = megabytes(64);
     app_memory.flex_storage_space = gigabytes(4);
+    app_memory.DEBUG_free_file = DEBUG_free_file;
+    app_memory.DEBUG_read_entire_file = DEBUG_read_entire_file;
+    app_memory.DEBUG_write_entire_file = DEBUG_write_entire_file;
 
     // TODO: Probably want to look into MEM_LARGE_PAGES?? HHD[024]
     u64 total_size = app_memory.perm_storage_space + app_memory.flex_storage_space;

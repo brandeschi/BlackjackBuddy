@@ -135,13 +135,184 @@ static void app_get_sound_samples(thread_context *thread, app_memory *memory, en
     // output_sound(game_state, sound_buffer);
 }
 
-static void draw_rect(engine_bitmap_buffer *buffer, f32 f_min_X, f32 f_max_X, f32 f_min_Y, f32 f_max_Y,
+// NOTE: CPP is not obligated to pack structs the way we want so sometimes this is necessary
+#pragma pack(push, 1) // Push how closely to pack bytes
+struct bmp_header
+{
+    u16 file_type;
+    u32 file_size;
+    u16 res_1;
+    u16 res_2;
+    u32 bitmap_offset;
+    // DIB Header v5
+    u32 size;
+    i32 width;
+    i32 height;
+    u16 planes;
+    u16 bits_per_pixel;
+    u32 compression;
+    u32 size_of_bitmap;
+    i32 horz_resolution;
+    i32 vert_resolution;
+    u32 colors_used;
+    u32 colors_important;
+    u32 red_mask;
+    u32 green_mask;
+    u32 blue_mask;
+    u32 alpha_mask;
+    // DWORD        bV5CSType;
+    // CIEXYZTRIPLE bV5Endpoints;
+    // DWORD        bV5GammaRed;
+    // DWORD        bV5GammaGreen;
+    // DWORD        bV5GammaBlue;
+    // DWORD        bV5Intent;
+    // DWORD        bV5ProfileData;
+    // DWORD        bV5ProfileSize;
+    // DWORD        bV5Reserved;
+};
+#pragma pack(pop) // Pop back to how the compiler was packing previously
+
+// TODO: This is not final bmp loading code!
+static loaded_bmp DEBUG_load_bmp(thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name)
+{
+    loaded_bmp result = {};
+    debug_file_result read_result = read_entire_file(thread, file_name);
+    if (read_result.contents_size != 0)
+    {
+        bmp_header *header = (bmp_header *)read_result.contents;
+        u8 *pixels = ((u8 *)read_result.contents + header->bitmap_offset);
+
+        // NOTE: For some reason I did not have to do any shifting of the bits for my bmp file?
+        result.pixels = pixels;
+        result.channels = header->bits_per_pixel / 8;
+        result.width = header->width;
+        result.height = header->height;
+
+        // neo_assert(header->compression == 3);
+
+        if(header->compression == 3)
+        {
+            // NOTE: Byte order of the bmp pixels in memory is deteremined by the header itself!
+            u32 alpha_mask = ~(header->red_mask | header->green_mask | header->blue_mask);
+
+            bit_scan_result red_shift = find_least_sig_set_bit_32(header->red_mask);
+            bit_scan_result green_shift = find_least_sig_set_bit_32(header->green_mask);
+            bit_scan_result blue_shift = find_least_sig_set_bit_32(header->blue_mask);
+            bit_scan_result alpha_shift = find_least_sig_set_bit_32(alpha_mask);
+
+            neo_assert(red_shift.found);
+            neo_assert(green_shift.found);
+            neo_assert(blue_shift.found);
+            neo_assert(alpha_shift.found);
+
+            u32 *src_dest = (u32 *)pixels;
+            for (i32 Y = 0; Y < header->height; Y++)
+            {
+                for (i32 X = 0; X < header->width; X++)
+                {
+                    u32 color = *src_dest;
+                    *src_dest++ = ((((color >> alpha_shift.index) & 0xFF) << 24) |
+                        (((color >> red_shift.index) & 0xFF) << 16) |
+                        (((color >> green_shift.index) & 0xFF) << 8) |
+                        (((color >> blue_shift.index) & 0xFF) << 0)
+                    );
+                }
+            }
+        }
+    }
+
+    return result;
+}
+static void draw_bmp(engine_bitmap_buffer *buffer, loaded_bmp *bmp)
+{
+    i32 min_X = round_f32_to_i32(0);
+    i32 max_X = round_f32_to_i32(0 + (f32)bmp->width);
+    // i32 max_X = round_f32_to_i32(225.f);
+    i32 min_Y = round_f32_to_i32(0);
+    i32 max_Y = round_f32_to_i32(0 + (f32)bmp->height);
+    // i32 max_Y = round_f32_to_i32(310.f);
+
+    if(min_X < 0)
+    {
+        min_X = 0;
+    }
+    if(max_X > buffer->width)
+    {
+        max_X = buffer->width;
+    }
+    if(min_Y < 0)
+    {
+        min_Y = 0;
+    }
+    if(max_Y > buffer->height)
+    {
+        max_Y = buffer->height;
+    }
+
+    if(bmp->channels == 3)
+    {
+        u8 *src_row = bmp->pixels + (bmp->width * (bmp->height - 1))*3;
+        u8 *dest_row = (u8 *)buffer->memory + min_X*buffer->bytes_per_pixel + min_Y*buffer->pitch;
+        for (i32 y = min_Y; y < max_Y; ++y)
+        {
+            u32 *dest = (u32 *)dest_row;
+            u8 *src = src_row;
+            for (i32 x = min_X; x < max_X; ++x)
+            {
+                *dest++ = (*(src + 2) << 16 | *(src + 1) << 8 | *src);
+                src += 3;
+            }
+            dest_row += buffer->pitch;
+            src_row -= (bmp->width*3);
+        }
+    }
+    else
+    {
+        u32 *src_row = ((u32 *)bmp->pixels) + bmp->width * (bmp->height - 1);
+        u8 *dest_row = (u8 *)buffer->memory + min_X*buffer->bytes_per_pixel + min_Y*buffer->pitch;
+        for (i32 y = min_Y; y < max_Y; y++)
+        {
+            u32 *dest = (u32 *)dest_row;
+            u32 *src = src_row;
+            for (i32 x = min_X; x < max_X; x++)
+            {
+                f32 a = (f32)((*src >> 24) & 0xFF) / 255.0f;
+                f32 sr = (f32)((*src >> 16) & 0xFF);
+                f32 sg = (f32)((*src >> 8) & 0xFF);
+                f32 sb = (f32)((*src >> 0) & 0xFF);
+
+                f32 dr = (f32)((*dest >> 16) & 0xFF);
+                f32 dg = (f32)((*dest >> 8) & 0xFF);
+                f32 db = (f32)((*dest >> 0) & 0xFF);
+
+                // TODO: Learn about pre-multiplied alpha(not pre-multiplied)
+                //
+                // NOTE: This uses linear alpha blending!
+                f32 r = (1.0f - a) * dr + a * sr;
+                f32 g = (1.0f - a) * dg + a * sg;
+                f32 b = (1.0f - a) * db + a * sb;
+
+                *dest = (((u32)(r + 0.5f) << 16) |
+                    ((u32)(g + 0.5f) << 8) |
+                    ((u32)(b + 0.5f) << 0)
+                );
+                dest++;
+                src++;
+            }
+
+            dest_row += buffer->pitch;
+            src_row -= bmp->width;
+        }
+    }
+}
+
+static void draw_rect(engine_bitmap_buffer *buffer, v2 min, v2 max,
                       f32 r, f32 g, f32 b)
 {
-    i32 min_X = round_f32_to_i32(f_min_X);
-    i32 max_X = round_f32_to_i32(f_max_X);
-    i32 min_Y = round_f32_to_i32(f_min_Y);
-    i32 max_Y = round_f32_to_i32(f_max_Y);
+    i32 min_X = round_f32_to_i32(min.x);
+    i32 max_X = round_f32_to_i32(max.x);
+    i32 min_Y = round_f32_to_i32(min.y);
+    i32 max_Y = round_f32_to_i32(max.y);
 
     // Will clamp the values inside of the bitmap_buffer
     if(min_X < 0)
@@ -181,10 +352,12 @@ static void draw_rect(engine_bitmap_buffer *buffer, f32 f_min_X, f32 f_max_X, f3
 static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input, engine_bitmap_buffer *bitmap_buffer)
 {
     neo_assert(sizeof(app_state) <= memory->perm_storage_space);
-    app_state *game_state = (app_state *) memory->perm_mem_storage;
+    app_state *game_state = (app_state *)memory->perm_mem_storage;
 
     if(!memory->is_init)
     {
+        // game_state->bg = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/classic-cards.bmp");
+        game_state->bg = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/test.bmp");
         memory->is_init = true;
     }
     for (int controller_index = 0;
@@ -202,7 +375,10 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     }
 
     // Draw debug backgroun in client area.
-    draw_rect(bitmap_buffer, 0.0f, (f32)bitmap_buffer->width, 0.0f, (f32)bitmap_buffer->height,
+    v2 min = {};
+    v2 max = { (f32)bitmap_buffer->width, (f32)bitmap_buffer->height };
+    draw_rect(bitmap_buffer, min, max,
               0.8f, 0.56f, 0.64f);
+    draw_bmp(bitmap_buffer, &game_state->bg);
 }
 

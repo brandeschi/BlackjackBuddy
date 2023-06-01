@@ -152,13 +152,17 @@ inline engine_controller_input *get_controller(engine_input *input, int controll
 
 struct app_memory
 {
-  b32 is_init;
+    b32 is_init;
 
-  u64 perm_storage_space;
-  void *perm_mem_storage; // NOTE: This needs to be cleared to 0 when allocated at startup
+    u64 perm_storage_space;
+    void *perm_mem_storage; // NOTE: This needs to be cleared to 0 when allocated at startup
 
-  u64 flex_storage_space;
-  void *flex_mem_storage;
+    u64 flex_storage_space;
+    void *flex_mem_storage;
+
+    debug_free_file *DEBUG_free_file;
+    debug_read_entire_file *DEBUG_read_entire_file;
+    debug_write_entire_file *DEBUG_write_entire_file;
 };
 
 enum card_type
@@ -223,12 +227,17 @@ struct loaded_jpg
     i32 width;
     i32 height;
 };
+struct loaded_bmp
+{
+    u8 *pixels;
+    i32 channels;
+    i32 width;
+    i32 height;
+};
 
 struct app_state
 {
-    // debug_free_file *DEBUG_free_file;
-    // debug_read_entire_file *DEBUG_read_entire_file;
-    // debug_write_entire_file *DEBUG_write_entire_file;
+    loaded_bmp bg;
 };
 
 static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input,
