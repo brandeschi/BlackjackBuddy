@@ -149,69 +149,6 @@ DEBUG_WRITE_ENTIRE_FILE(DEBUG_write_entire_file)
     return result;
 }
 
-// TODO: Should I replace this once I want to actually add sound?
-#define DIRECT_SOUND_CREATE(fn_name) HRESULT WINAPI fn_name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter) // Macro to define a function that matches the signature of DirectSound Create func
-typedef DIRECT_SOUND_CREATE(dsound_create);
-
-static void win32_init_dsound(HWND win_handle, i32 buffer_size,
-                              i32 samples_per_sec) {
-  // NOTE: Load Lib
-  HMODULE dsound_lib = LoadLibraryA("dsound.dll");
-  if (dsound_lib) {
-    // NOTE: Get DSound object (direct sound is OOP)
-    dsound_create *direct_sound_create =
-        (dsound_create *)GetProcAddress(dsound_lib, "DirectSoundCreate");
-
-    LPDIRECTSOUND direct_sound;
-    if (direct_sound_create &&
-        SUCCEEDED(direct_sound_create(0, &direct_sound, 0))) {
-      WAVEFORMATEX wave_format = {};
-      wave_format.wFormatTag = WAVE_FORMAT_PCM;
-      wave_format.nChannels = 2;
-      wave_format.nSamplesPerSec = samples_per_sec;
-      wave_format.wBitsPerSample = 16; // 16-bit audio
-      wave_format.nBlockAlign =
-          (wave_format.nChannels * wave_format.wBitsPerSample) / 8;
-      wave_format.nAvgBytesPerSec =
-          wave_format.nSamplesPerSec * wave_format.nBlockAlign;
-      wave_format.cbSize = 0;
-
-      // TODO: assert this later
-      if (SUCCEEDED(
-              direct_sound->SetCooperativeLevel(win_handle, DSSCL_PRIORITY))) {
-        // NOTE: Create a 'primary buffer'
-        DSBUFFERDESC buffer_desc = {};
-        buffer_desc.dwSize = sizeof(buffer_desc);
-        buffer_desc.dwFlags = DSBCAPS_PRIMARYBUFFER;
-        // Could this be an issue that dwBufferBytes expects and ulong (32bits)
-        // while we pass it a int32?
-        LPDIRECTSOUNDBUFFER primary_buffer;
-        if (SUCCEEDED(direct_sound->CreateSoundBuffer(&buffer_desc,
-                                                      &primary_buffer, 0))) {
-          if (SUCCEEDED(primary_buffer->SetFormat(&wave_format))) {
-            // NOTE: Format set!
-            OutputDebugStringA("primary buffer set!\n");
-          }
-        }
-      }
-      // NOTE: Create a 'secondary buffer'
-      DSBUFFERDESC buffer_desc = {};
-      buffer_desc.dwSize = sizeof(buffer_desc);
-      buffer_desc.dwFlags = 0;
-      buffer_desc.dwBufferBytes = buffer_size;
-      buffer_desc.lpwfxFormat = &wave_format;
-      if (SUCCEEDED(direct_sound->CreateSoundBuffer(&buffer_desc,
-                                                    &g_secondary_buffer, 0))) {
-        OutputDebugStringA("second buffer set!\n");
-      }
-    }
-
-    // NOTE: Play!
-  } else {
-    // TODO: DIAG
-  }
-}
-
 static GLuint create_ogl_shader_program(char *vertex_file_name, char *fragment_file_name)
 {
     GLuint prog_id = 0;
@@ -529,69 +466,6 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
   return result;
 }
 
-static void win32_clear_sound_buffer(win32_sound_settings *sound_settings) {
-  VOID *region1;
-  DWORD region1_size;
-  VOID *region2;
-  DWORD region2_size;
-
-  if (SUCCEEDED(g_secondary_buffer->Lock(0, sound_settings->secondary_buffer_size,
-                                       &region1, &region1_size, &region2,
-                                       &region2_size, 0))) {
-    // Clear region 1
-    u8 *dest_samples = (u8 *)region1;
-    for (DWORD byte_index = 0; byte_index < region1_size; byte_index++) {
-      *dest_samples++ = 0;
-    }
-
-    // Clear region 2
-    dest_samples = (u8 *)region2;
-    for (DWORD byte_index = 0; byte_index < region2_size; byte_index++) {
-      *dest_samples++ = 0;
-    }
-
-    g_secondary_buffer->Unlock(region1, region1_size, region2, region2_size);
-  }
-}
-
-static void win32_fill_sound_buffer(win32_sound_settings *sound_settings,
-                                    DWORD bytes_to_lock, DWORD bytes_to_write,
-                                    engine_sound_buffer *source_buffer) {
-  VOID *region1;
-  DWORD region1_size;
-  VOID *region2;
-  DWORD region2_size;
-
-  if (SUCCEEDED(g_secondary_buffer->Lock(bytes_to_lock, bytes_to_write, &region1,
-                                       &region1_size, &region2, &region2_size,
-                                       0))) {
-    // TODO: assert region sizes
-    DWORD region1_sample_count =
-        region1_size / sound_settings->bytes_per_sample;
-    i16 *dest_samples = (i16 *)region1;
-    i16 *source_samples = source_buffer->samples;
-
-    for (DWORD sample_index = 0; sample_index < region1_sample_count;
-         sample_index++) {
-      *dest_samples++ = *source_samples++;
-      *dest_samples++ = *source_samples++;
-      sound_settings->running_sample_index++;
-    }
-
-    DWORD region2_sample_count =
-        region2_size / sound_settings->bytes_per_sample;
-    dest_samples = (i16 *)region2;
-    for (DWORD sample_index = 0; sample_index < region2_sample_count;
-         sample_index++) {
-      *dest_samples++ = *source_samples++;
-      *dest_samples++ = *source_samples++;
-      sound_settings->running_sample_index++;
-    }
-
-    g_secondary_buffer->Unlock(region1, region1_size, region2, region2_size);
-  }
-}
-
 static void win32_process_keeb_message(engine_button_state *new_state, b32 is_down)
 {
     if (new_state->is_down != is_down)
@@ -742,29 +616,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     f32 update_hz = monitor_hz / 2.0f;
     f32 target_seconds_per_frame = 1.0f / update_hz;
 
-    // Set up our sound config
-    // win32_sound_settings sound_settings = {};
-    // sound_settings.samples_per_sec = 48000;
-    // sound_settings.bytes_per_sample = sizeof(i16) * 2;
-    // sound_settings.secondary_buffer_size =
-    //   sound_settings.samples_per_sec * sound_settings.bytes_per_sample;
-    // // NOTE: Seems that the latency is at least 3 times our samples/update cycle.
-    // // TODO: Need to calculate the variance on the sound to find what the proper value of cushion we need.
-    // sound_settings.cushion_bytes = (DWORD)(((f32)(sound_settings.samples_per_sec * sound_settings.bytes_per_sample) / update_hz) / 3.0f);
-    //
-    // // Start up directsound
-    // win32_init_dsound(window, sound_settings.secondary_buffer_size,
-    //                 sound_settings.samples_per_sec);
-    // win32_clear_sound_buffer(&sound_settings);
-    // g_secondary_buffer->Play(0, 0, DSBPLAY_LOOPING);
-    //
-    // // TODO:
-    // // Pool this with bitmap also, once I have an idea about how I want the core of this engine to be,
-    // // I might want to change how I do these virtualallocs (especially if casey never gets to it)
-    // i16 *samples =
-    //   (i16 *)VirtualAlloc(0, sound_settings.secondary_buffer_size,
-    //                           MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-    //
     // TODO:
     // For now, we are just setting up the memory space for my machine.
     // Later this will need to handled to in some other way by looking at what we
@@ -808,14 +659,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     engine_input *old_input = &input[1];
 
     g_running = true;
-    LARGE_INTEGER start_counter = win32_get_seconds_wallclock();
-
-    int debug_cursor_index = 0;
-    DWORD debug_cursors[30] = {};
-
-    // DWORD audio_latency_bytes = 0;
-    // f32 audio_latency_seconds = 0.0f;
-    // b32 valid_sound = false;
 
     // Global Loop
     while (g_running)
@@ -871,120 +714,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
         buffer.bytes_per_pixel = g_bm_buffer.bytes_per_pixel;
         update_and_render(&thread, &app_memory, new_input, &buffer);
         // update_and_render(&g_thread_context, &app_memory, new_input, &buffer);
-
-        // NOTE: Go to HHD020 to see comment about how audio sync will work.
-
-        // SOUND
-        // DWORD play_cursor = 0;
-        // DWORD write_cursor = 0;
-        // if (SUCCEEDED(g_secondary_buffer->GetCurrentPosition(&play_cursor,
-        //                                                    &write_cursor)))
-        // {
-        //     if (!valid_sound)
-        //     {
-        //         sound_settings.running_sample_index = write_cursor / sound_settings.bytes_per_sample;
-        //         valid_sound = true;
-        //     }
-        //
-        //     DWORD bytes_to_lock = ((sound_settings.running_sample_index *
-        //                       sound_settings.bytes_per_sample) %
-        //                      sound_settings.secondary_buffer_size);
-        //
-        //
-        //     DWORD expected_sound_bytes_per_frame = (DWORD)((f32)(sound_settings.samples_per_sec * sound_settings.bytes_per_sample) / update_hz);
-        //     DWORD expected_frame_boundary_byte = play_cursor + expected_sound_bytes_per_frame;
-        //
-        //     DWORD safe_write_cursor = write_cursor;
-        //     if (safe_write_cursor < play_cursor)
-        //     {
-        //         safe_write_cursor += sound_settings.secondary_buffer_size;
-        //     }
-        //     safe_write_cursor += sound_settings.cushion_bytes;
-        //     neo_assert(safe_write_cursor >= play_cursor);
-        //
-        //     b32 latent_audio = (safe_write_cursor >= expected_frame_boundary_byte);
-        //     DWORD target_cursor = 0;
-        //     if (latent_audio)
-        //     {
-        //         target_cursor = write_cursor + expected_sound_bytes_per_frame + sound_settings.cushion_bytes;
-        //     }
-        //     else
-        //     {
-        //         target_cursor = expected_frame_boundary_byte + expected_sound_bytes_per_frame;
-        //     }
-        //     target_cursor = target_cursor % sound_settings.secondary_buffer_size;
-        //
-        //
-        //     DWORD bytes_to_write = 0;
-        //     if (bytes_to_lock > target_cursor)
-        //     {
-        //         bytes_to_write = sound_settings.secondary_buffer_size - bytes_to_lock;
-        //         bytes_to_write += target_cursor;
-        //     }
-        //     else
-        //     {
-        //         bytes_to_write = target_cursor - bytes_to_lock;
-        //     }
-        //
-        //     engine_sound_buffer sound_buffer = {};
-        //     sound_buffer.samples_per_second = sound_settings.samples_per_sec;
-        //     sound_buffer.sample_count =
-        //         bytes_to_write / sound_settings.bytes_per_sample;
-        //     sound_buffer.samples = samples;
-        //     app_get_sound_samples(&thread, &app_memory, &sound_buffer);
-        //
-        //     win32_fill_sound_buffer(&sound_settings, bytes_to_lock, bytes_to_write,
-        //                           &sound_buffer);
-        // }
-        // else
-        // {
-        //     valid_sound = false;
-        // }
-
-        // NOTE: TIMING OUR RUNNING LOOP
-        // LARGE_INTEGER current_counter = win32_get_seconds_wallclock();
-        // f32 current_seconds_elapsed = win32_get_seconds_elapsed(start_counter, current_counter);
-        //
-        // // Stall out if frame is ready sooner than target time
-        // f32 secs_elapsed_for_frame = current_seconds_elapsed;
-        // if (secs_elapsed_for_frame < target_seconds_per_frame)
-        // {
-        //     if (granular_sleep)
-        //     {
-        //         // NOTE:
-        //         // For some reason, the sleep is not accurate enough to wake in time. [HHD018]
-        //         // Thus, I am sleeping 1ms less to make sure we lock at 33.33ms
-        //         DWORD sleep_time = (DWORD) ((1000.0f * (target_seconds_per_frame - secs_elapsed_for_frame)) - 1.0f);
-        //         if (sleep_time > 0)
-        //         {
-        //             Sleep(sleep_time);
-        //         }
-        //     }
-        //
-        //     // NOTE:
-        //     // Should not assert pieces of code that we know WILL happen.
-        //     // Try to only assert when we want to make sure we crash IF the thing happens!!!
-        //     f32 test_secs_elapsed_for_frame = win32_get_seconds_elapsed(current_counter, win32_get_seconds_wallclock());
-        //     if (test_secs_elapsed_for_frame < target_seconds_per_frame)
-        //     {
-        //         // TODO: LOGGING HERE!
-        //         // MISSED SLEEP
-        //     }
-        //
-        //     while (secs_elapsed_for_frame < target_seconds_per_frame)
-        //     {
-        //         secs_elapsed_for_frame = win32_get_seconds_elapsed(start_counter, win32_get_seconds_wallclock());
-        //     }
-        // }
-        // else
-        // {
-        //     // TODO: Took too long to process current frame!
-        //     // Logging here
-        // }
-        //
-        // LARGE_INTEGER end_counter = win32_get_seconds_wallclock();
-        // f32 ms_per_frame = 1000.0f * win32_get_seconds_elapsed(start_counter, end_counter);
-        // start_counter = end_counter;
 
         win32_win_dimensions win_size = win32_get_win_dimensions(window);
         win32_update_win_with_buffer(device_context, &g_bm_buffer, win_size.width,
