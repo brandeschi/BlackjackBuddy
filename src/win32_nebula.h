@@ -20,8 +20,6 @@ struct win32_sound_settings
     u32 running_sample_index;
     int bytes_per_sample;
     DWORD secondary_buffer_size;
-    DWORD cushion_bytes; 
+    DWORD cushion_bytes;
 };
-
-// TODO: Maybe add a platform layer state struct in here
 

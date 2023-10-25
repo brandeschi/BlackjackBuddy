@@ -31,8 +31,6 @@ typedef size_t mem_index;
 typedef float f32;
 typedef double f64;
 
-
-
 // Bytes size maps
 #define kilobytes(value) ((value)*1024LL)
 #define megabytes(value) (kilobytes(value) * 1024LL)
@@ -184,8 +182,8 @@ enum card_type
 
 struct card
 {
-    card_type Value;
-    char *Suit;
+    card_type value;
+    char *suit;
 };
 
 struct deck

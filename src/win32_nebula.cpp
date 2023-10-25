@@ -1,8 +1,6 @@
 #include <math.h>
 #include <stdint.h>
 
-// TODO: THIS FILE WILL NEED DIAGS ONCE A DIAG SYSTEM IS MADE
-
 #define global static
 #define pi32 3.14159265359f
 #define KEEB_COUNT 1
@@ -87,6 +85,7 @@ global glactivetexture *glActiveTexture;
 typedef void gluniform1i(GLint location, GLint v0);
 global gluniform1i *glUniform1i;
 
+// NOTE: Debug file handling
 DEBUG_FREE_FILE_MEMORY(DEBUG_free_file)
 {
     if (file)
@@ -164,7 +163,8 @@ static GLuint create_ogl_shader_program(char *vertex_file_name, char *fragment_f
     i32 success;
     char info[512];
     glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-    if(!success) {
+    if(!success)
+    {
         char put_string[512];
         glGetShaderInfoLog(vertex_shader, arr_count(info), NULL, info);
         _snprintf_s(put_string, sizeof(put_string), "Failed vertex shader compilation: %s\n",
@@ -176,7 +176,8 @@ static GLuint create_ogl_shader_program(char *vertex_file_name, char *fragment_f
     glShaderSource(fragment_shader, 1, &fragmentShaderSource, NULL);
     glCompileShader(fragment_shader);
     glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-    if(!success) {
+    if(!success)
+    {
         char put_string[512];
         glGetShaderInfoLog(fragment_shader, arr_count(info), NULL, info);
         _snprintf_s(put_string, sizeof(put_string), "Failed fragment shader compilation: %s\n",
@@ -189,7 +190,8 @@ static GLuint create_ogl_shader_program(char *vertex_file_name, char *fragment_f
     glAttachShader(prog_id, fragment_shader);
     glLinkProgram(prog_id);
     glGetProgramiv(prog_id, GL_LINK_STATUS, &success);
-    if(!success) {
+    if(!success)
+    {
         char put_string[512];
         glGetProgramInfoLog(prog_id, arr_count(info), NULL, info);
         _snprintf_s(put_string, sizeof(put_string), "Failed shader program link: %s\n",
@@ -221,7 +223,8 @@ static void win32_init_opengl(HWND window_handle, loaded_jpg tex)
     SetPixelFormat(window_dc, given_pixelformat_index, &given_pixelformat);
 
     HGLRC opengl_rc = wglCreateContext(window_dc);
-    if(wglMakeCurrent(window_dc, opengl_rc)) {
+    if(wglMakeCurrent(window_dc, opengl_rc))
+    {
         glGenBuffers = (glgenbuffers *)wglGetProcAddress("glGenBuffers");
         glBindBuffer = (glbindbuffer *)wglGetProcAddress("glBindBuffer");
         glBufferData = (glbufferdata *)wglGetProcAddress("glBufferData");
@@ -333,7 +336,8 @@ static void win32_init_opengl(HWND window_handle, loaded_jpg tex)
     ReleaseDC(window_handle, window_dc);
 }
 
-static win32_win_dimensions win32_get_win_dimensions(HWND win_handle) {
+static win32_win_dimensions win32_get_win_dimensions(HWND win_handle)
+{
   win32_win_dimensions window_dimensions = {};
   RECT client_rect;
   GetClientRect(win_handle, &client_rect);
@@ -345,30 +349,32 @@ static win32_win_dimensions win32_get_win_dimensions(HWND win_handle) {
 }
 
 static void win32_resize_DIB_section(win32_bitmap_buffer *buffer, int _width,
-                                     int _height) {
+                                     int _height)
+{
   // Need to free the memory but only when it will be reallocated right away
   // since a paint will happen every frame
-  if (buffer->memory) {
-    VirtualFree(buffer->memory, 0, MEM_RELEASE);
-  }
+    if (buffer->memory)
+    {
+        VirtualFree(buffer->memory, 0, MEM_RELEASE);
+    }
 
-  buffer->width = _width;
-  buffer->height = _height;
+    buffer->width = _width;
+    buffer->height = _height;
 
-  // Step one is to create the DIB
-  buffer->info.bmiHeader.biSize = sizeof(buffer->info.bmiHeader);
-  buffer->info.bmiHeader.biWidth = _width;
-  buffer->info.bmiHeader.biHeight = -_height; // Making this negative to have the bitmap layout start top-left and go top-down
-  buffer->info.bmiHeader.biPlanes = 1;
-  buffer->info.bmiHeader.biBitCount = 32;
-  buffer->info.bmiHeader.biCompression = BI_RGB;
+    // Step one is to create the DIB
+    buffer->info.bmiHeader.biSize = sizeof(buffer->info.bmiHeader);
+    buffer->info.bmiHeader.biWidth = _width;
+    buffer->info.bmiHeader.biHeight = -_height; // Making this negative to have the bitmap layout start top-left and go top-down
+    buffer->info.bmiHeader.biPlanes = 1;
+    buffer->info.bmiHeader.biBitCount = 32;
+    buffer->info.bmiHeader.biCompression = BI_RGB;
 
-  buffer->bytes_per_pixel = 4;
-  int bm_mem_size = buffer->bytes_per_pixel * (_width * _height);
-  buffer->memory =
-      VirtualAlloc(0, bm_mem_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    buffer->bytes_per_pixel = 4;
+    int bm_mem_size = buffer->bytes_per_pixel * (_width * _height);
+    buffer->memory =
+        VirtualAlloc(0, bm_mem_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-  buffer->pitch = buffer->bytes_per_pixel * _width;
+    buffer->pitch = buffer->bytes_per_pixel * _width;
 }
 
 inline LARGE_INTEGER win32_get_seconds_wallclock()
@@ -430,40 +436,45 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
                                                    UINT message, WPARAM WParam,
                                                    LPARAM LParam)
 {
-  LRESULT result = 0;
+    LRESULT result = 0;
 
-  switch (message)
-  {
-      case WM_CLOSE: {
-        OutputDebugStringA("WM_CLOSE\n");
-        g_running = false;
-        break;
-      }
+    switch (message)
+    {
+        case WM_CLOSE:
+        {
+            OutputDebugStringA("WM_CLOSE\n");
+            g_running = false;
+            break;
+        }
 
-      case WM_DESTROY: {
-        OutputDebugStringA("WM_DESTROY\n");
-        g_running = false;
-        break;
-      }
+        case WM_DESTROY:
+        {
+            OutputDebugStringA("WM_DESTROY\n");
+            g_running = false;
+            break;
+        }
 
-      case WM_SYSKEYDOWN:
-      case WM_SYSKEYUP:
-      case WM_KEYDOWN:
-      case WM_KEYUP: {
-        neo_assert(!"NO INPUT HERE");
-      }
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+        {
+            neo_assert(!"NO INPUT HERE");
+        }
 
-      case WM_ACTIVATEAPP: {
-        OutputDebugStringA("WM_ACTIVATEAPP\n");
-        break;
-      }
+        case WM_ACTIVATEAPP:
+        {
+            OutputDebugStringA("WM_ACTIVATEAPP\n");
+            break;
+        }
 
-      default: {
-        result = DefWindowProc(win_handle, message, WParam, LParam);
-      }
-  }
+        default:
+        {
+            result = DefWindowProc(win_handle, message, WParam, LParam);
+        }
+    }
 
-  return result;
+    return result;
 }
 
 static void win32_process_keeb_message(engine_button_state *new_state, b32 is_down)
@@ -496,70 +507,71 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
                 {
                     switch (vk_code)
                     {
-                        case 'W': {
+                        case 'W':
+                        {
                             win32_process_keeb_message(&keyboard->move_up, is_down);
-                          break;
-                        }
-                        case 'A': {
+                        } break;
+                        case 'A':
+                        {
                             win32_process_keeb_message(&keyboard->move_left, is_down);
-                          break;
-                        }
-                        case 'S': {
+                        } break;
+                        case 'S':
+                        {
                             win32_process_keeb_message(&keyboard->move_down, is_down);
-                          break;
-                        }
-                        case 'D': {
+                        } break;
+                        case 'D':
+                        {
                             win32_process_keeb_message(&keyboard->move_right, is_down);
-                          break;
-                        }
-                        case 'Q': {
+                        } break;
+                        case 'Q':
+                        {
                             win32_process_keeb_message(&keyboard->left_shoulder, is_down);
-                          break;
-                        }
-                        case 'E': {
+                        } break;
+                        case 'E':
+                        {
                             win32_process_keeb_message(&keyboard->right_shoulder, is_down);
-                          break;
-                        }
-                        case VK_UP: {
+                        } break;
+                        case VK_UP:
+                        {
                             win32_process_keeb_message(&keyboard->action_up, is_down);
-                          break;
-                        }
-                        case VK_DOWN: {
+                        } break;
+                        case VK_DOWN:
+                        {
                             win32_process_keeb_message(&keyboard->action_down, is_down);
-                          break;
-                        }
-                        case VK_LEFT: {
+                        } break;
+                        case VK_LEFT:
+                        {
                             win32_process_keeb_message(&keyboard->action_left, is_down);
-                          break;
-                        }
-                        case VK_RIGHT: {
+                        } break;
+                        case VK_RIGHT:
+                        {
                             win32_process_keeb_message(&keyboard->action_right, is_down);
-                          break;
-                        }
-                        case VK_SPACE: {
+                        } break;
+                        case VK_SPACE:
+                        {
                             char put_string[256];
 
                             new_hand_deal(&base_deck);
                             _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
-                                        base_deck.cards[4].Value, base_deck.cards[4].Suit);
+                                        base_deck.cards[4].value, base_deck.cards[4].suit);
                             OutputDebugStringA(put_string);
-                            break;
-                        }
-                        case VK_ESCAPE: {
-                          win32_process_keeb_message(&keyboard->start, is_down);
-                          // TODO: this really needs to be sent to our main menu
-                          g_running = false;
-                          break;
-                        }
-                        case VK_BACK: {
-                          win32_process_keeb_message(&keyboard->back, is_down);
-                          break;
-                        }
+                        } break;
+                        case VK_ESCAPE:
+                        {
+                            win32_process_keeb_message(&keyboard->start, is_down);
+                            // TODO: this really needs to be sent to our main menu
+                            g_running = false;
+                        } break;
+                        case VK_BACK:
+                        {
+                            win32_process_keeb_message(&keyboard->back, is_down);
+                        } break;
                     }
                 }
 
                 b32 alt_key_was_down = ((message.lParam & (1 << 29)) != 0);
-                if ((vk_code == VK_F4) && alt_key_was_down) {
+                if ((vk_code == VK_F4) && alt_key_was_down)
+                {
                   g_running = false;
                 }
             } break;
@@ -616,16 +628,13 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     f32 update_hz = monitor_hz / 2.0f;
     f32 target_seconds_per_frame = 1.0f / update_hz;
 
-    // TODO:
-    // For now, we are just setting up the memory space for my machine.
-    // Later this will need to handled to in some other way by looking at what we
-    // are running on.
 #if NEO_INTERNAL
     LPVOID base_address = (LPVOID) terabytes(2);
 #else
     LPVOID base_address = 0;
 #endif
 
+    // TODO: Read arena article to get proper memory management
     app_memory app_memory = {};
     app_memory.perm_storage_space = megabytes(64);
     app_memory.flex_storage_space = gigabytes(4);
@@ -643,6 +652,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     // FIXME: Refactor this based on platorm dependency
     memory_arena global_arena = {};
     init_arena(&global_arena, total_size, (u8 *)app_memory.perm_mem_storage);
+    // TODO: Add check here to make sure we got our memory(samples, bitmap, app_mem)
 #if 0
     loaded_jpg crate_tex = {};
     crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/cardback.jpeg", DEBUG_free_file);
@@ -653,14 +663,12 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     }
 #endif
 
-    // TODO: Add check here to make sure we got our memory(samples, bitmap, app_mem)
     engine_input input[2] = {};
     engine_input *new_input = &input[0];
     engine_input *old_input = &input[1];
 
-    g_running = true;
-
     // Global Loop
+    g_running = true;
     while (g_running)
     {
         new_input->time_step_over_frame = target_seconds_per_frame;
