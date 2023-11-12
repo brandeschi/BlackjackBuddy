@@ -181,45 +181,46 @@ static loaded_bmp DEBUG_load_bmp(thread_context *thread, debug_read_entire_file 
     {
         bmp_header *header = (bmp_header *)read_result.contents;
         u8 *pixels = ((u8 *)read_result.contents + header->bitmap_offset);
+        u32 *test_pix = (u32 *)pixels;
 
-        // NOTE: For some reason I did not have to do any shifting of the bits for my bmp file?
+
         result.pixels = pixels;
         result.channels = header->bits_per_pixel / 8;
         result.width = header->width;
         result.height = header->height;
 
-        // neo_assert(header->compression == 3);
+// NOTE: For some reason I did not have to do any shifting of the bits for my bmp file?
+// If I always take images and export them through gimp, I should be good.
+#if 0
+        // NOTE: Byte order of the bmp pixels in memory is deteremined by the header itself!
+        u32 alpha_mask = ~(header->red_mask | header->green_mask | header->blue_mask);
 
-        if(header->compression == 3)
+        bit_scan_result red_shift = find_least_sig_set_bit_32(header->red_mask);
+        bit_scan_result green_shift = find_least_sig_set_bit_32(header->green_mask);
+        bit_scan_result blue_shift = find_least_sig_set_bit_32(header->blue_mask);
+        bit_scan_result alpha_shift = find_least_sig_set_bit_32(alpha_mask);
+
+        neo_assert(red_shift.found);
+        neo_assert(green_shift.found);
+        neo_assert(blue_shift.found);
+        neo_assert(alpha_shift.found);
+
+        u32 *src_dest = (u32 *)pixels;
+        for (i32 Y = 0; Y < header->height; Y++)
         {
-            // NOTE: Byte order of the bmp pixels in memory is deteremined by the header itself!
-            u32 alpha_mask = ~(header->red_mask | header->green_mask | header->blue_mask);
-
-            bit_scan_result red_shift = find_least_sig_set_bit_32(header->red_mask);
-            bit_scan_result green_shift = find_least_sig_set_bit_32(header->green_mask);
-            bit_scan_result blue_shift = find_least_sig_set_bit_32(header->blue_mask);
-            bit_scan_result alpha_shift = find_least_sig_set_bit_32(alpha_mask);
-
-            neo_assert(red_shift.found);
-            neo_assert(green_shift.found);
-            neo_assert(blue_shift.found);
-            neo_assert(alpha_shift.found);
-
-            u32 *src_dest = (u32 *)pixels;
-            for (i32 Y = 0; Y < header->height; Y++)
+            for (i32 X = 0; X < header->width; X++)
             {
-                for (i32 X = 0; X < header->width; X++)
-                {
-                    u32 color = *src_dest;
-                    *src_dest++ = ((((color >> alpha_shift.index) & 0xFF) << 24) |
-                        (((color >> red_shift.index) & 0xFF) << 16) |
-                        (((color >> green_shift.index) & 0xFF) << 8) |
-                        (((color >> blue_shift.index) & 0xFF) << 0)
-                    );
-                }
+                u32 color = *src_dest;
+                *src_dest++ = ((((color >> alpha_shift.index) & 0xFF) << 24) |
+                    (((color >> red_shift.index) & 0xFF) << 16) |
+                    (((color >> green_shift.index) & 0xFF) << 8) |
+                    (((color >> blue_shift.index) & 0xFF) << 0)
+                );
             }
         }
+#endif
     }
+
 
     return result;
 }
@@ -356,8 +357,25 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
 
     if(!memory->is_init)
     {
-        // game_state->bg = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/classic-cards.bmp");
-        game_state->bg = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/test.bmp");
+        game_state->tex_atlas = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/cards.bmp");
+        // game_state->tex_atlas = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/debug-art.bmp");
+
+
+
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        // Setting Texture wrapping method
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+        // Setting Texture filtering methods
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        // TODO: GL_BGRA_EXT is a windows specific value, I believe I need to somehow handle this in the platform layer
+        // or when I pull this rendering code out
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, game_state->tex_atlas.width, game_state->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, game_state->tex_atlas.pixels);
+
         memory->is_init = true;
     }
     for (int controller_index = 0;
@@ -374,11 +392,13 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
 
     }
 
+#if 0
     // Draw debug backgroun in client area.
     v2 min = {};
     v2 max = { (f32)bitmap_buffer->width, (f32)bitmap_buffer->height };
     draw_rect(bitmap_buffer, min, max,
               0.8f, 0.56f, 0.64f);
     draw_bmp(bitmap_buffer, &game_state->bg);
+#endif
 }
 

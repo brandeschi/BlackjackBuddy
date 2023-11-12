@@ -7,20 +7,10 @@
 
 #include <Windows.h>
 #include <stdio.h>
-#include "nebula.h"
-#include "nebula.cpp"
-
 #include <dsound.h>
 #include <gl/GL.h>
 
-#include "win32_nebula.h"
-
-global b32 g_running = false;
-global win32_bitmap_buffer g_bm_buffer;
-global LPDIRECTSOUNDBUFFER g_secondary_buffer;
-global thread_context g_thread_context = {};
-global i64 g_perf_count_freq;
-global GLuint g_shader_program;
+#include "nebula.h"
 
 // NOTE: Opengl definitions
 typedef i64 GLsizeiptr;
@@ -84,6 +74,17 @@ typedef void glactivetexture(GLenum texture);
 global glactivetexture *glActiveTexture;
 typedef void gluniform1i(GLint location, GLint v0);
 global gluniform1i *glUniform1i;
+
+#include "win32_nebula.h"
+
+global b32 g_running = false;
+global win32_bitmap_buffer g_bm_buffer;
+global LPDIRECTSOUNDBUFFER g_secondary_buffer;
+global thread_context g_thread_context = {};
+global i64 g_perf_count_freq;
+global GLuint g_shader_program;
+
+#include "nebula.cpp"
 
 // NOTE: Debug file handling
 DEBUG_FREE_FILE_MEMORY(DEBUG_free_file)
@@ -206,7 +207,7 @@ static GLuint create_ogl_shader_program(char *vertex_file_name, char *fragment_f
     return prog_id;
 }
 
-static void win32_init_opengl(HWND window_handle, loaded_jpg tex)
+static void win32_init_opengl(HWND window_handle)
 {
     HDC window_dc = GetDC(window_handle);
 
@@ -223,116 +224,97 @@ static void win32_init_opengl(HWND window_handle, loaded_jpg tex)
     SetPixelFormat(window_dc, given_pixelformat_index, &given_pixelformat);
 
     HGLRC opengl_rc = wglCreateContext(window_dc);
-    if(wglMakeCurrent(window_dc, opengl_rc))
+    if(!wglMakeCurrent(window_dc, opengl_rc))
     {
-        glGenBuffers = (glgenbuffers *)wglGetProcAddress("glGenBuffers");
-        glBindBuffer = (glbindbuffer *)wglGetProcAddress("glBindBuffer");
-        glBufferData = (glbufferdata *)wglGetProcAddress("glBufferData");
-        glCreateShader = (glcreateshader *)wglGetProcAddress("glCreateShader");
-        glShaderSource = (glshadersource *)wglGetProcAddress("glShaderSource");
-        glCompileShader = (glcompileshader *)wglGetProcAddress("glCompileShader");
-        glGetShaderiv = (glgetshaderiv *)wglGetProcAddress("glGetShaderiv");
-        glGetShaderInfoLog = (glgetshaderinfolog *)wglGetProcAddress("glGetShaderInfoLog");
-        glCreateProgram = (glcreateprogram *)wglGetProcAddress("glCreateProgram");
-        glAttachShader = (glattachshader *)wglGetProcAddress("glAttachShader");
-        glLinkProgram = (gllinkprogram *)wglGetProcAddress("glLinkProgram");
-        glUseProgram = (gluseprogram *)wglGetProcAddress("glUseProgram");
-        glDeleteShader = (gldeleteshader *)wglGetProcAddress("glDeleteShader");
-        glGetProgramiv = (glgetprogramiv *)wglGetProcAddress("glGetProgramiv");
-        glGetProgramInfoLog = (glgetprograminfolog *)wglGetProcAddress("glGetProgramInfoLog");
-        glVertexAttribPointer = (glvertexattribpointer *)wglGetProcAddress("glVertexAttribPointer");
-        glEnableVertexAttribArray = (glenablevertexattribarray *)wglGetProcAddress("glEnableVertexAttribArray");
-        glGenVertexArrays = (glgenvertexarrays *)wglGetProcAddress("glGenVertexArrays");
-        glBindVertexArray = (glbindvertexarray *)wglGetProcAddress("glBindVertexArray");
-        glGetUniformLocation = (glgetuniformlocation *)wglGetProcAddress("glGetUniformLocation");
-        glUniform4f = (gluniform4f *)wglGetProcAddress("glUniform4f");
-        glGenerateMipmap = (glgeneratemipmap *)wglGetProcAddress("glGenerateMipmap");
-        glActiveTexture = (glactivetexture *)wglGetProcAddress("glActiveTexture");
-        glUniform1i = (gluniform1i *)wglGetProcAddress("glUniform1i");
-
-        // Create Shader Program
-        g_shader_program = create_ogl_shader_program("..\\test.vs", "..\\test.fs");
-        // Vertex Data
-        // v3 vertices[] = {
-        //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
-        //     { 1.0f, 0.0f, 0.0f }, // V1 color data
-        //     { 0.5f, -0.5f, 0.0f }, // V2 pos data
-        //     { 0.0f, 1.0f, 0.0f }, // V2 color data
-        //     { 0.0f, 0.5f, 0.0f }, // V3 pos data
-        //     { 0.0f, 0.0f, 1.0f }, // V3 color data
-        // };
-        //
-        // v2 tex_coords[] = {
-        //     { 0.0f, 0.0f },
-        //     { 1.0f, 0.0f },
-        //     { 0.5f, 1.0f },
-        // };
-
-        // v3 vertices[] = {
-        //     { 0.5f, 0.5f, 0.0f },   // top-right
-        //     { 0.5f, -0.5f, 0.0f },  // bottom-right
-        //     { -0.5f, -0.5f, 0.0f }, // bottom-left
-        //     { -0.5f, 0.5f, 0.0f },  // top-left
-        // };
-        f32 vertices[] = {
-            0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,   // top-right
-            0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  // bottom-right
-            -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom-left
-            -0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f   // top-left
-        };
-        u32 indices[] = {
-            0, 1, 3,    // T1
-            1, 2, 3     // T2
-        };
-
-        // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
-        u32 VBO, VAO, EBO;
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glGenBuffers(1, &EBO);
-
-        // Bind VAO, the bind and set VBOs, then config vertex attribs
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-        // Tell opengl how to interpret our vertex data by setting pointers to the attribs
-        // pos attrib
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
-        glEnableVertexAttribArray(0);
-        // color attrib
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
-        glEnableVertexAttribArray(1);
-        // tex coord attrib
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
-        glEnableVertexAttribArray(2);
-
-        u32 texture;
-        glGenTextures(1, &texture);
-        // glActiveTexture(GL_TEXTURE0 + 1);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        // Setting Texture wrapping method
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-        // Setting Texture filtering methods
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex.width, tex.height, 0, GL_RGB, GL_UNSIGNED_BYTE, tex.pixels);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        glUseProgram(g_shader_program);
-        // Set the uniform location for the sampler2D in the shader
-        // glUniform1i(glGetUniformLocation(g_shader_program, "texture"), 0);
-
-    }
-    else
-    {
-        invalid_code_path;
         // TODO: Diags
+        invalid_code_path;
     }
+
+    // OpenGL func ptrs
+    glGenBuffers = (glgenbuffers *)wglGetProcAddress("glGenBuffers");
+    glBindBuffer = (glbindbuffer *)wglGetProcAddress("glBindBuffer");
+    glBufferData = (glbufferdata *)wglGetProcAddress("glBufferData");
+    glCreateShader = (glcreateshader *)wglGetProcAddress("glCreateShader");
+    glShaderSource = (glshadersource *)wglGetProcAddress("glShaderSource");
+    glCompileShader = (glcompileshader *)wglGetProcAddress("glCompileShader");
+    glGetShaderiv = (glgetshaderiv *)wglGetProcAddress("glGetShaderiv");
+    glGetShaderInfoLog = (glgetshaderinfolog *)wglGetProcAddress("glGetShaderInfoLog");
+    glCreateProgram = (glcreateprogram *)wglGetProcAddress("glCreateProgram");
+    glAttachShader = (glattachshader *)wglGetProcAddress("glAttachShader");
+    glLinkProgram = (gllinkprogram *)wglGetProcAddress("glLinkProgram");
+    glUseProgram = (gluseprogram *)wglGetProcAddress("glUseProgram");
+    glDeleteShader = (gldeleteshader *)wglGetProcAddress("glDeleteShader");
+    glGetProgramiv = (glgetprogramiv *)wglGetProcAddress("glGetProgramiv");
+    glGetProgramInfoLog = (glgetprograminfolog *)wglGetProcAddress("glGetProgramInfoLog");
+    glVertexAttribPointer = (glvertexattribpointer *)wglGetProcAddress("glVertexAttribPointer");
+    glEnableVertexAttribArray = (glenablevertexattribarray *)wglGetProcAddress("glEnableVertexAttribArray");
+    glGenVertexArrays = (glgenvertexarrays *)wglGetProcAddress("glGenVertexArrays");
+    glBindVertexArray = (glbindvertexarray *)wglGetProcAddress("glBindVertexArray");
+    glGetUniformLocation = (glgetuniformlocation *)wglGetProcAddress("glGetUniformLocation");
+    glUniform4f = (gluniform4f *)wglGetProcAddress("glUniform4f");
+    glGenerateMipmap = (glgeneratemipmap *)wglGetProcAddress("glGenerateMipmap");
+    glActiveTexture = (glactivetexture *)wglGetProcAddress("glActiveTexture");
+    glUniform1i = (gluniform1i *)wglGetProcAddress("glUniform1i");
+
+    // Create Shader Program
+    g_shader_program = create_ogl_shader_program("..\\test.vs", "..\\test.fs");
+    // Vertex Data
+    // v3 vertices[] = {
+    //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
+    //     { 1.0f, 0.0f, 0.0f }, // V1 color data
+    //     { 0.5f, -0.5f, 0.0f }, // V2 pos data
+    //     { 0.0f, 1.0f, 0.0f }, // V2 color data
+    //     { 0.0f, 0.5f, 0.0f }, // V3 pos data
+    //     { 0.0f, 0.0f, 1.0f }, // V3 color data
+    // };
+    //
+    // v2 tex_coords[] = {
+    //     { 0.0f, 0.0f },
+    //     { 1.0f, 0.0f },
+    //     { 0.5f, 1.0f },
+    // };
+
+    // v3 vertices[] = {
+    //     { 0.5f, 0.5f, 0.0f },   // top-right
+    //     { 0.5f, -0.5f, 0.0f },  // bottom-right
+    //     { -0.5f, -0.5f, 0.0f }, // bottom-left
+    //     { -0.5f, 0.5f, 0.0f },  // top-left
+    // };
+    f32 vertices[] = {
+        0.75f, 0.75f, 0.0f,   1.0f, 1.0f, 1.0f, 1.0f, 1.0f,   // top-right
+        0.75f, -0.75f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,  // bottom-right
+        -0.75f, -0.75f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // bottom-left
+        -0.75f, 0.75f, 0.0f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f   // top-left
+    };
+    u32 indices[] = {
+        0, 1, 3,    // T1
+        1, 2, 3     // T2
+    };
+
+    // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
+    u32 VBO, VAO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    // Bind VAO, the bind and set VBOs, then config vertex attribs
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // Tell opengl how to interpret our vertex data by setting pointers to the attribs
+    // pos attrib
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
+    glEnableVertexAttribArray(0);
+    // color attrib
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
+    glEnableVertexAttribArray(1);
+    // tex coord attrib
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
+    glEnableVertexAttribArray(2);
+
     ReleaseDC(window_handle, window_dc);
 }
 
@@ -392,13 +374,15 @@ inline f32 win32_get_seconds_elapsed(LARGE_INTEGER start, LARGE_INTEGER end)
 
 // This is needed to force rePaint to get a set fps
 static void win32_update_win_with_buffer(HDC device_context,
-                                         win32_bitmap_buffer *buffer,
+                                         engine_bitmap_buffer *buffer,
                                          int win_width, int win_height)
 {
-#if 1
+#if 0
+    // NOTE: Need to make a win32_bitmap_buffer when using this bliting
+
     // Clear the unused client pixels to black
-    PatBlt(device_context, 0, buffer->height, win_width, win_height, BLACKNESS);
-    PatBlt(device_context, buffer->width, 0, win_width, win_height, BLACKNESS);
+    PatBlt(device_context, 0, g_bm_buffer.height, win_width, win_height, BLACKNESS);
+    PatBlt(device_context, g_bm_buffer.width, 0, win_width, win_height, BLACKNESS);
 
     // TODO:
     // Fix the aspect ratio with math (either through floating point or
@@ -410,16 +394,16 @@ static void win32_update_win_with_buffer(HDC device_context,
         // To make a simple rect first, we  stretch the bits to the whole window
         // NOTE: HHD[024]: casey wanted to make the displayed pixels be one-to-one
         // so instead of taking in the win dimensions for this function,
-        // we will be making it based on the buffer's initial dims
-        0, 0, buffer->width, buffer->height,
-        0, 0, buffer->width, buffer->height,
-        buffer->memory, &buffer->info,
+        // we will be making it based on the g_bm_buffer's initial dims
+        0, 0, g_bm_buffer.width, g_bm_buffer.height,
+        0, 0, g_bm_buffer.width, g_bm_buffer.height,
+        g_bm_buffer.memory, &g_bm_buffer.info,
         DIB_RGB_COLORS, // iUsage - Use literal rgb values to color in the pixels
         SRCCOPY);       // Raster Operation Code - Copy our bitmap to the dest
 
 #else
     glViewport(0, 0, win_width, win_height);
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClearColor(0.8f, 0.56f, 0.64f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     // DRAW
@@ -634,7 +618,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     LPVOID base_address = 0;
 #endif
 
-    // TODO: Read arena article to get proper memory management
     app_memory app_memory = {};
     app_memory.perm_storage_space = megabytes(64);
     app_memory.flex_storage_space = gigabytes(4);
@@ -644,10 +627,10 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
     // TODO: Probably want to look into MEM_LARGE_PAGES?? HHD[024]
     u64 total_size = app_memory.perm_storage_space + app_memory.flex_storage_space;
-    app_memory.perm_mem_storage = VirtualAlloc(
-      base_address, total_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    app_memory.perm_mem_storage =
+        VirtualAlloc(base_address, total_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     app_memory.flex_mem_storage =
-      ((u8 *) app_memory.perm_mem_storage + app_memory.perm_storage_space);
+        ((u8 *) app_memory.perm_mem_storage + app_memory.perm_storage_space);
 
     // FIXME: Refactor this based on platorm dependency
     memory_arena global_arena = {};
@@ -656,12 +639,15 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 #if 0
     loaded_jpg crate_tex = {};
     crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/cardback.jpeg", DEBUG_free_file);
-    if(crate_tex.pixels)
+    if (crate_tex.pixels)
     {
         // Opengl
         win32_init_opengl(window, crate_tex);
     }
 #endif
+
+    // Init OpenGL
+    win32_init_opengl(window);
 
     engine_input input[2] = {};
     engine_input *new_input = &input[0];
@@ -714,18 +700,17 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
         thread_context thread = {};
         // This pulls from our platform-independent code from nebula.h
-        engine_bitmap_buffer buffer = {};
-        buffer.memory = g_bm_buffer.memory;
-        buffer.width = g_bm_buffer.width;
-        buffer.height = g_bm_buffer.height;
-        buffer.pitch = g_bm_buffer.pitch;
-        buffer.bytes_per_pixel = g_bm_buffer.bytes_per_pixel;
-        update_and_render(&thread, &app_memory, new_input, &buffer);
-        // update_and_render(&g_thread_context, &app_memory, new_input, &buffer);
+        engine_bitmap_buffer bm_buffer = {};
+        bm_buffer.memory = g_bm_buffer.memory;
+        bm_buffer.width = g_bm_buffer.width;
+        bm_buffer.height = g_bm_buffer.height;
+        bm_buffer.pitch = g_bm_buffer.pitch;
+        bm_buffer.bytes_per_pixel = g_bm_buffer.bytes_per_pixel;
+        update_and_render(&thread, &app_memory, new_input, &bm_buffer);
 
         win32_win_dimensions win_size = win32_get_win_dimensions(window);
-        win32_update_win_with_buffer(device_context, &g_bm_buffer, win_size.width,
-                                     win_size.height);
+        win32_update_win_with_buffer(device_context, &bm_buffer,
+                                     win_size.width, win_size.height);
 
         engine_input *temp = new_input;
         new_input = old_input;

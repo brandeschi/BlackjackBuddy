@@ -80,10 +80,10 @@ typedef DEBUG_WRITE_ENTIRE_FILE(debug_write_entire_file);
 struct engine_bitmap_buffer
 {
   void *memory;
-  int pitch;
-  int width;
-  int height;
-  int bytes_per_pixel;
+  i32 pitch;
+  i32 width;
+  i32 height;
+  i32 bytes_per_pixel;
 };
 
 struct engine_sound_buffer
@@ -235,7 +235,7 @@ struct loaded_bmp
 
 struct app_state
 {
-    loaded_bmp bg;
+    loaded_bmp tex_atlas;
 };
 
 static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input,
