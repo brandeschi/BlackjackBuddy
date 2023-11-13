@@ -163,34 +163,6 @@ struct app_memory
     debug_write_entire_file *DEBUG_write_entire_file;
 };
 
-enum card_type
-{
-    TWO = 2,
-    THREE,
-    FOUR,
-    FIVE,
-    SIX,
-    SEVEN,
-    EIGHT,
-    NINE,
-    TEN,
-    JACK = 10,
-    QUEEN = 10,
-    KING = 10,
-    ACE
-};
-
-struct card
-{
-    card_type value;
-    char *suit;
-};
-
-struct deck
-{
-    card cards[52];
-};
-
 struct memory_arena
 {
     mem_index size;
@@ -233,8 +205,40 @@ struct loaded_bmp
     i32 height;
 };
 
+enum card_type
+{
+    FACE_DOWN = 0,
+    TWO = 2,
+    THREE,
+    FOUR,
+    FIVE,
+    SIX,
+    SEVEN,
+    EIGHT,
+    NINE,
+    TEN,
+    JACK = 10,
+    QUEEN = 10,
+    KING = 10,
+    ACE
+};
+
+struct card
+{
+    card_type value;
+    char *suit;
+    loaded_bmp card_tex;
+};
+
+struct deck
+{
+    card cards[52];
+};
+
 struct app_state
 {
+    memory_arena gm_arena;
+    deck base_deck;
     loaded_bmp tex_atlas;
 };
 

@@ -6,63 +6,6 @@
 // - Concept of a hand?
 //
 // Also need to add general player actions
-deck base_deck = {
-    {
-        { TWO, "SPADES" },
-        { THREE, "SPADES" },
-        { FOUR, "SPADES" },
-        { FIVE, "SPADES" },
-        { SIX, "SPADES" },
-        { SEVEN, "SPADES" },
-        { EIGHT, "SPADES" },
-        { NINE, "SPADES" },
-        { TEN, "SPADES" },
-        { JACK, "SPADES" },
-        { QUEEN, "SPADES" },
-        { KING, "SPADES" },
-        { ACE, "SPADES" },
-        { TWO, "HEARTS" },
-        { THREE, "HEARTS" },
-        { FOUR, "HEARTS" },
-        { FIVE, "HEARTS" },
-        { SIX, "HEARTS" },
-        { SEVEN, "HEARTS" },
-        { EIGHT, "HEARTS" },
-        { NINE, "HEARTS" },
-        { TEN, "HEARTS" },
-        { JACK, "HEARTS" },
-        { QUEEN, "HEARTS" },
-        { KING, "HEARTS" },
-        { ACE, "HEARTS" },
-        { TWO, "CLUBS" },
-        { THREE, "CLUBS" },
-        { FOUR, "CLUBS" },
-        { FIVE, "CLUBS" },
-        { SIX, "CLUBS" },
-        { SEVEN, "CLUBS" },
-        { EIGHT, "CLUBS" },
-        { NINE, "CLUBS" },
-        { TEN, "CLUBS" },
-        { JACK, "CLUBS" },
-        { QUEEN, "CLUBS" },
-        { KING, "CLUBS" },
-        { ACE, "CLUBS" },
-        { TWO, "DIAMONDS" },
-        { THREE, "DIAMONDS" },
-        { FOUR, "DIAMONDS" },
-        { FIVE, "DIAMONDS" },
-        { SIX, "DIAMONDS" },
-        { SEVEN, "DIAMONDS" },
-        { EIGHT, "DIAMONDS" },
-        { NINE, "DIAMONDS" },
-        { TEN, "DIAMONDS" },
-        { JACK, "DIAMONDS" },
-        { QUEEN, "DIAMONDS" },
-        { KING, "DIAMONDS" },
-        { ACE, "DIAMONDS" }
-    }
-};
-
 #include <stdlib.h>
 #include <time.h>
 // NOTE: This is Fisher-Yates Algo
@@ -350,6 +293,23 @@ static void draw_rect(engine_bitmap_buffer *buffer, v2 min, v2 max,
     }
 }
 
+loaded_bmp *slice_card_atlas(memory_arena *ma, loaded_bmp card_atlas)
+{
+    i32 card_width = 98 * 4;
+    i32 card_height = 158 * 4;
+    loaded_bmp *result = push_array(ma, 52, loaded_bmp);
+    for (u32 i = 0; i < 52; ++i)
+    {
+        result[i].channels = card_atlas.channels;
+        result[i].width = card_width;
+        result[i].height = card_height;
+        u32 *current_pixels = (u32 *)card_atlas.pixels;
+        result[i].pixels = (u8 *)(current_pixels + ((card_width*(i % 13)) + ((i / 13)*(card_atlas.width*card_height))));
+    }
+
+    return result;
+}
+
 static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input, engine_bitmap_buffer *bitmap_buffer)
 {
     neo_assert(sizeof(app_state) <= memory->perm_storage_space);
@@ -357,10 +317,69 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
 
     if(!memory->is_init)
     {
+        init_arena(&game_state->gm_arena, memory->perm_storage_space - sizeof(app_state),
+                   (u8 *)memory->perm_mem_storage + sizeof(app_state));
+        // NOTE: Each card is like 98 hori and 153 vert
         game_state->tex_atlas = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/cards.bmp");
         // game_state->tex_atlas = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/debug-art.bmp");
+        loaded_bmp *card_bmps = slice_card_atlas(&game_state->gm_arena, game_state->tex_atlas);
 
-
+        game_state->base_deck = {
+            {
+                { TWO, "SPADES", card_bmps[39] },
+                { THREE, "SPADES", card_bmps[40] },
+                { FOUR, "SPADES", card_bmps[41] },
+                { FIVE, "SPADES", card_bmps[42] },
+                { SIX, "SPADES", card_bmps[43] },
+                { SEVEN, "SPADES", card_bmps[44] },
+                { EIGHT, "SPADES", card_bmps[45] },
+                { NINE, "SPADES", card_bmps[46] },
+                { TEN, "SPADES", card_bmps[47] },
+                { JACK, "SPADES", card_bmps[48] },
+                { QUEEN, "SPADES", card_bmps[49] },
+                { KING, "SPADES", card_bmps[50] },
+                { ACE, "SPADES", card_bmps[51] },
+                { TWO, "HEARTS" },
+                { THREE, "HEARTS" },
+                { FOUR, "HEARTS" },
+                { FIVE, "HEARTS" },
+                { SIX, "HEARTS" },
+                { SEVEN, "HEARTS" },
+                { EIGHT, "HEARTS" },
+                { NINE, "HEARTS" },
+                { TEN, "HEARTS" },
+                { JACK, "HEARTS" },
+                { QUEEN, "HEARTS" },
+                { KING, "HEARTS" },
+                { ACE, "HEARTS" },
+                { TWO, "CLUBS" },
+                { THREE, "CLUBS" },
+                { FOUR, "CLUBS" },
+                { FIVE, "CLUBS" },
+                { SIX, "CLUBS" },
+                { SEVEN, "CLUBS" },
+                { EIGHT, "CLUBS" },
+                { NINE, "CLUBS" },
+                { TEN, "CLUBS" },
+                { JACK, "CLUBS" },
+                { QUEEN, "CLUBS" },
+                { KING, "CLUBS" },
+                { ACE, "CLUBS", card_bmps[0] },
+                { TWO, "DIAMONDS" },
+                { THREE, "DIAMONDS" },
+                { FOUR, "DIAMONDS" },
+                { FIVE, "DIAMONDS" },
+                { SIX, "DIAMONDS" },
+                { SEVEN, "DIAMONDS" },
+                { EIGHT, "DIAMONDS" },
+                { NINE, "DIAMONDS" },
+                { TEN, "DIAMONDS" },
+                { JACK, "DIAMONDS" },
+                { QUEEN, "DIAMONDS" },
+                { KING, "DIAMONDS" },
+                { ACE, "DIAMONDS" }
+            }
+        };
 
         GLuint texture;
         glGenTextures(1, &texture);
@@ -369,12 +388,13 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
         // Setting Texture filtering methods
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         // TODO: GL_BGRA_EXT is a windows specific value, I believe I need to somehow handle this in the platform layer
         // or when I pull this rendering code out
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, game_state->tex_atlas.width, game_state->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, game_state->tex_atlas.pixels);
+        card first_card = game_state->base_deck.cards[38];
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, game_state->tex_atlas.width, game_state->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, game_state->tex_atlas.pixels + (392 * 1));
 
         memory->is_init = true;
     }

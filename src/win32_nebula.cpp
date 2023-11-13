@@ -257,7 +257,7 @@ static void win32_init_opengl(HWND window_handle)
     glUniform1i = (gluniform1i *)wglGetProcAddress("glUniform1i");
 
     // Create Shader Program
-    g_shader_program = create_ogl_shader_program("..\\test.vs", "..\\test.fs");
+    g_shader_program = create_ogl_shader_program("..\\vec.glsl", "..\\frag.glsl");
     // Vertex Data
     // v3 vertices[] = {
     //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
@@ -280,6 +280,8 @@ static void win32_init_opengl(HWND window_handle)
     //     { -0.5f, -0.5f, 0.0f }, // bottom-left
     //     { -0.5f, 0.5f, 0.0f },  // top-left
     // };
+    // TODO: Need to move the data for quads to
+    // build the flow for working with a texture atlas
     f32 vertices[] = {
         0.75f, 0.75f, 0.0f,   1.0f, 1.0f, 1.0f, 1.0f, 1.0f,   // top-right
         0.75f, -0.75f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,  // bottom-right
@@ -533,12 +535,12 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
                         } break;
                         case VK_SPACE:
                         {
-                            char put_string[256];
-
-                            new_hand_deal(&base_deck);
-                            _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
-                                        base_deck.cards[4].value, base_deck.cards[4].suit);
-                            OutputDebugStringA(put_string);
+                            // char put_string[256];
+                            //
+                            // new_hand_deal(&base_deck);
+                            // _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
+                            //             base_deck.cards[4].value, base_deck.cards[4].suit);
+                            // OutputDebugStringA(put_string);
                         } break;
                         case VK_ESCAPE:
                         {
@@ -632,10 +634,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     app_memory.flex_mem_storage =
         ((u8 *) app_memory.perm_mem_storage + app_memory.perm_storage_space);
 
-    // FIXME: Refactor this based on platorm dependency
-    memory_arena global_arena = {};
-    init_arena(&global_arena, total_size, (u8 *)app_memory.perm_mem_storage);
-    // TODO: Add check here to make sure we got our memory(samples, bitmap, app_mem)
 #if 0
     loaded_jpg crate_tex = {};
     crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/cardback.jpeg", DEBUG_free_file);
