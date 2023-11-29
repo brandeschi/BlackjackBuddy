@@ -11,201 +11,17 @@
 #include <gl/GL.h>
 
 #include "nebula.h"
-
-// NOTE: Opengl definitions
-typedef i64 GLsizeiptr;
-typedef char GLchar;
-#define GL_ARRAY_BUFFER                   0x8892
-#define GL_ELEMENT_ARRAY_BUFFER           0x8893
-#define GL_STATIC_DRAW                    0x88E4
-#define GL_VERTEX_SHADER                  0x8B31
-#define GL_FRAGMENT_SHADER                0x8B30
-#define GL_COMPILE_STATUS                 0x8B81
-#define GL_LINK_STATUS                    0x8B82
-#define GL_MIRRORED_REPEAT                0x8370
-#define GL_CLAMP_TO_BORDER                0x812D
-#define GL_TEXTURE0                       0x84C0
-
-typedef void glgenbuffers(GLsizei n, GLuint *buffers);
-global glgenbuffers *glGenBuffers;
-typedef void glbindbuffer(GLenum target, GLuint buffer);
-global glbindbuffer *glBindBuffer;
-typedef void glbufferdata(GLenum target, GLsizeiptr size, const void *data, GLenum usage);
-global glbufferdata *glBufferData;
-typedef GLuint glcreateshader(GLenum type);
-global glcreateshader *glCreateShader;
-typedef void glshadersource(GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
-global glshadersource *glShaderSource;
-typedef void glcompileshader(GLuint shader);
-global glcompileshader *glCompileShader;
-typedef void glgetshaderiv(GLuint shader, GLenum pname, GLint *params);
-global glgetshaderiv *glGetShaderiv;
-typedef void glgetshaderinfolog(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
-global glgetshaderinfolog *glGetShaderInfoLog;
-typedef GLuint glcreateprogram(void);
-global glcreateprogram *glCreateProgram;
-typedef void glattachshader(GLuint program, GLuint shader);
-global glattachshader *glAttachShader;
-typedef void gllinkprogram(GLuint program);
-global gllinkprogram *glLinkProgram;
-typedef void gluseprogram(GLuint program);
-global gluseprogram *glUseProgram;
-typedef void gldeleteshader(GLuint shader);
-global gldeleteshader *glDeleteShader;
-typedef void glgetprogramiv(GLuint program, GLenum pname, GLint *params);
-global glgetprogramiv *glGetProgramiv;
-typedef void glgetprograminfolog(GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
-global glgetprograminfolog *glGetProgramInfoLog;
-typedef void glvertexattribpointer(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
-global glvertexattribpointer *glVertexAttribPointer;
-typedef void glenablevertexattribarray(GLuint index);
-global glenablevertexattribarray *glEnableVertexAttribArray;
-typedef void glgenvertexarrays(GLsizei n, GLuint *arrays);
-global glgenvertexarrays *glGenVertexArrays;
-typedef void glbindvertexarray(GLuint array);
-global glbindvertexarray *glBindVertexArray;
-typedef GLint glgetuniformlocation(GLuint program, const GLchar *name);
-global glgetuniformlocation *glGetUniformLocation;
-typedef void gluniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
-global gluniform4f *glUniform4f;
-typedef void glgeneratemipmap(GLenum target);
-global glgeneratemipmap *glGenerateMipmap;
-typedef void glactivetexture(GLenum texture);
-global glactivetexture *glActiveTexture;
-typedef void gluniform1i(GLint location, GLint v0);
-global gluniform1i *glUniform1i;
-
 #include "win32_nebula.h"
 
 global b32 g_running = false;
 global win32_bitmap_buffer g_bm_buffer;
 global LPDIRECTSOUNDBUFFER g_secondary_buffer;
 global thread_context g_thread_context = {};
-global i64 g_perf_count_freq;
 global GLuint g_shader_program;
+global i64 g_perf_count_freq;
 
+#include "bb_ogl.cpp"
 #include "nebula.cpp"
-
-// NOTE: Debug file handling
-DEBUG_FREE_FILE_MEMORY(DEBUG_free_file)
-{
-    if (file)
-    {
-        VirtualFree(file, 0, MEM_RELEASE);
-    }
-}
-
-DEBUG_READ_ENTIRE_FILE(DEBUG_read_entire_file)
-{
-    debug_file_result result = {};
-    HANDLE file_handle = CreateFile(file_name, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
-    if (file_handle != INVALID_HANDLE_VALUE)
-    {
-        LARGE_INTEGER file_size;
-        if (GetFileSizeEx(file_handle, &file_size))
-        {
-           u32 file_size32 = safe_truncate_int64(file_size.QuadPart);
-           result.contents = VirtualAlloc(0, file_size32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-           if (result.contents)
-           {
-               DWORD bytes_read;
-               if (ReadFile(file_handle, result.contents, file_size32, &bytes_read, 0) &&
-                   (file_size32 == bytes_read))
-               {
-                   result.contents_size = file_size32;
-               }
-               else
-               {
-                   DEBUG_free_file(thread, result.contents);
-                   result.contents = 0;
-               }
-           }
-        }
-    }
-    CloseHandle(file_handle);
-    return result;
-}
-
-DEBUG_WRITE_ENTIRE_FILE(DEBUG_write_entire_file)
-{
-    b32 result = false;
-    HANDLE file_handle = CreateFile(file_name, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
-    if (file_handle != INVALID_HANDLE_VALUE)
-    {
-        DWORD bytes_written;
-        if (WriteFile(file_handle, file, file_size, &bytes_written, 0))
-
-        {
-            result = (bytes_written == file_size);
-        }
-        else
-        {
-            // TODO: LOGGING
-        }
-
-    }
-
-    CloseHandle(file_handle);
-    return result;
-}
-
-static GLuint create_ogl_shader_program(char *vertex_file_name, char *fragment_file_name)
-{
-    GLuint prog_id = 0;
-    debug_file_result s_vertex_file = DEBUG_read_entire_file(&g_thread_context, vertex_file_name);
-    debug_file_result s_fragment_file = DEBUG_read_entire_file(&g_thread_context, fragment_file_name);
-
-    // Create shaders
-    const char *vertexShaderSource = (char *)s_vertex_file.contents;
-    u32 vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertex_shader);
-    // Check the shader was compiled successfully
-    i32 success;
-    char info[512];
-    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-        char put_string[512];
-        glGetShaderInfoLog(vertex_shader, arr_count(info), NULL, info);
-        _snprintf_s(put_string, sizeof(put_string), "Failed vertex shader compilation: %s\n",
-                    info);
-        OutputDebugStringA(put_string);
-    }
-    const char *fragmentShaderSource = (char *)s_fragment_file.contents;
-    u32 fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragment_shader);
-    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-        char put_string[512];
-        glGetShaderInfoLog(fragment_shader, arr_count(info), NULL, info);
-        _snprintf_s(put_string, sizeof(put_string), "Failed fragment shader compilation: %s\n",
-                    info);
-        OutputDebugStringA(put_string);
-    }
-    // Create shader program
-    prog_id = glCreateProgram();
-    glAttachShader(prog_id, vertex_shader);
-    glAttachShader(prog_id, fragment_shader);
-    glLinkProgram(prog_id);
-    glGetProgramiv(prog_id, GL_LINK_STATUS, &success);
-    if(!success)
-    {
-        char put_string[512];
-        glGetProgramInfoLog(prog_id, arr_count(info), NULL, info);
-        _snprintf_s(put_string, sizeof(put_string), "Failed shader program link: %s\n",
-                    info);
-        OutputDebugStringA(put_string);
-    }
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-    DEBUG_free_file(&g_thread_context, s_vertex_file.contents);
-    DEBUG_free_file(&g_thread_context, s_fragment_file.contents);
-
-    return prog_id;
-}
 
 static void win32_init_opengl(HWND window_handle)
 {
@@ -255,67 +71,6 @@ static void win32_init_opengl(HWND window_handle)
     glGenerateMipmap = (glgeneratemipmap *)wglGetProcAddress("glGenerateMipmap");
     glActiveTexture = (glactivetexture *)wglGetProcAddress("glActiveTexture");
     glUniform1i = (gluniform1i *)wglGetProcAddress("glUniform1i");
-
-    // Create Shader Program
-    g_shader_program = create_ogl_shader_program("..\\vec.glsl", "..\\frag.glsl");
-    // Vertex Data
-    // v3 vertices[] = {
-    //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
-    //     { 1.0f, 0.0f, 0.0f }, // V1 color data
-    //     { 0.5f, -0.5f, 0.0f }, // V2 pos data
-    //     { 0.0f, 1.0f, 0.0f }, // V2 color data
-    //     { 0.0f, 0.5f, 0.0f }, // V3 pos data
-    //     { 0.0f, 0.0f, 1.0f }, // V3 color data
-    // };
-    //
-    // v2 tex_coords[] = {
-    //     { 0.0f, 0.0f },
-    //     { 1.0f, 0.0f },
-    //     { 0.5f, 1.0f },
-    // };
-
-    // v3 vertices[] = {
-    //     { 0.5f, 0.5f, 0.0f },   // top-right
-    //     { 0.5f, -0.5f, 0.0f },  // bottom-right
-    //     { -0.5f, -0.5f, 0.0f }, // bottom-left
-    //     { -0.5f, 0.5f, 0.0f },  // top-left
-    // };
-    // TODO: Need to move the data for quads to
-    // build the flow for working with a texture atlas
-    f32 vertices[] = {
-        0.75f, 0.75f, 0.0f,   1.0f, 1.0f, 1.0f, 1.0f, 1.0f,   // top-right
-        0.75f, -0.75f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,  // bottom-right
-        -0.75f, -0.75f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // bottom-left
-        -0.75f, 0.75f, 0.0f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f   // top-left
-    };
-    u32 indices[] = {
-        0, 1, 3,    // T1
-        1, 2, 3     // T2
-    };
-
-    // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
-    u32 VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    // Bind VAO, the bind and set VBOs, then config vertex attribs
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // Tell opengl how to interpret our vertex data by setting pointers to the attribs
-    // pos attrib
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
-    glEnableVertexAttribArray(0);
-    // color attrib
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
-    glEnableVertexAttribArray(1);
-    // tex coord attrib
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
-    glEnableVertexAttribArray(2);
 
     ReleaseDC(window_handle, window_dc);
 }
@@ -646,6 +401,73 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
     // Init OpenGL
     win32_init_opengl(window);
+
+    // TODO: Finish converting over opengl calls from win32 plat_layer
+
+    // Create Shader Program
+    g_shader_program = create_ogl_shader_program(g_thread_context, "..\\vec.glsl", "..\\frag.glsl");
+    // Vertex Data
+    // v3 vertices[] = {
+    //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
+    //     { 1.0f, 0.0f, 0.0f }, // V1 color data
+    //     { 0.5f, -0.5f, 0.0f }, // V2 pos data
+    //     { 0.0f, 1.0f, 0.0f }, // V2 color data
+    //     { 0.0f, 0.5f, 0.0f }, // V3 pos data
+    //     { 0.0f, 0.0f, 1.0f }, // V3 color data
+    // };
+    //
+    // v2 tex_coords[] = {
+    //     { 0.0f, 0.0f },
+    //     { 1.0f, 0.0f },
+    //     { 0.5f, 1.0f },
+    // };
+    //
+    // v3 vertices[] = {
+    //     { 0.5f, 0.5f, 0.0f },   // top-right
+    //     { 0.5f, -0.5f, 0.0f },  // bottom-right
+    //     { -0.5f, -0.5f, 0.0f }, // bottom-left
+    //     { -0.5f, 0.5f, 0.0f },  // top-left
+    // };
+    // TODO: Need to move the data for quads to
+    // build the flow for working with a texture atlas
+    //
+    f32 vertices[] = {
+        0.75f, 0.75f, 0.0f,   1.0f, 1.0f, 1.0f, 1.0f, 1.0f,   // top-right
+        0.75f, -0.75f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,  // bottom-right
+        -0.75f, -0.75f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // bottom-left
+        -0.75f, 0.75f, 0.0f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f   // top-left
+    };
+    u32 indices[] = {
+        0, 1, 3,    // T1
+        1, 2, 3     // T2
+    };
+
+    // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
+    u32 VAO;
+    u32 VBO;
+    u32 EBO;
+
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    // Bind VAO, the bind and set VBOs, then config vertex attribs
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // Tell opengl how to interpret our vertex data by setting pointers to the attribs
+    // pos attrib
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
+    glEnableVertexAttribArray(0);
+    // color attrib
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
+    glEnableVertexAttribArray(1);
+    // tex coord attrib
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
+    glEnableVertexAttribArray(2);
 
     engine_input input[2] = {};
     engine_input *new_input = &input[0];
