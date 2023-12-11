@@ -201,8 +201,8 @@ struct loaded_bmp
 {
     u8 *pixels;
     i32 channels;
-    i32 width;
-    i32 height;
+    u32 width;
+    u32 height;
 };
 
 enum card_type
@@ -227,7 +227,6 @@ struct card
 {
     card_type value;
     char *suit;
-    loaded_bmp card_tex;
 };
 
 struct deck

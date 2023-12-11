@@ -350,7 +350,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     if (!RegisterClassA(&win_class))
         return false;
 
-    HWND window = CreateWindowExA(0, win_class.lpszClassName, "EngineNeo",
+    HWND window = CreateWindowExA(0, win_class.lpszClassName, "Blackjack Buddy",
                                 WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT,
                                 CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0,
                                 0, win_instance, 0);
@@ -401,73 +401,6 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 
     // Init OpenGL
     win32_init_opengl(window);
-
-    // TODO: Finish converting over opengl calls from win32 plat_layer
-
-    // Create Shader Program
-    g_shader_program = create_ogl_shader_program(g_thread_context, "..\\vec.glsl", "..\\frag.glsl");
-    // Vertex Data
-    // v3 vertices[] = {
-    //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
-    //     { 1.0f, 0.0f, 0.0f }, // V1 color data
-    //     { 0.5f, -0.5f, 0.0f }, // V2 pos data
-    //     { 0.0f, 1.0f, 0.0f }, // V2 color data
-    //     { 0.0f, 0.5f, 0.0f }, // V3 pos data
-    //     { 0.0f, 0.0f, 1.0f }, // V3 color data
-    // };
-    //
-    // v2 tex_coords[] = {
-    //     { 0.0f, 0.0f },
-    //     { 1.0f, 0.0f },
-    //     { 0.5f, 1.0f },
-    // };
-    //
-    // v3 vertices[] = {
-    //     { 0.5f, 0.5f, 0.0f },   // top-right
-    //     { 0.5f, -0.5f, 0.0f },  // bottom-right
-    //     { -0.5f, -0.5f, 0.0f }, // bottom-left
-    //     { -0.5f, 0.5f, 0.0f },  // top-left
-    // };
-    // TODO: Need to move the data for quads to
-    // build the flow for working with a texture atlas
-    //
-    f32 vertices[] = {
-        0.75f, 0.75f, 0.0f,   1.0f, 1.0f, 1.0f, 1.0f, 1.0f,   // top-right
-        0.75f, -0.75f, 0.0f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,  // bottom-right
-        -0.75f, -0.75f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // bottom-left
-        -0.75f, 0.75f, 0.0f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f   // top-left
-    };
-    u32 indices[] = {
-        0, 1, 3,    // T1
-        1, 2, 3     // T2
-    };
-
-    // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
-    u32 VAO;
-    u32 VBO;
-    u32 EBO;
-
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    // Bind VAO, the bind and set VBOs, then config vertex attribs
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // Tell opengl how to interpret our vertex data by setting pointers to the attribs
-    // pos attrib
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
-    glEnableVertexAttribArray(0);
-    // color attrib
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
-    glEnableVertexAttribArray(1);
-    // tex coord attrib
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
-    glEnableVertexAttribArray(2);
 
     engine_input input[2] = {};
     engine_input *new_input = &input[0];

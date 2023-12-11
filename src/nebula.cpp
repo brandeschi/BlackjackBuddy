@@ -1,5 +1,3 @@
-#include "nebula.h"
-
 // TODO: Implment all deck actions
 // - Shuffling
 // - Drawing Cards
@@ -322,23 +320,23 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
         // NOTE: Each card is like 98 hori and 153 vert
         game_state->tex_atlas = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/cards.bmp");
         // game_state->tex_atlas = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/debug-art.bmp");
-        loaded_bmp *card_bmps = slice_card_atlas(&game_state->gm_arena, game_state->tex_atlas);
+        // loaded_bmp *card_bmps = slice_card_atlas(&game_state->gm_arena, game_state->tex_atlas);
 
         game_state->base_deck = {
             {
-                { TWO, "SPADES", card_bmps[39] },
-                { THREE, "SPADES", card_bmps[40] },
-                { FOUR, "SPADES", card_bmps[41] },
-                { FIVE, "SPADES", card_bmps[42] },
-                { SIX, "SPADES", card_bmps[43] },
-                { SEVEN, "SPADES", card_bmps[44] },
-                { EIGHT, "SPADES", card_bmps[45] },
-                { NINE, "SPADES", card_bmps[46] },
-                { TEN, "SPADES", card_bmps[47] },
-                { JACK, "SPADES", card_bmps[48] },
-                { QUEEN, "SPADES", card_bmps[49] },
-                { KING, "SPADES", card_bmps[50] },
-                { ACE, "SPADES", card_bmps[51] },
+                { TWO, "SPADES" },
+                { THREE, "SPADES" },
+                { FOUR, "SPADES" },
+                { FIVE, "SPADES" },
+                { SIX, "SPADES" },
+                { SEVEN, "SPADES" },
+                { EIGHT, "SPADES" },
+                { NINE, "SPADES" },
+                { TEN, "SPADES" },
+                { JACK, "SPADES" },
+                { QUEEN, "SPADES" },
+                { KING, "SPADES" },
+                { ACE, "SPADES" },
                 { TWO, "HEARTS" },
                 { THREE, "HEARTS" },
                 { FOUR, "HEARTS" },
@@ -364,7 +362,7 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
                 { JACK, "CLUBS" },
                 { QUEEN, "CLUBS" },
                 { KING, "CLUBS" },
-                { ACE, "CLUBS", card_bmps[0] },
+                { ACE, "CLUBS" },
                 { TWO, "DIAMONDS" },
                 { THREE, "DIAMONDS" },
                 { FOUR, "DIAMONDS" },
@@ -381,20 +379,94 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
             }
         };
 
+        // TODO: Finish converting over opengl calls from win32 plat_layer
+
+        // Create Shader Program
+        g_shader_program = create_ogl_shader_program(g_thread_context, "..\\vec.glsl", "..\\frag.glsl");
+        // Vertex Data
+        // v3 vertices[] = {
+        //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
+        //     { 1.0f, 0.0f, 0.0f }, // V1 color data
+        //     { 0.5f, -0.5f, 0.0f }, // V2 pos data
+        //     { 0.0f, 1.0f, 0.0f }, // V2 color data
+        //     { 0.0f, 0.5f, 0.0f }, // V3 pos data
+        //     { 0.0f, 0.0f, 1.0f }, // V3 color data
+        // };
+        //
+        // v2 tex_coords[] = {
+        //     { 0.0f, 0.0f },
+        //     { 1.0f, 0.0f },
+        //     { 0.5f, 1.0f },
+        // };
+        //
+        // v3 vertices[] = {
+        //     { 0.5f, 0.5f, 0.0f },   // top-right
+        //     { 0.5f, -0.5f, 0.0f },  // bottom-right
+        //     { -0.5f, -0.5f, 0.0f }, // bottom-left
+        //     { -0.5f, 0.5f, 0.0f },  // top-left
+        // };
+        // TODO: Need to move the data for quads to
+        // build the flow for working with a texture atlas
+        //
+
+        // TODO: Figure out how to come up with the position data... transform??
+        vertex_data vertices[] = {
+            { {-0.1f, -0.1f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
+            { {0.0f, -0.1f, 0.0f},  {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
+            { {0.0f, 0.2f, 0.0f},   {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
+            { {-0.1f, 0.2f, 0.0f},  {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
+        };
+        draw_card(vertices, game_state->tex_atlas, {0.0f, 4.0f});
+        u32 indices[] = {
+            0, 1, 3,    // T1
+            1, 2, 3     // T2
+        };
+
+        // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
+        u32 VAO;
+        u32 VBO;
+        u32 EBO;
+
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+
+        // Bind VAO, the bind and set VBOs, then config vertex attribs
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+        // Tell opengl how to interpret our vertex data by setting pointers to the attribs
+        // pos attrib
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
+        glEnableVertexAttribArray(0);
+        // color attrib
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
+        glEnableVertexAttribArray(1);
+        // tex coord attrib
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
+        glEnableVertexAttribArray(2);
+
+
         GLuint texture;
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D, texture);
         // Setting Texture wrapping method
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         // Setting Texture filtering methods
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         // TODO: GL_BGRA_EXT is a windows specific value, I believe I need to somehow handle this in the platform layer
         // or when I pull this rendering code out
-        card first_card = game_state->base_deck.cards[38];
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, game_state->tex_atlas.width, game_state->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, game_state->tex_atlas.pixels + (392 * 1));
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, game_state->tex_atlas.width, game_state->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, game_state->tex_atlas.pixels);
 
         memory->is_init = true;
     }

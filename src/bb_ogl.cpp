@@ -58,3 +58,23 @@ static GLuint create_ogl_shader_program(thread_context tc, char *vertex_file_nam
     return prog_id;
 }
 
+static void init_renderer(void) {
+    return;
+}
+
+static void draw_card(vertex_data *vertex_array, loaded_bmp tex_atlas, v2 card_index) {
+    u32 quad_vertex_count = 4;
+    f32 card_width = (f32)tex_atlas.width / 13.0f;
+    f32 card_height = (f32)tex_atlas.height / 5.0f;
+
+    v2 computed_tex_coords[] = {
+        {(card_index.x * card_width) / tex_atlas.width, (card_index.y * card_height) / tex_atlas.height },
+        {((card_index.x + 1) * card_width) / tex_atlas.width, (card_index.y * card_height) / tex_atlas.height },
+        {((card_index.x + 1) * card_width) / tex_atlas.width, ((card_index.y + 1) * card_height) / tex_atlas.height },
+        {(card_index.x * card_width) / tex_atlas.width, ((card_index.y + 1) * card_height) / tex_atlas.height }
+    };
+    for (u32 i = 0; i < quad_vertex_count; ++i) {
+        vertex_array[i].tex_coords = computed_tex_coords[i];
+    }
+}
+
