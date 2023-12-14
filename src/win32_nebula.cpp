@@ -23,6 +23,9 @@ global i64 g_perf_count_freq;
 #include "bb_ogl.cpp"
 #include "nebula.cpp"
 
+// typedef HGLRC WINAPI wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList);
+typedef HGLRC WINAPI wgl_create_context_attribs_arb(HDC hDC, HGLRC hShareContext, const int *attribList);
+
 static void win32_init_opengl(HWND window_handle)
 {
     HDC window_dc = GetDC(window_handle);
@@ -44,6 +47,30 @@ static void win32_init_opengl(HWND window_handle)
     {
         // TODO: Diags
         invalid_code_path;
+    }
+    OutputDebugStringA((char *)glGetString(GL_VERSION));
+    OutputDebugStringA("\n");
+
+    wgl_create_context_attribs_arb *wglCreateContextAttribsARB = (wgl_create_context_attribs_arb *)wglGetProcAddress("wglCreateContextAttribsARB");
+    if (wglCreateContextAttribsARB) {
+        HGLRC shared_context = 0;
+        int attribs[] = {
+            WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
+            WGL_CONTEXT_MINOR_VERSION_ARB, 5,
+            WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
+            // WGL_CONTEXT_DEBUG_BIT_ARB,
+            WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+            0
+        };
+        HGLRC modern_glrc = wglCreateContextAttribsARB(window_dc, shared_context, attribs);
+        if (modern_glrc) {
+            if (wglMakeCurrent(window_dc, modern_glrc)) {
+                wglDeleteContext(opengl_rc);
+                opengl_rc = modern_glrc;
+                OutputDebugStringA((char *)glGetString(GL_SHADING_LANGUAGE_VERSION));
+                OutputDebugStringA("\n");
+            }
+        }
     }
 
     // OpenGL func ptrs
@@ -160,6 +187,12 @@ static void win32_update_win_with_buffer(HDC device_context,
 
 #else
     glViewport(0, 0, win_width, win_height);
+    // TODO: Do aspect ratio
+    //
+    // glMatrixMode(GL_PROJECTION);
+    // glLoadIdentity();
+    // gluPerspective(45.0, 16.0/9.0*float(win_width)/float(win_height), 0.1, 100.0);
+
     glClearColor(0.8f, 0.56f, 0.64f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 

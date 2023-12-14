@@ -382,7 +382,7 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
         // TODO: Finish converting over opengl calls from win32 plat_layer
 
         // Create Shader Program
-        g_shader_program = create_ogl_shader_program(g_thread_context, "..\\vec.glsl", "..\\frag.glsl");
+        g_shader_program = create_ogl_shader_program(g_thread_context, "..\\vert.glsl", "..\\frag.glsl");
         // Vertex Data
         // v3 vertices[] = {
         //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
