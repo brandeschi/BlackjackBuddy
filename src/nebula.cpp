@@ -4,8 +4,10 @@
 // - Concept of a hand?
 //
 // Also need to add general player actions
-#include <stdlib.h>
-#include <time.h>
+#pragma once
+
+#include "win32.unity.h"
+
 // NOTE: This is Fisher-Yates Algo
 // TODO: Need to implement random numbers
 inline static void shuffle(card deck[], mem_index deck_size)

@@ -1,3 +1,6 @@
+#pragma once
+
+#include "win32.unity.h"
 #include "bb_ogl.h"
 
 static GLuint create_ogl_shader_program(thread_context tc, char *vertex_file_name, char *fragment_file_name)
