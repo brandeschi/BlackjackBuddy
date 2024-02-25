@@ -181,3 +181,35 @@ inline mat4 mat_multiply(mat4 left, mat4 right)
 
   return result;
 }
+
+inline mat4 mat4_scale(f32 x, f32 y, f32 z)
+{
+  mat4 result = {
+    x, 0.0f, 0.0f, 0.0f,
+    0.0f, y, 0.0f, 0.0f,
+    0.0f, 0.0f, z, 0.0f,
+    0.0f, 0.0f, 0.0f, 1.0f
+  };
+
+  return result;
+}
+
+// TODO:
+inline mat4 mat4_rotate();
+
+inline mat4_ortho(f32 left, f32 right, f32 top, f32 bottom, f32 near, f32 far)
+{
+  f32 rl_range = right - left;
+  f32 tb_range = top - bottom;
+  f32 fn_range = far - near;
+
+  // NOTE: This is colunm-major(OGL inforced); which means the rows in these map to columns in math notation.
+  mat4 result = {
+    (2.0f/rl_range),              0.0f,                         0.0f,                       0.0f,
+    0.0f,                         (2.0f/tb_range),              0.0f,                       0.0f,
+    0.0f,                         0.0f,                         (-2.0f/fn_range),           0.0f,
+    -((right + left)/(rl_range)), -((top + bottom)/(tb_range)), -((far + near)/(fn_range)), 1.0f
+  };
+
+  return result;
+}
