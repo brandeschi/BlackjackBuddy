@@ -8,6 +8,7 @@
 #define KEEB_COUNT 1
 
 #include <Windows.h>
+// NOTE: Need to undef b/c they are old macros win windows.h.
 #include <stdio.h>
 #include <dsound.h>
 #include <gl/GL.h>

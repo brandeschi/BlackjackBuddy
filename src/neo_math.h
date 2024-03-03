@@ -138,12 +138,16 @@ inline f32 length_sq(v2 a)
 
 //NOTE: Matrices
 // (OpenGL style 4x4 - right handed, column major)
-struct mat4
+union mat4
 {
-  f32 m0,  m1,  m2,  m3;
-  f32 m4,  m5,  m6,  m7;
-  f32 m8,  m9,  m10, m11;
-  f32 m12, m13, m14, m15;
+  struct {
+    f32 m0,  m1,  m2,  m3;
+    f32 m4,  m5,  m6,  m7;
+    f32 m8,  m9,  m10, m11;
+    f32 m12, m13, m14, m15;
+  };
+
+  f32 e[16];
 };
 
 inline mat4 mat4_iden()
@@ -158,7 +162,7 @@ inline mat4 mat4_iden()
   return result;
 }
 
-inline mat4 mat_multiply(mat4 left, mat4 right)
+inline mat4 mat4_multiply(mat4 left, mat4 right)
 {
   mat4 result = {};
 
@@ -182,6 +186,26 @@ inline mat4 mat_multiply(mat4 left, mat4 right)
   return result;
 }
 
+inline mat4 operator*(mat4 left, mat4 right)
+{
+  mat4 result = {};
+  result = mat4_multiply(left, right);
+
+  return result;
+}
+
+inline mat4 mat4_translate(f32 x, f32 y, f32 z)
+{
+  mat4 result = {
+    1.0f, 0.0f, 0.0f, x,
+    0.0f, 1.0f, 0.0f, y,
+    0.0f, 0.0f, 1.0f, z,
+    0.0f, 0.0f, 0.0f, 1.0f
+  };
+
+  return result;
+}
+
 inline mat4 mat4_scale(f32 x, f32 y, f32 z)
 {
   mat4 result = {
@@ -195,20 +219,20 @@ inline mat4 mat4_scale(f32 x, f32 y, f32 z)
 }
 
 // TODO:
-inline mat4 mat4_rotate();
+// inline mat4 mat4_rotate();
 
-inline mat4_ortho(f32 left, f32 right, f32 top, f32 bottom, f32 near, f32 far)
+inline mat4 mat4_ortho(f32 left, f32 right, f32 top, f32 bottom, f32 nearP, f32 farP)
 {
   f32 rl_range = right - left;
   f32 tb_range = top - bottom;
-  f32 fn_range = far - near;
+  f32 fn_range = farP - nearP;
 
   // NOTE: This is colunm-major(OGL inforced); which means the rows in these map to columns in math notation.
   mat4 result = {
     (2.0f/rl_range),              0.0f,                         0.0f,                       0.0f,
     0.0f,                         (2.0f/tb_range),              0.0f,                       0.0f,
     0.0f,                         0.0f,                         (-2.0f/fn_range),           0.0f,
-    -((right + left)/(rl_range)), -((top + bottom)/(tb_range)), -((far + near)/(fn_range)), 1.0f
+    -((right + left)/(rl_range)), -((top + bottom)/(tb_range)), -((farP + nearP)/(fn_range)), 1.0f
   };
 
   return result;

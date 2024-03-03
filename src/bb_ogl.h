@@ -79,6 +79,8 @@ typedef void glactivetexture(GLenum texture);
 global glactivetexture *glActiveTexture;
 typedef void gluniform1i(GLint location, GLint v0);
 global gluniform1i *glUniform1i;
+typedef void gluniformmatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+global gluniformmatrix4fv *glUniformMatrix4fv;
 
 struct entity_render_data
 {
