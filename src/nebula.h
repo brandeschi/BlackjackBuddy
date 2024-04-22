@@ -50,21 +50,21 @@ typedef double f64;
 
 struct thread_context
 {
-    int placeholder;
+  int placeholder;
 };
 
 inline u32 safe_truncate_int64(u64 value)
 {
-    neo_assert(value <= 0xFFFFFFFF);
-    u32 result = (u32) value;
-    return result;
+  neo_assert(value <= 0xFFFFFFFF);
+  u32 result = (u32) value;
+  return result;
 }
 
 // #if NEO_INTERNAL
 struct debug_file_result
 {
-    u32 contents_size;
-    void *contents;
+  u32 contents_size;
+  void *contents;
 };
 
 #define DEBUG_FREE_FILE_MEMORY(name) void name(thread_context *thread, void *file)
@@ -132,59 +132,59 @@ struct engine_controller_input
 
 struct engine_input
 {
-    engine_button_state mouse_buttons [3];
-    i32 mouseX, mouseY, mouseZ;
+  engine_button_state mouse_buttons [3];
+  i32 mouseX, mouseY, mouseZ;
 
-    f32 time_step_over_frame;
-    engine_controller_input controllers[5];
+  f32 time_step_over_frame;
+  engine_controller_input controllers[5];
 };
 
 inline engine_controller_input *get_controller(engine_input *input, int controller_index)
 {
-    // NOTE: might want to make controller_index unsigned if we don't want neg arr access
-    neo_assert(arr_count(input->controllers) > controller_index);
+  // NOTE: might want to make controller_index unsigned if we don't want neg arr access
+  neo_assert(arr_count(input->controllers) > controller_index);
 
-    engine_controller_input *result = &input->controllers[controller_index];
-    return result;
+  engine_controller_input *result = &input->controllers[controller_index];
+  return result;
 }
 
 struct app_memory
 {
-    b32 is_init;
+  b32 is_init;
 
-    u64 perm_storage_space;
-    void *perm_mem_storage; // NOTE: This needs to be cleared to 0 when allocated at startup
+  u64 perm_storage_space;
+  void *perm_mem_storage; // NOTE: This needs to be cleared to 0 when allocated at startup
 
-    u64 flex_storage_space;
-    void *flex_mem_storage;
+  u64 flex_storage_space;
+  void *flex_mem_storage;
 
-    debug_free_file *DEBUG_free_file;
-    debug_read_entire_file *DEBUG_read_entire_file;
-    debug_write_entire_file *DEBUG_write_entire_file;
+  debug_free_file *DEBUG_free_file;
+  debug_read_entire_file *DEBUG_read_entire_file;
+  debug_write_entire_file *DEBUG_write_entire_file;
 };
 
 struct memory_arena
 {
-    mem_index size;
-    u8 *base_address;
-    mem_index used_space;
+  mem_index size;
+  u8 *base_address;
+  mem_index used_space;
 };
 
 static void init_arena(memory_arena *ma, mem_index size, u8 *base_address)
 {
-    ma->size = size;
-    ma->base_address = base_address;
-    ma->used_space = 0;
+  ma->size = size;
+  ma->base_address = base_address;
+  ma->used_space = 0;
 }
 
 #define push_struct(ma, type) (type *)push_size_(ma, sizeof(type))
 #define push_array(ma, count, type) (type *)push_size_(ma, (count) * sizeof(type))
 void *push_size_(memory_arena *ma, mem_index size)
 {
-    neo_assert((ma->used_space + size) <= ma->size);
-    void *result = ma->base_address + ma->used_space;
-    ma->used_space += size;
-    return result;
+  neo_assert((ma->used_space + size) <= ma->size);
+  void *result = ma->base_address + ma->used_space;
+  ma->used_space += size;
+  return result;
 }
 
 #include "neo_math.h"
@@ -192,53 +192,75 @@ void *push_size_(memory_arena *ma, mem_index size)
 
 struct loaded_jpg
 {
-    u8 *pixels;
-    i32 channels;
-    i32 width;
-    i32 height;
+  u8 *pixels;
+  i32 channels;
+  i32 width;
+  i32 height;
 };
 struct loaded_bmp
 {
-    u8 *pixels;
-    i32 channels;
-    u32 width;
-    u32 height;
+  u8 *pixels;
+  i32 channels;
+  u32 width;
+  u32 height;
 };
 
 enum card_type
 {
-    FACE_DOWN = 0,
-    TWO = 2,
-    THREE,
-    FOUR,
-    FIVE,
-    SIX,
-    SEVEN,
-    EIGHT,
-    NINE,
-    TEN,
-    JACK = 10,
-    QUEEN = 10,
-    KING = 10,
-    ACE
+  FACE_DOWN = 0,
+  TWO = 2,
+  THREE,
+  FOUR,
+  FIVE,
+  SIX,
+  SEVEN,
+  EIGHT,
+  NINE,
+  TEN,
+  JACK = 10,
+  QUEEN = 10,
+  KING = 10,
+  ACE
+};
+
+enum turn_phase
+{
+  BETTING = 0,
+  PLAYER_ACTION,
+  DEALER_ACTION,
+  PAYOUT
 };
 
 struct card
 {
-    card_type value;
-    char *suit;
+  card_type value;
+  char *suit;
 };
 
 struct deck
 {
-    card cards[52];
+  card *cursor;
+  card cards[52];
+};
+
+struct player
+{
+  u32 money_amount;
+  b32 active_bet = false;
+
+  memory_arena hand_arena;
+  card *hand;
 };
 
 struct app_state
 {
-    memory_arena gm_arena;
-    deck base_deck;
-    loaded_bmp tex_atlas;
+  memory_arena gm_arena;
+  loaded_bmp tex_atlas;
+
+  turn_phase current_phase;
+  deck base_deck;
+
+  player *players;
 };
 
 static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input,

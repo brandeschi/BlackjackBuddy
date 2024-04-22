@@ -62,6 +62,8 @@ static GLuint create_ogl_shader_program(thread_context tc, char *vertex_file_nam
 }
 
 static void init_renderer(void) {
+  // TODO: Any setup needed for the renderer should go here
+  // before adding a renderer struct to the game_state
   return;
 }
 

@@ -16,6 +16,8 @@
 #include <time.h>
 
 #include "nebula.h"
+
+#include "nebula_random.h"
 #include "win32_nebula.h"
 
 global b32 g_running = false;

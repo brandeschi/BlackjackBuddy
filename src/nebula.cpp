@@ -7,41 +7,32 @@
 #pragma once
 
 #include "win32.unity.h"
-
-// NOTE: This is Fisher-Yates Algo
-// TODO: Need to implement random numbers
-inline static void shuffle(card deck[], mem_index deck_size)
-{
-  time_t t;
-  srand((unsigned) time(&t));
-  for (int i = 0; i < deck_size - 2; i++)
-  {
-    int j = rand() % (deck_size - 2 - i);
-    // Swap
-    card temp = deck[i];
-    deck[i] = deck[j];
-    deck[j] = temp;
-  }
-}
-
-// NOTE: players includes the dealer
-inline static void new_hand_deal(deck *deck, u32 players = 2)
-{
-  // TODO: Pass the removed cards to the players/board;
-  u32 cards_to_remove = players*2;
-  // card *cards_removed;
-  // for (u32 i = 0; i < cards_to_remove; ++i)
-  // {
-  //     cards_removed++ = &deck->cards[i];
-  // }
-
-  // return cards_removed;
-}
-
 #if 0
 #include "neo_jpg.h"
 #include "neo_jpg.cpp"
 #endif
+
+
+// NOTE: This is Fisher-Yates Algo
+// TODO: Need to implement random numbers
+inline static void shuffle(deck *deck, mem_index deck_size)
+{
+  time_t t;
+  srand((unsigned) time(&t));
+  for (int i = 0; i < deck_size - 2; ++i)
+  {
+    int j = rand() % (deck_size - 2 - i);
+    // Swap
+    card temp = deck->cards[i];
+    deck->cards[i] = deck->cards[j];
+    deck->cards[j] = temp;
+  }
+}
+
+// NOTE: players includes the dealer
+inline static void deal_new_hand(deck *deck, u32 players = 2)
+{
+}
 
 static void output_sound(app_state *game_state, engine_sound_buffer *sound_buffer)
 {
@@ -325,6 +316,7 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     // loaded_bmp *card_bmps = slice_card_atlas(&game_state->gm_arena, game_state->tex_atlas);
 
     game_state->base_deck = {
+      0,
       {
         { TWO, "SPADES" },
         { THREE, "SPADES" },
@@ -381,6 +373,19 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
       }
     };
 
+    // Setup
+    u8 MAX_PLAYERS = 8;
+    game_state->players = push_array(&game_state->gm_arena, MAX_PLAYERS, player);
+    for (u32 i = 0; i < MAX_PLAYERS; ++i) {
+      init_arena(&game_state->players[i].hand_arena, memory->perm_storage_space - (sizeof(card)*26),
+                 (u8 *)memory->perm_mem_storage + sizeof(card));
+    }
+    game_state->current_phase = BETTING;
+    game_state->players->money_amount = 1000;
+
+    shuffle(&game_state->base_deck, arr_count(game_state->base_deck.cards));
+    game_state->base_deck.cursor = game_state->base_deck.cards;
+
     // TODO: Finish converting over opengl calls from win32 plat_layer
 
     // Create Shader Program
@@ -409,7 +414,7 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     // };
 
     vertex_data vertices[] = {
-    //  pos                     color               tex-coords
+      //  pos                     color               tex-coords
       { {100.0f, 125.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
       { {150.0f, 125.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
       { {150.0f, 50.0f, 0.0f},  {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
@@ -485,19 +490,48 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
 
     memory->is_init = true;
   }
+
+  // INPUT
   for (int controller_index = 0;
-  controller_index < arr_count(input->controllers);
-  controller_index++)
-  {
+       controller_index < arr_count(input->controllers);
+       controller_index++) {
     engine_controller_input *controller = get_controller(input, controller_index);
-    if (controller->is_analog)
-    {
-    }
-    else
-  {
-    }
+    if (controller->is_analog) {}
+    else {}
+  }
+
+  // TODO: Add burn card when starting a new shoe
+  switch (game_state->current_phase) {
+    case BETTING:
+      {
+        game_state->players[0].money_amount -= 50;
+        game_state->players->active_bet = true;
+        if (game_state->players->active_bet) {
+          // TODO: figure out how I want to handle the list of active bettors.
+          u32 cards_to_remove = 1*2;
+          for (u32 i = cards_to_remove; i > 0; --i) {
+            // TODO: Start here; try to focus on writing the code you need here in place
+            // instead of thinking what 'struct' you might need!
+            push_struct(&game_state->players[0].hand_arena, card);
+          }
+        }
+        game_state->current_phase = PLAYER_ACTION;
+      } break;
+    case PLAYER_ACTION:
+      {
+
+      } break;
+    case DEALER_ACTION:
+      {
+
+      } break;
+    case PAYOUT:
+      {
+
+      } break;
 
   }
+
 
 #if 0
   // Draw debug backgroun in client area.
