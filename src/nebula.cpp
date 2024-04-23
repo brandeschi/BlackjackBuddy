@@ -316,61 +316,61 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     // loaded_bmp *card_bmps = slice_card_atlas(&game_state->gm_arena, game_state->tex_atlas);
 
     game_state->base_deck = {
-      0,
       {
-        { TWO, "SPADES" },
-        { THREE, "SPADES" },
-        { FOUR, "SPADES" },
-        { FIVE, "SPADES" },
-        { SIX, "SPADES" },
-        { SEVEN, "SPADES" },
-        { EIGHT, "SPADES" },
-        { NINE, "SPADES" },
-        { TEN, "SPADES" },
-        { JACK, "SPADES" },
-        { QUEEN, "SPADES" },
-        { KING, "SPADES" },
-        { ACE, "SPADES" },
-        { TWO, "HEARTS" },
-        { THREE, "HEARTS" },
-        { FOUR, "HEARTS" },
-        { FIVE, "HEARTS" },
-        { SIX, "HEARTS" },
-        { SEVEN, "HEARTS" },
-        { EIGHT, "HEARTS" },
-        { NINE, "HEARTS" },
-        { TEN, "HEARTS" },
-        { JACK, "HEARTS" },
-        { QUEEN, "HEARTS" },
-        { KING, "HEARTS" },
-        { ACE, "HEARTS" },
-        { TWO, "CLUBS" },
-        { THREE, "CLUBS" },
-        { FOUR, "CLUBS" },
-        { FIVE, "CLUBS" },
-        { SIX, "CLUBS" },
-        { SEVEN, "CLUBS" },
-        { EIGHT, "CLUBS" },
-        { NINE, "CLUBS" },
-        { TEN, "CLUBS" },
-        { JACK, "CLUBS" },
-        { QUEEN, "CLUBS" },
-        { KING, "CLUBS" },
-        { ACE, "CLUBS" },
-        { TWO, "DIAMONDS" },
-        { THREE, "DIAMONDS" },
-        { FOUR, "DIAMONDS" },
-        { FIVE, "DIAMONDS" },
-        { SIX, "DIAMONDS" },
-        { SEVEN, "DIAMONDS" },
-        { EIGHT, "DIAMONDS" },
-        { NINE, "DIAMONDS" },
-        { TEN, "DIAMONDS" },
-        { JACK, "DIAMONDS" },
-        { QUEEN, "DIAMONDS" },
-        { KING, "DIAMONDS" },
-        { ACE, "DIAMONDS" }
-      }
+        { "SPADES", TWO },
+        { "SPADES", THREE },
+        { "SPADES", FOUR },
+        { "SPADES", FIVE },
+        { "SPADES", SIX },
+        { "SPADES", SEVEN },
+        { "SPADES", EIGHT },
+        { "SPADES", NINE },
+        { "SPADES", TEN },
+        { "SPADES", JACK },
+        { "SPADES", QUEEN },
+        { "SPADES", KING },
+        { "SPADES", ACE },
+        { "HEARTS", TWO },
+        { "HEARTS", THREE },
+        { "HEARTS", FOUR },
+        { "HEARTS", FIVE },
+        { "HEARTS", SIX },
+        { "HEARTS", SEVEN },
+        { "HEARTS", EIGHT },
+        { "HEARTS", NINE },
+        { "HEARTS", TEN },
+        { "HEARTS", JACK },
+        { "HEARTS", QUEEN },
+        { "HEARTS", KING },
+        { "HEARTS", ACE },
+        { "CLUBS", TWO },
+        { "CLUBS", THREE },
+        { "CLUBS", FOUR },
+        { "CLUBS", FIVE },
+        { "CLUBS", SIX },
+        { "CLUBS", SEVEN },
+        { "CLUBS", EIGHT },
+        { "CLUBS", NINE },
+        { "CLUBS", TEN },
+        { "CLUBS", JACK },
+        { "CLUBS", QUEEN },
+        { "CLUBS", KING },
+        { "CLUBS", ACE },
+        { "DIAMONDS", TWO },
+        { "DIAMONDS", THREE },
+        { "DIAMONDS", FOUR },
+        { "DIAMONDS", FIVE },
+        { "DIAMONDS", SIX },
+        { "DIAMONDS", SEVEN },
+        { "DIAMONDS", EIGHT },
+        { "DIAMONDS", NINE },
+        { "DIAMONDS", TEN },
+        { "DIAMONDS", JACK },
+        { "DIAMONDS", QUEEN },
+        { "DIAMONDS", KING },
+        { "DIAMONDS", ACE }
+      },
+      0
     };
 
     // Setup
@@ -383,6 +383,7 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     game_state->current_phase = BETTING;
     game_state->players->money_amount = 1000;
 
+    shuffle(&game_state->base_deck, arr_count(game_state->base_deck.cards));
     shuffle(&game_state->base_deck, arr_count(game_state->base_deck.cards));
     game_state->base_deck.cursor = game_state->base_deck.cards;
 
@@ -512,9 +513,11 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
           for (u32 i = cards_to_remove; i > 0; --i) {
             // TODO: Start here; try to focus on writing the code you need here in place
             // instead of thinking what 'struct' you might need!
-            push_struct(&game_state->players[0].hand_arena, card);
+            card *pulled_card = push_struct(&game_state->players[0].hand_arena, card);
+            *pulled_card = *game_state->base_deck.cursor++;
           }
         }
+
         game_state->current_phase = PLAYER_ACTION;
       } break;
     case PLAYER_ACTION:

@@ -233,14 +233,14 @@ enum turn_phase
 
 struct card
 {
-  card_type value;
   char *suit;
+  card_type value;
 };
 
 struct deck
 {
-  card *cursor;
   card cards[52];
+  card *cursor;
 };
 
 struct player
