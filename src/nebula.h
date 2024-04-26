@@ -205,6 +205,15 @@ struct loaded_bmp
   u32 height;
 };
 
+/*
+  * NOTE: Experiment with using the following card encoding:
+  *
+  * 6-bits to encode a deck where:
+  * top two bits represent suit -> 00 = club, 01 = spade, 10 = diamond, 11 = heart
+  *
+  * last 4 bits are card values
+  * 0000 = facedown, 0001 = 2, 0010 = 3, etc.
+*/
 enum card_type
 {
   FACE_DOWN = 0,
@@ -217,10 +226,18 @@ enum card_type
   EIGHT,
   NINE,
   TEN,
-  JACK = 10,
-  QUEEN = 10,
-  KING = 10,
+  JACK,
+  QUEEN,
+  KING,
   ACE
+};
+
+enum suit_type
+{
+  CLUBS =    0x00,
+  SPADES =   0x10,
+  DIAMONDS = 0x20,
+  HEARTS =   0x30
 };
 
 enum turn_phase
@@ -231,16 +248,10 @@ enum turn_phase
   PAYOUT
 };
 
-struct card
-{
-  char *suit;
-  card_type value;
-};
-
 struct deck
 {
-  card cards[52];
-  card *cursor;
+  u8 cards[52];
+  u8 *cursor;
 };
 
 struct player
@@ -249,7 +260,6 @@ struct player
   b32 active_bet = false;
 
   memory_arena hand_arena;
-  card *hand;
 };
 
 struct app_state

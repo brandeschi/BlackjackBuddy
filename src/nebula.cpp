@@ -12,6 +12,34 @@
 #include "neo_jpg.cpp"
 #endif
 
+inline static u8 DEBUG_get_card_value(u8 card) {
+  u8 result = (card & 0x0F);
+  switch (result) {
+    case FACE_DOWN:
+      {
+        return 0;
+      }
+    case JACK:
+    case QUEEN:
+    case KING:
+      {
+        return 10;
+      }
+    case ACE:
+      {
+        return 11;
+      }
+  }
+
+  neo_assert(!(result > 14))
+  return result;
+}
+
+inline static u8 get_card_suit_value(u8 card) {
+  u8 result = (card & 0xF0) >> 4;
+  neo_assert(!(result > 3))
+  return result;
+}
 
 // NOTE: This is Fisher-Yates Algo
 // TODO: Need to implement random numbers
@@ -23,7 +51,7 @@ inline static void shuffle(deck *deck, mem_index deck_size)
   {
     int j = rand() % (deck_size - 2 - i);
     // Swap
-    card temp = deck->cards[i];
+    u8 temp = deck->cards[i];
     deck->cards[i] = deck->cards[j];
     deck->cards[j] = temp;
   }
@@ -317,58 +345,58 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
 
     game_state->base_deck = {
       {
-        { "SPADES", TWO },
-        { "SPADES", THREE },
-        { "SPADES", FOUR },
-        { "SPADES", FIVE },
-        { "SPADES", SIX },
-        { "SPADES", SEVEN },
-        { "SPADES", EIGHT },
-        { "SPADES", NINE },
-        { "SPADES", TEN },
-        { "SPADES", JACK },
-        { "SPADES", QUEEN },
-        { "SPADES", KING },
-        { "SPADES", ACE },
-        { "HEARTS", TWO },
-        { "HEARTS", THREE },
-        { "HEARTS", FOUR },
-        { "HEARTS", FIVE },
-        { "HEARTS", SIX },
-        { "HEARTS", SEVEN },
-        { "HEARTS", EIGHT },
-        { "HEARTS", NINE },
-        { "HEARTS", TEN },
-        { "HEARTS", JACK },
-        { "HEARTS", QUEEN },
-        { "HEARTS", KING },
-        { "HEARTS", ACE },
-        { "CLUBS", TWO },
-        { "CLUBS", THREE },
-        { "CLUBS", FOUR },
-        { "CLUBS", FIVE },
-        { "CLUBS", SIX },
-        { "CLUBS", SEVEN },
-        { "CLUBS", EIGHT },
-        { "CLUBS", NINE },
-        { "CLUBS", TEN },
-        { "CLUBS", JACK },
-        { "CLUBS", QUEEN },
-        { "CLUBS", KING },
-        { "CLUBS", ACE },
-        { "DIAMONDS", TWO },
-        { "DIAMONDS", THREE },
-        { "DIAMONDS", FOUR },
-        { "DIAMONDS", FIVE },
-        { "DIAMONDS", SIX },
-        { "DIAMONDS", SEVEN },
-        { "DIAMONDS", EIGHT },
-        { "DIAMONDS", NINE },
-        { "DIAMONDS", TEN },
-        { "DIAMONDS", JACK },
-        { "DIAMONDS", QUEEN },
-        { "DIAMONDS", KING },
-        { "DIAMONDS", ACE }
+        SPADES | TWO,
+        SPADES | THREE,
+        SPADES | FOUR,
+        SPADES | FIVE,
+        SPADES | SIX,
+        SPADES | SEVEN,
+        SPADES | EIGHT,
+        SPADES | NINE,
+        SPADES | TEN,
+        SPADES | JACK,
+        SPADES | QUEEN,
+        SPADES | KING,
+        SPADES | ACE,
+        HEARTS | TWO,
+        HEARTS | THREE,
+        HEARTS | FOUR,
+        HEARTS | FIVE,
+        HEARTS | SIX,
+        HEARTS | SEVEN,
+        HEARTS | EIGHT,
+        HEARTS | NINE,
+        HEARTS | TEN,
+        HEARTS | JACK,
+        HEARTS | QUEEN,
+        HEARTS | KING,
+        HEARTS | ACE,
+        CLUBS | TWO,
+        CLUBS | THREE,
+        CLUBS | FOUR,
+        CLUBS | FIVE,
+        CLUBS | SIX,
+        CLUBS | SEVEN,
+        CLUBS | EIGHT,
+        CLUBS | NINE,
+        CLUBS | TEN,
+        CLUBS | JACK,
+        CLUBS | QUEEN,
+        CLUBS | KING,
+        CLUBS | ACE,
+        DIAMONDS | TWO,
+        DIAMONDS | THREE,
+        DIAMONDS | FOUR,
+        DIAMONDS | FIVE,
+        DIAMONDS | SIX,
+        DIAMONDS | SEVEN,
+        DIAMONDS | EIGHT,
+        DIAMONDS | NINE,
+        DIAMONDS | TEN,
+        DIAMONDS | JACK,
+        DIAMONDS | QUEEN,
+        DIAMONDS | KING,
+        DIAMONDS | ACE
       },
       0
     };
@@ -377,15 +405,16 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     u8 MAX_PLAYERS = 8;
     game_state->players = push_array(&game_state->gm_arena, MAX_PLAYERS, player);
     for (u32 i = 0; i < MAX_PLAYERS; ++i) {
-      init_arena(&game_state->players[i].hand_arena, memory->perm_storage_space - (sizeof(card)*26),
-                 (u8 *)memory->perm_mem_storage + sizeof(card));
+      init_arena(&game_state->players[i].hand_arena, memory->perm_storage_space - (sizeof(u8)*26),
+                 (u8 *)memory->perm_mem_storage + sizeof(u8));
     }
     game_state->current_phase = BETTING;
     game_state->players->money_amount = 1000;
 
     shuffle(&game_state->base_deck, arr_count(game_state->base_deck.cards));
     shuffle(&game_state->base_deck, arr_count(game_state->base_deck.cards));
-    game_state->base_deck.cursor = game_state->base_deck.cards;
+    // We burn the first card here after shuffling.
+    game_state->base_deck.cursor = (game_state->base_deck.cards + 1);
 
     // TODO: Finish converting over opengl calls from win32 plat_layer
 
@@ -513,7 +542,7 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
           for (u32 i = cards_to_remove; i > 0; --i) {
             // TODO: Start here; try to focus on writing the code you need here in place
             // instead of thinking what 'struct' you might need!
-            card *pulled_card = push_struct(&game_state->players[0].hand_arena, card);
+            u8 *pulled_card = push_struct(&game_state->players[0].hand_arena, u8);
             *pulled_card = *game_state->base_deck.cursor++;
           }
         }
@@ -522,7 +551,24 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
       } break;
     case PLAYER_ACTION:
       {
-
+        char first_card[256];
+        char second_card[256];
+        memory_arena hand = game_state->players[0].hand_arena;
+        u8 *current_card = hand.base_address;
+        for (u32 i = 0; i < hand.used_space / (sizeof(u8)); ++i, ++current_card) {
+          u8 curr_val = DEBUG_get_card_value(*current_card);
+          u8 curr_suit_val = get_card_suit_value(*current_card);
+          if (i % 2 == 0) {
+            _snprintf_s(first_card, sizeof(first_card), "RANK: %d SUIT: %d\n",
+                        curr_val, curr_suit_val);
+          }
+          else {
+            _snprintf_s(second_card, sizeof(second_card), "RANK: %d SUIT: %d\n",
+                        curr_val, curr_suit_val);
+          }
+        }
+          OutputDebugStringA(first_card);
+          OutputDebugStringA(second_card);
       } break;
     case DEALER_ACTION:
       {
