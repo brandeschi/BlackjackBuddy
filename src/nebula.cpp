@@ -35,9 +35,92 @@ inline static u8 DEBUG_get_card_value(u8 card) {
   return result;
 }
 
+inline static char *get_card_value_name(u8 card_value) {
+  char *result = 0;
+
+  // TODO: Fix this?
+  switch (card_value) {
+    case FACE_DOWN:
+      {
+        result = "FACE_DOWN";
+      } break;
+    case TWO:
+      {
+        result = "TWO";
+      } break;
+    case THREE:
+      {
+        result = "THREE";
+      } break;
+    case FOUR:
+      {
+        result = "FOUR";
+      } break;
+    case FIVE:
+      {
+        result = "FIVE";
+      } break;
+    case SIX:
+      {
+        result = "SIX";
+      } break;
+    case SEVEN:
+      {
+        result = "SEVEN";
+      } break;
+    case EIGHT:
+      {
+        result = "EIGHT";
+      } break;
+    case NINE:
+      {
+        result = "NINE";
+      } break;
+    case TEN:
+      {
+        result = "TEN";
+      } break;
+    case JACK:
+      {
+        result = "JACK";
+      } break;
+    case QUEEN:
+      {
+        result = "QUEEN";
+      } break;
+    case KING:
+      {
+        result = "KING";
+      } break;
+    case ACE:
+      {
+        result = "ACE";
+      } break;
+  }
+
+  return result;
+}
+
 inline static u8 get_card_suit_value(u8 card) {
-  u8 result = (card & 0xF0) >> 4;
-  neo_assert(!(result > 3))
+  u8 result = card & 0xF0;
+  neo_assert(!(result > 0x30))
+  return result;
+}
+
+inline static char *get_card_suit_name(u8 suit_value) {
+  char *result = 0;
+
+  switch (suit_value) {
+    case CLUBS:
+      result = "CLUBS";
+    case SPADES:
+      result = "SPADES";
+    case DIAMONDS:
+      result = "DIAMONDS";
+    case HEARTS:
+      result = "HEARTS";
+  }
+
   return result;
 }
 
@@ -556,14 +639,14 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
         memory_arena hand = game_state->players[0].hand_arena;
         u8 *current_card = hand.base_address;
         for (u32 i = 0; i < hand.used_space / (sizeof(u8)); ++i, ++current_card) {
-          u8 curr_val = DEBUG_get_card_value(*current_card);
-          u8 curr_suit_val = get_card_suit_value(*current_card);
+          char *curr_val = get_card_value_name(DEBUG_get_card_value(*current_card));
+          char *curr_suit_val = get_card_suit_name(get_card_suit_value(*current_card));
           if (i % 2 == 0) {
-            _snprintf_s(first_card, sizeof(first_card), "RANK: %d SUIT: %d\n",
+            _snprintf_s(first_card, sizeof(first_card), "RANK: %s SUIT: %s\n",
                         curr_val, curr_suit_val);
           }
           else {
-            _snprintf_s(second_card, sizeof(second_card), "RANK: %d SUIT: %d\n",
+            _snprintf_s(second_card, sizeof(second_card), "RANK: %s SUIT: %s\n",
                         curr_val, curr_suit_val);
           }
         }
