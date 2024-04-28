@@ -454,12 +454,10 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     for (DWORD controller_index = KEEB_COUNT; controller_index < max_controller_count;
     controller_index++)
     {
-
       engine_controller_input *old_control_state =
         get_controller(old_input, controller_index);
       engine_controller_input *new_control_state =
         get_controller(new_input, controller_index);
-
     }
 
     thread_context thread = {};

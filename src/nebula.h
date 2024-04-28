@@ -258,6 +258,7 @@ struct player
 {
   u32 money_amount;
   b32 active_bet = false;
+  b32 hit = false;
 
   memory_arena hand_arena;
 };
@@ -269,6 +270,7 @@ struct app_state
 
   turn_phase current_phase;
   deck base_deck;
+  b32 first;
 
   player *players;
 };

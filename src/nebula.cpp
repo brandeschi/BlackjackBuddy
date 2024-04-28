@@ -37,9 +37,10 @@ inline static u8 DEBUG_get_card_value(u8 card) {
 
 inline static char *get_card_value_name(u8 card_value) {
   char *result = 0;
+  u8 test_val = card_value & 0x0F;
 
   // TODO: Fix this?
-  switch (card_value) {
+  switch (test_val) {
     case FACE_DOWN:
       {
         result = "FACE_DOWN";
@@ -112,13 +113,31 @@ inline static char *get_card_suit_name(u8 suit_value) {
 
   switch (suit_value) {
     case CLUBS:
-      result = "CLUBS";
+      {
+        result = "CLUBS";
+      } break;
     case SPADES:
-      result = "SPADES";
+      {
+        result = "SPADES";
+      } break;
     case DIAMONDS:
-      result = "DIAMONDS";
+      {
+        result = "DIAMONDS";
+      } break;
     case HEARTS:
-      result = "HEARTS";
+      {
+        result = "HEARTS";
+      } break;
+  }
+
+  return result;
+}
+
+inline static u8 calculate_hand_value(memory_arena hand) {
+  u8 result = 0;
+
+  for (u32 i = 0; i < hand.used_space / (sizeof(u8)); ++i) {
+    result += DEBUG_get_card_value(*hand.base_address++);
   }
 
   return result;
@@ -610,10 +629,18 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
        controller_index++) {
     engine_controller_input *controller = get_controller(input, controller_index);
     if (controller->is_analog) {}
-    else {}
+    else {
+      if (controller_index == 0) {
+        if (controller->left_shoulder.is_down) {
+          game_state->players[0].hit = true;
+        }
+        else {
+          game_state->players[0].hit = false;
+        }
+      }
+    }
   }
 
-  // TODO: Add burn card when starting a new shoe
   switch (game_state->current_phase) {
     case BETTING:
       {
@@ -631,27 +658,46 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
         }
 
         game_state->current_phase = PLAYER_ACTION;
+        game_state->first = true;
       } break;
     case PLAYER_ACTION:
       {
-        char first_card[256];
-        char second_card[256];
-        memory_arena hand = game_state->players[0].hand_arena;
-        u8 *current_card = hand.base_address;
-        for (u32 i = 0; i < hand.used_space / (sizeof(u8)); ++i, ++current_card) {
-          char *curr_val = get_card_value_name(DEBUG_get_card_value(*current_card));
-          char *curr_suit_val = get_card_suit_name(get_card_suit_value(*current_card));
-          if (i % 2 == 0) {
-            _snprintf_s(first_card, sizeof(first_card), "RANK: %s SUIT: %s\n",
-                        curr_val, curr_suit_val);
+        if (game_state->first) {
+          char first_card[256];
+          char second_card[256];
+          memory_arena hand = game_state->players[0].hand_arena;
+          u8 *current_card = hand.base_address;
+          for (u32 i = 0; i < hand.used_space / (sizeof(u8)); ++i, ++current_card) {
+            char *curr_val = get_card_value_name(*current_card);
+            char *curr_suit_val = get_card_suit_name(get_card_suit_value(*current_card));
+            if (i % 2 == 0) {
+              _snprintf_s(first_card, sizeof(first_card), "RANK: %s SUIT: %s\n",
+                          curr_val, curr_suit_val);
+            }
+            else {
+              _snprintf_s(second_card, sizeof(second_card), "RANK: %s SUIT: %s\n",
+                          curr_val, curr_suit_val);
+            }
           }
-          else {
-            _snprintf_s(second_card, sizeof(second_card), "RANK: %s SUIT: %s\n",
-                        curr_val, curr_suit_val);
-          }
-        }
+          u8 starting_hand_value = calculate_hand_value(hand);
+          char hand_val[256];
+          _snprintf_s(hand_val, sizeof(hand_val), "HAND VALUE: %d\n",
+                      starting_hand_value);
+
           OutputDebugStringA(first_card);
           OutputDebugStringA(second_card);
+          OutputDebugStringA(hand_val);
+
+          if (starting_hand_value == 21) {
+            // TODO: Payout
+          }
+          game_state->first = false;
+        }
+
+        if (game_state->players[0].hit) {
+          OutputDebugStringA("HIT\n");
+        }
+
       } break;
     case DEALER_ACTION:
       {
