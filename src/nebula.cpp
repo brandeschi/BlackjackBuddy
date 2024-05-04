@@ -1,12 +1,12 @@
+#pragma once
+#include "win32.unity.h"
+
 // TODO: Implment all deck actions
 // - Shuffling
 // - Drawing Cards
 // - Concept of a hand?
 //
 // Also need to add general player actions
-#pragma once
-
-#include "win32.unity.h"
 #if 0
 #include "neo_jpg.h"
 #include "neo_jpg.cpp"
@@ -517,8 +517,6 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     shuffle(&game_state->base_deck, arr_count(game_state->base_deck.cards));
     // We burn the first card here after shuffling.
     game_state->base_deck.cursor = (game_state->base_deck.cards + 1);
-
-    // TODO: Finish converting over opengl calls from win32 plat_layer
 
     // Create Shader Program
     g_shader_program = create_ogl_shader_program(g_thread_context, "..\\vert.glsl", "..\\frag.glsl");

@@ -3,10 +3,6 @@
 #include <math.h>
 #include <stdint.h>
 
-#define global static
-#define pi32 3.14159265359f
-#define KEEB_COUNT 1
-
 #include <Windows.h>
 // NOTE: Need to undef b/c they are old macros win windows.h.
 #include <stdio.h>
@@ -15,10 +11,14 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "nebula.h"
+#include "neo_platform.h"
 
+#include "neo_math.h"
+#include "math_utils.h"
 #include "nebula_random.h"
+
 #include "win32_nebula.h"
+#include "nebula.h"
 
 global b32 g_running = false;
 global win32_bitmap_buffer g_bm_buffer;

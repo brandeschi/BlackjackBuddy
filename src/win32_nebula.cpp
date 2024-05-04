@@ -470,10 +470,13 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     bm_buffer.bytes_per_pixel = g_bm_buffer.bytes_per_pixel;
     update_and_render(&thread, &app_memory, new_input, &bm_buffer);
 
+// TODO: Refactor the functions below once I have a solid renderer path
+// between the game and the platform.
+#if 0
     win32_win_dimensions win_size = win32_get_win_dimensions(window);
     win32_update_win_with_buffer(device_context, &bm_buffer,
                                  win_size.width, win_size.height);
-
+#endif
     engine_input *temp = new_input;
     new_input = old_input;
     old_input = temp;

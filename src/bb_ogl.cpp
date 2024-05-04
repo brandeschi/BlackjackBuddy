@@ -1,5 +1,4 @@
 #pragma once
-
 #include "win32.unity.h"
 #include "bb_ogl.h"
 
