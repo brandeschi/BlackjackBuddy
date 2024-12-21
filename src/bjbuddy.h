@@ -1,5 +1,3 @@
-#pragma once
-
 /*
  * NOTE:
  *
@@ -13,51 +11,28 @@
  *
  */
 
-// Type Definitions!
-typedef int8_t i8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef int64_t i64;
-
-typedef i32 b32;
-
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-
-typedef size_t mem_index;
-
-typedef float f32;
-typedef double f64;
-
 // Bytes size maps
-#define kilobytes(value) ((value)*1024LL)
-#define megabytes(value) (kilobytes(value) * 1024LL)
-#define gigabytes(value) (megabytes(value) * 1024LL)
-#define terabytes(value) (gigabytes(value) * 1024LL)
+#define kilobytes(Value) ((Value)*1024LL)
+#define megabytes(Value) (kilobytes(Value) * 1024LL)
+#define gigabytes(Value) (megabytes(Value) * 1024LL)
+#define terabytes(Value) (gigabytes(Value) * 1024LL)
 
-// Beta Assert FIXME
+#define KEEB_COUNT 1
+
 #if NEO_SPEED
-#define neo_assert(expression)
-#else
-#define neo_assert(expression) if (!(expression)) { *(int *)0 = 0; }
+#define NeoAssert(expression)
 #endif
-
-#define invalid_code_path neo_assert(!"InvalidCodePath!");
-
-#define arr_count(array) (sizeof(array) / sizeof((array)[0]))
 
 struct thread_context
 {
     int placeholder;
 };
 
-inline u32 safe_truncate_int64(u64 value)
+inline u32 SafeTruncateU64(u64 Value)
 {
-    neo_assert(value <= 0xFFFFFFFF);
-    u32 result = (u32) value;
-    return result;
+    NeoAssert(Value <= 0xFFFFFFFF);
+    u32 Result = (u32)Value;
+    return Result;
 }
 
 // #if NEO_INTERNAL
@@ -77,20 +52,83 @@ typedef DEBUG_READ_ENTIRE_FILE(debug_read_entire_file);
 typedef DEBUG_WRITE_ENTIRE_FILE(debug_write_entire_file);
 // #endif
 
+// NOTE: Debug file handling
+DEBUG_FREE_FILE_MEMORY(DEBUG_free_file)
+{
+    if (file)
+    {
+        VirtualFree(file, 0, MEM_RELEASE);
+    }
+}
+
+DEBUG_READ_ENTIRE_FILE(DEBUG_read_entire_file)
+{
+    debug_file_result result = {};
+    HANDLE file_handle = CreateFile(file_name, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    if (file_handle != INVALID_HANDLE_VALUE)
+    {
+        LARGE_INTEGER file_size;
+        if (GetFileSizeEx(file_handle, &file_size))
+        {
+           u32 file_size32 = SafeTruncateU64(file_size.QuadPart);
+           result.contents = VirtualAlloc(0, file_size32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+           if (result.contents)
+           {
+               DWORD bytes_read;
+               if (ReadFile(file_handle, result.contents, file_size32, &bytes_read, 0) &&
+                   (file_size32 == bytes_read))
+               {
+                   result.contents_size = file_size32;
+               }
+               else
+               {
+                   DEBUG_free_file(thread, result.contents);
+                   result.contents = 0;
+               }
+           }
+        }
+    }
+    CloseHandle(file_handle);
+    return result;
+}
+
+DEBUG_WRITE_ENTIRE_FILE(DEBUG_write_entire_file)
+{
+    b32 result = false;
+    HANDLE file_handle = CreateFile(file_name, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+    if (file_handle != INVALID_HANDLE_VALUE)
+    {
+        DWORD bytes_written;
+        if (WriteFile(file_handle, file, file_size, &bytes_written, 0))
+
+        {
+            result = (bytes_written == file_size);
+        }
+        else
+        {
+            // TODO: LOGGING
+        }
+
+    }
+
+    CloseHandle(file_handle);
+    return result;
+}
+
 struct engine_bitmap_buffer
 {
   void *memory;
-  i32 pitch;
-  i32 width;
-  i32 height;
-  i32 bytes_per_pixel;
+  s32 pitch;
+  s32 width;
+  s32 height;
+  s32 bytes_per_pixel;
 };
 
 struct engine_sound_buffer
 {
   int samples_per_second;
   int sample_count;
-  i16 *samples;
+  s16 *samples;
 };
 
 struct engine_button_state
@@ -133,7 +171,7 @@ struct engine_controller_input
 struct engine_input
 {
     engine_button_state mouse_buttons [3];
-    i32 mouseX, mouseY, mouseZ;
+    s32 mouseX, mouseY, mouseZ;
 
     f32 time_step_over_frame;
     engine_controller_input controllers[5];
@@ -142,7 +180,7 @@ struct engine_input
 inline engine_controller_input *get_controller(engine_input *input, int controller_index)
 {
     // NOTE: might want to make controller_index unsigned if we don't want neg arr access
-    neo_assert(arr_count(input->controllers) > controller_index);
+    NeoAssert(ArrayCount(input->controllers) > controller_index);
 
     engine_controller_input *result = &input->controllers[controller_index];
     return result;
@@ -163,6 +201,7 @@ struct app_memory
     debug_write_entire_file *DEBUG_write_entire_file;
 };
 
+// TODO: Make neo file for arenas
 struct memory_arena
 {
     mem_index size;
@@ -181,26 +220,23 @@ static void init_arena(memory_arena *ma, mem_index size, u8 *base_address)
 #define push_array(ma, count, type) (type *)push_size_(ma, (count) * sizeof(type))
 void *push_size_(memory_arena *ma, mem_index size)
 {
-    neo_assert((ma->used_space + size) <= ma->size);
+    NeoAssert((ma->used_space + size) <= ma->size);
     void *result = ma->base_address + ma->used_space;
     ma->used_space += size;
     return result;
 }
 
-#include "neo_math.h"
-#include "math_utils.h"
-
 struct loaded_jpg
 {
     u8 *pixels;
-    i32 channels;
-    i32 width;
-    i32 height;
+    s32 channels;
+    s32 width;
+    s32 height;
 };
 struct loaded_bmp
 {
     u8 *pixels;
-    i32 channels;
+    s32 channels;
     u32 width;
     u32 height;
 };

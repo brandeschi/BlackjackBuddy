@@ -1,4 +1,12 @@
-#include "win32.unity.h"
+#pragma once
+#include "../core.unity.h"
+#include "win32_nebula.h"
+
+// Globals
+global b32 g_running = false;
+global win32_bitmap_buffer g_bm_buffer;
+global LPDIRECTSOUNDBUFFER g_secondary_buffer;
+global s64 g_perf_count_freq;
 
 // typedef HGLRC WINAPI wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList);
 typedef HGLRC WINAPI wgl_create_context_attribs_arb(HDC hDC, HGLRC hShareContext, const int *attribList);
@@ -23,7 +31,7 @@ static void win32_init_opengl(HWND window_handle)
   if(!wglMakeCurrent(window_dc, opengl_rc))
   {
     // TODO: Diags
-    invalid_code_path;
+    InvalidCodePath;
   }
   OutputDebugStringA((char *)glGetString(GL_VERSION));
   OutputDebugStringA("\n");
@@ -211,7 +219,7 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
     case WM_KEYDOWN:
     case WM_KEYUP:
       {
-        neo_assert(!"NO INPUT HERE");
+        NeoAssert(!"NO INPUT HERE");
       }
 
     case WM_ACTIVATEAPP:
@@ -428,7 +436,7 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     *new_keeb = {};
 
     for (int button_index = 0;
-    button_index < arr_count(new_keeb->buttons);
+    button_index < ArrayCount(new_keeb->buttons);
     button_index++)
     {
       new_keeb->buttons[button_index].is_down = old_keeb->buttons[button_index].is_down;
@@ -447,8 +455,8 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
     win32_process_keeb_message(&new_input->mouse_buttons[2], GetKeyState(VK_RBUTTON) & (1 << 15));
 
     DWORD max_controller_count = KEEB_COUNT;
-    if (max_controller_count > arr_count(new_input->controllers)) {
-      max_controller_count = arr_count(new_input->controllers);
+    if (max_controller_count > ArrayCount(new_input->controllers)) {
+      max_controller_count = ArrayCount(new_input->controllers);
     }
     // First controller is the keyboard
     for (DWORD controller_index = KEEB_COUNT; controller_index < max_controller_count;

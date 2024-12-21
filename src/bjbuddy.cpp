@@ -5,8 +5,11 @@
 //
 // Also need to add general player actions
 #pragma once
+#include "core.unity.h"
 
-#include "win32.unity.h"
+// Globals
+global thread_context g_thread_context = {};
+global GLuint g_shader_program;
 
 // NOTE: This is Fisher-Yates Algo
 // TODO: Need to implement random numbers
@@ -46,15 +49,15 @@ inline static void new_hand_deal(deck *deck, u32 players = 2)
 static void output_sound(app_state *game_state, engine_sound_buffer *sound_buffer)
 {
 #if 0
-  i16 tone_volume = 1000;
+  s16 tone_volume = 1000;
   int wave_period = sound_buffer->samples_per_second / game_state->tone_hz;
   // int wave_period = sound_buffer->samples_per_second / game_state->tone_hz;
 
-  i16 *sample_out = sound_buffer->samples;
+  s16 *sample_out = sound_buffer->samples;
   for(int sample_index = 0; sample_index < sound_buffer->sample_count; sample_index++)
   {
     float sine_value = sinf(game_state->t_sine);
-    i16 sample_value = (i16) (sine_value * tone_volume);
+    s16 sample_value = (s16) (sine_value * tone_volume);
     *sample_out++ = sample_value;
     *sample_out++ = sample_value;
 
@@ -89,14 +92,14 @@ struct bmp_header
   u32 bitmap_offset;
   // DIB Header v5
   u32 size;
-  i32 width;
-  i32 height;
+  s32 width;
+  s32 height;
   u16 planes;
   u16 bits_per_pixel;
   u32 compression;
   u32 size_of_bitmap;
-  i32 horz_resolution;
-  i32 vert_resolution;
+  s32 horz_resolution;
+  s32 vert_resolution;
   u32 colors_used;
   u32 colors_important;
   u32 red_mask;
@@ -143,15 +146,15 @@ static loaded_bmp DEBUG_load_bmp(thread_context *thread, debug_read_entire_file 
     bit_scan_result blue_shift = find_least_sig_set_bit_32(header->blue_mask);
     bit_scan_result alpha_shift = find_least_sig_set_bit_32(alpha_mask);
 
-    neo_assert(red_shift.found);
-    neo_assert(green_shift.found);
-    neo_assert(blue_shift.found);
-    neo_assert(alpha_shift.found);
+    NeoAssert(red_shift.found);
+    NeoAssert(green_shift.found);
+    NeoAssert(blue_shift.found);
+    NeoAssert(alpha_shift.found);
 
     u32 *src_dest = (u32 *)pixels;
-    for (i32 Y = 0; Y < header->height; Y++)
+    for (s32 Y = 0; Y < header->height; Y++)
     {
-      for (i32 X = 0; X < header->width; X++)
+      for (s32 X = 0; X < header->width; X++)
       {
         u32 color = *src_dest;
         *src_dest++ = ((((color >> alpha_shift.index) & 0xFF) << 24) |
@@ -169,12 +172,12 @@ static loaded_bmp DEBUG_load_bmp(thread_context *thread, debug_read_entire_file 
 }
 static void draw_bmp(engine_bitmap_buffer *buffer, loaded_bmp *bmp)
 {
-  i32 min_X = round_f32_to_i32(0);
-  i32 max_X = round_f32_to_i32(0 + (f32)bmp->width);
-  // i32 max_X = round_f32_to_i32(225.f);
-  i32 min_Y = round_f32_to_i32(0);
-  i32 max_Y = round_f32_to_i32(0 + (f32)bmp->height);
-  // i32 max_Y = round_f32_to_i32(310.f);
+  s32 min_X = RoundF32ToS32(0);
+  s32 max_X = RoundF32ToS32(0 + (f32)bmp->width);
+  // s32 max_X = RoundF32ToS32(225.f);
+  s32 min_Y = RoundF32ToS32(0);
+  s32 max_Y = RoundF32ToS32(0 + (f32)bmp->height);
+  // s32 max_Y = RoundF32ToS32(310.f);
 
   if(min_X < 0)
   {
@@ -197,11 +200,11 @@ static void draw_bmp(engine_bitmap_buffer *buffer, loaded_bmp *bmp)
   {
     u8 *src_row = bmp->pixels + (bmp->width * (bmp->height - 1))*3;
     u8 *dest_row = (u8 *)buffer->memory + min_X*buffer->bytes_per_pixel + min_Y*buffer->pitch;
-    for (i32 y = min_Y; y < max_Y; ++y)
+    for (s32 y = min_Y; y < max_Y; ++y)
     {
       u32 *dest = (u32 *)dest_row;
       u8 *src = src_row;
-      for (i32 x = min_X; x < max_X; ++x)
+      for (s32 x = min_X; x < max_X; ++x)
       {
         *dest++ = (*(src + 2) << 16 | *(src + 1) << 8 | *src);
         src += 3;
@@ -214,11 +217,11 @@ static void draw_bmp(engine_bitmap_buffer *buffer, loaded_bmp *bmp)
 {
     u32 *src_row = ((u32 *)bmp->pixels) + bmp->width * (bmp->height - 1);
     u8 *dest_row = (u8 *)buffer->memory + min_X*buffer->bytes_per_pixel + min_Y*buffer->pitch;
-    for (i32 y = min_Y; y < max_Y; y++)
+    for (s32 y = min_Y; y < max_Y; y++)
     {
       u32 *dest = (u32 *)dest_row;
       u32 *src = src_row;
-      for (i32 x = min_X; x < max_X; x++)
+      for (s32 x = min_X; x < max_X; x++)
       {
         f32 a = (f32)((*src >> 24) & 0xFF) / 255.0f;
         f32 sr = (f32)((*src >> 16) & 0xFF);
@@ -253,10 +256,10 @@ static void draw_bmp(engine_bitmap_buffer *buffer, loaded_bmp *bmp)
 static void draw_rect(engine_bitmap_buffer *buffer, v2 min, v2 max,
                       f32 r, f32 g, f32 b)
 {
-  i32 min_X = round_f32_to_i32(min.x);
-  i32 max_X = round_f32_to_i32(max.x);
-  i32 min_Y = round_f32_to_i32(min.y);
-  i32 max_Y = round_f32_to_i32(max.y);
+  s32 min_X = RoundF32ToS32(min.x);
+  s32 max_X = RoundF32ToS32(max.x);
+  s32 min_Y = RoundF32ToS32(min.y);
+  s32 max_Y = RoundF32ToS32(max.y);
 
   // Will clamp the values inside of the bitmap_buffer
   if(min_X < 0)
@@ -276,9 +279,9 @@ static void draw_rect(engine_bitmap_buffer *buffer, v2 min, v2 max,
     max_Y = buffer->height;
   }
 
-  u32 color = (u32)((round_f32_to_u32(r * 255.0f) << 16) |
-                    (round_f32_to_u32(g * 255.0f) << 8) |
-                    (round_f32_to_u32(b * 255.0f) << 0));
+  u32 color = (u32)((RoundF32ToU32(r * 255.0f) << 16) |
+                    (RoundF32ToU32(g * 255.0f) << 8) |
+                    (RoundF32ToU32(b * 255.0f) << 0));
   u8 *current_pos = (u8 *)buffer->memory + min_X*buffer->bytes_per_pixel + min_Y*buffer->pitch;
 
   for (int rows = min_Y; rows < max_Y; rows++)
@@ -295,8 +298,8 @@ static void draw_rect(engine_bitmap_buffer *buffer, v2 min, v2 max,
 
 loaded_bmp *slice_card_atlas(memory_arena *ma, loaded_bmp card_atlas)
 {
-  i32 card_width = 98 * 4;
-  i32 card_height = 158 * 4;
+  s32 card_width = 98 * 4;
+  s32 card_height = 158 * 4;
   loaded_bmp *result = push_array(ma, 52, loaded_bmp);
   for (u32 i = 0; i < 52; ++i)
   {
@@ -312,7 +315,7 @@ loaded_bmp *slice_card_atlas(memory_arena *ma, loaded_bmp card_atlas)
 
 static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input, engine_bitmap_buffer *bitmap_buffer)
 {
-  neo_assert(sizeof(app_state) <= memory->perm_storage_space);
+  NeoAssert(sizeof(app_state) <= memory->perm_storage_space);
   app_state *game_state = (app_state *)memory->perm_mem_storage;
 
   if(!memory->is_init)
@@ -475,18 +478,18 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, game_state->tex_atlas.width, game_state->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, game_state->tex_atlas.pixels);
 
     // NOTE: Start here!
-    mat4 projection = mat4_ortho(0.0f, (f32)bitmap_buffer->width, 0.0f, (f32)bitmap_buffer->height, -1.0f, 1.0f);
-    mat4 mvp = projection*mat4_iden()*mat4_iden();
+    mat4 projection = Mat4Ortho(0.0f, (f32)bitmap_buffer->width, 0.0f, (f32)bitmap_buffer->height, -1.0f, 1.0f);
+    mat4 mvp = projection*Mat4Iden()*Mat4Iden();
 
     glUseProgram(g_shader_program);
     GLint u_mvp_id = glGetUniformLocation(g_shader_program, "u_MVP");
-    glUniformMatrix4fv(u_mvp_id, 1, GL_FALSE, mvp.e);
+    glUniformMatrix4fv(u_mvp_id, 1, GL_FALSE, (f32 *)mvp.e);
     glUseProgram(0);
 
     memory->is_init = true;
   }
   for (int controller_index = 0;
-  controller_index < arr_count(input->controllers);
+  controller_index < ArrayCount(input->controllers);
   controller_index++)
   {
     engine_controller_input *controller = get_controller(input, controller_index);

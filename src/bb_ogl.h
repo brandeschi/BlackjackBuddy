@@ -1,5 +1,5 @@
-// NOTE: WIN32 Opengl definitions
-typedef i64 GLsizeiptr;
+// NOTE: Opengl definitions
+typedef s64 GLsizeiptr;
 typedef char GLchar;
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_ELEMENT_ARRAY_BUFFER           0x8893
@@ -81,6 +81,8 @@ typedef void gluniform1i(GLint location, GLint v0);
 global gluniform1i *glUniform1i;
 typedef void gluniformmatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 global gluniformmatrix4fv *glUniformMatrix4fv;
+
+#include <gl/GL.h>
 
 struct entity_render_data
 {

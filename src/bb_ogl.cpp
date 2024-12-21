@@ -1,7 +1,5 @@
 #pragma once
-
-#include "win32.unity.h"
-#include "bb_ogl.h"
+#include "core.unity.h"
 
 static GLuint create_ogl_shader_program(thread_context tc, char *vertex_file_name, char *fragment_file_name)
 {
@@ -15,13 +13,13 @@ static GLuint create_ogl_shader_program(thread_context tc, char *vertex_file_nam
   glShaderSource(vertex_shader, 1, &vertexShaderSource, NULL);
   glCompileShader(vertex_shader);
   // Check the shader was compiled successfully
-  i32 success;
+  s32 success;
   char info[512];
   glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
   if(!success)
   {
     char put_string[512];
-    glGetShaderInfoLog(vertex_shader, arr_count(info), NULL, info);
+    glGetShaderInfoLog(vertex_shader, ArrayCount(info), NULL, info);
     _snprintf_s(put_string, sizeof(put_string), "Failed vertex shader compilation: %s\n",
                 info);
     OutputDebugStringA(put_string);
@@ -34,7 +32,7 @@ static GLuint create_ogl_shader_program(thread_context tc, char *vertex_file_nam
   if(!success)
   {
     char put_string[512];
-    glGetShaderInfoLog(fragment_shader, arr_count(info), NULL, info);
+    glGetShaderInfoLog(fragment_shader, ArrayCount(info), NULL, info);
     _snprintf_s(put_string, sizeof(put_string), "Failed fragment shader compilation: %s\n",
                 info);
     OutputDebugStringA(put_string);
@@ -48,7 +46,7 @@ static GLuint create_ogl_shader_program(thread_context tc, char *vertex_file_nam
   if(!success)
   {
     char put_string[512];
-    glGetProgramInfoLog(prog_id, arr_count(info), NULL, info);
+    glGetProgramInfoLog(prog_id, ArrayCount(info), NULL, info);
     _snprintf_s(put_string, sizeof(put_string), "Failed shader program link: %s\n",
                 info);
     OutputDebugStringA(put_string);
