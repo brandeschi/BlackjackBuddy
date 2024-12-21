@@ -41,11 +41,9 @@ typedef double f64;
 #define Swap(T,a,b) do{T temp__ = a; a = b; b = temp__;}while(0)
 
 
-// #include "bjbuddy.h"
-// #include "win32_nebula.h"
-
 // Headers
 #include "neo_math.h"
+#include "neo_random.h"
 #include "bb_ogl.h"
 #include "bjbuddy.h"
 
