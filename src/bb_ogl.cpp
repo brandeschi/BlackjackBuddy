@@ -63,18 +63,18 @@ static void init_renderer(void) {
   return;
 }
 
-static void draw_card(vertex_data *vertex_array, loaded_bmp tex_atlas, v2 card_index) {
-  f32 card_width = (f32)tex_atlas.width / 13.0f;
-  f32 card_height = (f32)tex_atlas.height / 5.0f;
+static void DrawCard(vertex_data *VertexArray, loaded_bmp TexAtlas, v2 CardIndex) {
+  f32 CardWidth = (f32)TexAtlas.width / 13.0f;
+  f32 CardHeight = (f32)TexAtlas.height / 5.0f;
 
-  v2 computed_tex_coords[] = {
-    {(card_index.x * card_width) / tex_atlas.width, (card_index.y * card_height) / tex_atlas.height },
-    {((card_index.x + 1) * card_width) / tex_atlas.width, (card_index.y * card_height) / tex_atlas.height },
-    {((card_index.x + 1) * card_width) / tex_atlas.width, ((card_index.y + 1) * card_height) / tex_atlas.height },
-    {(card_index.x * card_width) / tex_atlas.width, ((card_index.y + 1) * card_height) / tex_atlas.height }
+  v2 ComputedTexCoords[] = {
+    {(CardIndex.x * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
+    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
+    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height },
+    {(CardIndex.x * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height }
   };
   for (u32 i = 0; i < 4; ++i) {
-    vertex_array[i].tex_coords = computed_tex_coords[i];
+    VertexArray[i].tex_coords = ComputedTexCoords[i];
   }
 }
 

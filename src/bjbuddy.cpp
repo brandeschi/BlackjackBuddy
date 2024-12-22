@@ -8,8 +8,8 @@
 #include "core.unity.h"
 
 // Globals
-global thread_context g_thread_context = {};
-global GLuint g_shader_program;
+global thread_context g_ThreadContext = {};
+global GLuint g_ShaderProgram;
 
 // NOTE: This is Fisher-Yates Algo
 // TODO: Need to implement random numbers
@@ -296,38 +296,39 @@ static void draw_rect(engine_bitmap_buffer *buffer, v2 min, v2 max,
   }
 }
 
-loaded_bmp *slice_card_atlas(memory_arena *ma, loaded_bmp card_atlas)
+loaded_bmp *SliceCardAtlas(memory_arena *Arena, loaded_bmp CardAtlas)
 {
-  s32 card_width = 98 * 4;
-  s32 card_height = 158 * 4;
-  loaded_bmp *result = push_array(ma, 52, loaded_bmp);
-  for (u32 i = 0; i < 52; ++i)
+  // TODO: no magic nums
+  s32 CardWidth = 98 * 4;
+  s32 CardHeight = 158 * 4;
+  loaded_bmp *Result = PushArray(Arena, 52, loaded_bmp);
+  for (ums Index = 0; Index < 52; ++Index)
   {
-    result[i].channels = card_atlas.channels;
-    result[i].width = card_width;
-    result[i].height = card_height;
-    u32 *current_pixels = (u32 *)card_atlas.pixels;
-    result[i].pixels = (u8 *)(current_pixels + ((card_width*(i % 13)) + ((i / 13)*(card_atlas.width*card_height))));
+    Result[Index].channels = CardAtlas.channels;
+    Result[Index].width = CardWidth;
+    Result[Index].height = CardHeight;
+    u32 *CurrentPixels = (u32 *)CardAtlas.pixels;
+    Result[Index].pixels = (u8 *)(CurrentPixels + ((CardWidth*(Index % 13)) + ((Index / 13)*(CardAtlas.width*CardHeight))));
   }
 
-  return result;
+  return Result;
 }
 
-static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input, engine_bitmap_buffer *bitmap_buffer)
+static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, engine_bitmap_buffer *BitmapBuffer)
 {
-  NeoAssert(sizeof(app_state) <= memory->perm_storage_space);
-  app_state *game_state = (app_state *)memory->perm_mem_storage;
+  NeoAssert(sizeof(app_state) <= Memory->perm_storage_space);
+  app_state *GameState = (app_state *)Memory->perm_mem_storage;
 
-  if(!memory->is_init)
+  if(!Memory->is_init)
   {
-    init_arena(&game_state->gm_arena, memory->perm_storage_space - sizeof(app_state),
-               (u8 *)memory->perm_mem_storage + sizeof(app_state));
+    InitArena(&GameState->gm_arena, Memory->perm_storage_space - sizeof(app_state),
+               (u8 *)Memory->perm_mem_storage + sizeof(app_state));
     // NOTE: Each card is like 98 hori and 153 vert
-    game_state->tex_atlas = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/cards.bmp");
+    GameState->tex_atlas = DEBUG_load_bmp(Thread, Memory->DEBUG_read_entire_file, "test/cards.bmp");
     // game_state->tex_atlas = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/debug-art.bmp");
     // loaded_bmp *card_bmps = slice_card_atlas(&game_state->gm_arena, game_state->tex_atlas);
 
-    game_state->base_deck = {
+    GameState->base_deck = {
       {
         { TWO, "SPADES" },
         { THREE, "SPADES" },
@@ -387,7 +388,7 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     // TODO: Finish converting over opengl calls from win32 plat_layer
 
     // Create Shader Program
-    g_shader_program = create_ogl_shader_program(g_thread_context, "..\\vert.glsl", "..\\frag.glsl");
+    g_ShaderProgram = create_ogl_shader_program(g_ThreadContext, "..\\vert.glsl", "..\\frag.glsl");
     // Vertex Data
     // v3 vertices[] = {
     //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
@@ -411,7 +412,7 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     //     { -0.5f, 0.5f, 0.0f },  // top-left
     // };
 
-    vertex_data vertices[] = {
+    vertex_data Vertices[] = {
     //  pos                     color               tex-coords
       { {100.0f, 125.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
       { {150.0f, 125.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
@@ -422,15 +423,15 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
       { {250.0f, 50.0f, 0.0f},  {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
       { {200.0f, 50.0f, 0.0f},  {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
     };
-    u32 indices[] = {
+    u32 Indices[] = {
       0, 1, 3,    // T1
       1, 2, 3,     // T2
       4, 5, 7,    // T3
       5, 6, 7     // T4
     };
 
-    draw_card(vertices, game_state->tex_atlas, {12.0f, 4.0f});
-    draw_card(&vertices[4], game_state->tex_atlas, {11.0f, 4.0f});
+    DrawCard(Vertices, GameState->tex_atlas, {12.0f, 4.0f});
+    DrawCard(&Vertices[4], GameState->tex_atlas, {11.0f, 4.0f});
     // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
     u32 VAO;
     u32 VBO;
@@ -443,9 +444,9 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     // Bind VAO, the bind and set VBOs, then config vertex attribs
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Indices), Indices, GL_STATIC_DRAW);
 
     // Tell opengl how to interpret our vertex data by setting pointers to the attribs
     // pos attrib
@@ -459,9 +460,9 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
     glEnableVertexAttribArray(2);
 
 
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    GLuint Texture;
+    glGenTextures(1, &Texture);
+    glBindTexture(GL_TEXTURE_2D, Texture);
     // Setting Texture wrapping method
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
@@ -475,31 +476,30 @@ static void update_and_render(thread_context *thread, app_memory *memory, engine
 
     // TODO: GL_BGRA_EXT is a windows specific value, I believe I need to somehow handle this in the platform layer
     // or when I pull this rendering code out
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, game_state->tex_atlas.width, game_state->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, game_state->tex_atlas.pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, GameState->tex_atlas.width, GameState->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, GameState->tex_atlas.pixels);
 
     // NOTE: Start here!
-    mat4 projection = Mat4Ortho(0.0f, (f32)bitmap_buffer->width, 0.0f, (f32)bitmap_buffer->height, -1.0f, 1.0f);
-    mat4 mvp = projection*Mat4Iden()*Mat4Iden();
+    mat4 Projection = Mat4Ortho(0.0f, (f32)BitmapBuffer->width, 0.0f, (f32)BitmapBuffer->height, -1.0f, 1.0f);
+    mat4 MVP = Projection*Mat4Iden()*Mat4Iden();
 
-    glUseProgram(g_shader_program);
-    GLint u_mvp_id = glGetUniformLocation(g_shader_program, "u_MVP");
-    glUniformMatrix4fv(u_mvp_id, 1, GL_FALSE, (f32 *)mvp.e);
+    glUseProgram(g_ShaderProgram);
+    GLint u_MvpId = glGetUniformLocation(g_ShaderProgram, "u_MVP");
+    glUniformMatrix4fv(u_MvpId, 1, GL_FALSE, (f32 *)MVP.e);
     glUseProgram(0);
 
-    memory->is_init = true;
+    Memory->is_init = true;
   }
-  for (int controller_index = 0;
-  controller_index < ArrayCount(input->controllers);
-  controller_index++)
+  for (ums ControllerIndex = 0;
+       ControllerIndex < ArrayCount(Input->controllers);
+       ControllerIndex++)
   {
-    engine_controller_input *controller = get_controller(input, controller_index);
-    if (controller->is_analog)
+    engine_controller_input *Controller = GetController(Input, ControllerIndex);
+    if (Controller->is_analog)
     {
     }
     else
-  {
+    {
     }
-
   }
 
 #if 0

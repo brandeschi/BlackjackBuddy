@@ -177,13 +177,13 @@ struct engine_input
     engine_controller_input controllers[5];
 };
 
-inline engine_controller_input *get_controller(engine_input *input, int controller_index)
+inline engine_controller_input *GetController(engine_input *Input, ums ControllerIndex)
 {
     // NOTE: might want to make controller_index unsigned if we don't want neg arr access
-    NeoAssert(ArrayCount(input->controllers) > controller_index);
+    NeoAssert(ArrayCount(Input->controllers) > ControllerIndex);
 
-    engine_controller_input *result = &input->controllers[controller_index];
-    return result;
+    engine_controller_input *Result = &Input->controllers[ControllerIndex];
+    return Result;
 }
 
 struct app_memory
@@ -204,26 +204,26 @@ struct app_memory
 // TODO: Make neo file for arenas
 struct memory_arena
 {
-    mem_index size;
+    ums size;
     u8 *base_address;
     mem_index used_space;
 };
 
-static void init_arena(memory_arena *ma, mem_index size, u8 *base_address)
+static void InitArena(memory_arena *Arena, ums Size, u8 *BaseAddress)
 {
-    ma->size = size;
-    ma->base_address = base_address;
-    ma->used_space = 0;
+    Arena->size = Size;
+    Arena->base_address = BaseAddress;
+    Arena->used_space = 0;
 }
 
-#define push_struct(ma, type) (type *)push_size_(ma, sizeof(type))
-#define push_array(ma, count, type) (type *)push_size_(ma, (count) * sizeof(type))
-void *push_size_(memory_arena *ma, mem_index size)
+#define PushStruct(ma, type) (type *)PushSize_(ma, sizeof(type))
+#define PushArray(ma, count, type) (type *)PushSize_(ma, (count) * sizeof(type))
+void *PushSize_(memory_arena *Arena, ums Size)
 {
-    NeoAssert((ma->used_space + size) <= ma->size);
-    void *result = ma->base_address + ma->used_space;
-    ma->used_space += size;
-    return result;
+    NeoAssert((Arena->used_space + Size) <= Arena->size);
+    void *Result = Arena->base_address + Arena->used_space;
+    Arena->used_space += Size;
+    return Result;
 }
 
 struct loaded_jpg
@@ -277,7 +277,7 @@ struct app_state
     loaded_bmp tex_atlas;
 };
 
-static void update_and_render(thread_context *thread, app_memory *memory, engine_input *input,
+static void UpdateAndRender(thread_context *thread, app_memory *memory, engine_input *input,
                               engine_bitmap_buffer *buffer);
 
 static void app_get_sound_samples(thread_context *thread, app_memory *memory, engine_sound_buffer *sound_buffer);

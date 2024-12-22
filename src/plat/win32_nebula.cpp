@@ -3,32 +3,32 @@
 #include "win32_nebula.h"
 
 // Globals
-global b32 g_running = false;
-global win32_bitmap_buffer g_bm_buffer;
-global LPDIRECTSOUNDBUFFER g_secondary_buffer;
-global s64 g_perf_count_freq;
+global b32 g_Running = false;
+global win32_bitmap_buffer g_BitmapBuffer;
+global LPDIRECTSOUNDBUFFER g_SecondaryBuffer;
+global s64 g_PerfCountFreq;
 
 // typedef HGLRC WINAPI wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList);
 typedef HGLRC WINAPI wgl_create_context_attribs_arb(HDC hDC, HGLRC hShareContext, const int *attribList);
 
-static void win32_init_opengl(HWND window_handle)
+static void win32_InitOpengl(HWND WindowHandle)
 {
-  HDC window_dc = GetDC(window_handle);
+  HDC WindowDC = GetDC(WindowHandle);
 
-  PIXELFORMATDESCRIPTOR desired_pixel_format = {};
-  desired_pixel_format.nSize = sizeof(desired_pixel_format);
-  desired_pixel_format.nVersion = 1;
-  desired_pixel_format.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-  desired_pixel_format.iPixelType = PFD_TYPE_RGBA;
-  desired_pixel_format.cColorBits = 32;
-  desired_pixel_format.cAlphaBits = 8;
-  int given_pixelformat_index = ChoosePixelFormat(window_dc, &desired_pixel_format);
-  PIXELFORMATDESCRIPTOR given_pixelformat;
-  DescribePixelFormat(window_dc, given_pixelformat_index, sizeof(given_pixelformat), &given_pixelformat);
-  SetPixelFormat(window_dc, given_pixelformat_index, &given_pixelformat);
+  PIXELFORMATDESCRIPTOR DesiredPixelFormat = {};
+  DesiredPixelFormat.nSize = sizeof(DesiredPixelFormat);
+  DesiredPixelFormat.nVersion = 1;
+  DesiredPixelFormat.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+  DesiredPixelFormat.iPixelType = PFD_TYPE_RGBA;
+  DesiredPixelFormat.cColorBits = 32;
+  DesiredPixelFormat.cAlphaBits = 8;
+  int GivenPixelFormatIndex = ChoosePixelFormat(WindowDC, &DesiredPixelFormat);
+  PIXELFORMATDESCRIPTOR GivenPixelFormat;
+  DescribePixelFormat(WindowDC, GivenPixelFormatIndex, sizeof(GivenPixelFormat), &GivenPixelFormat);
+  SetPixelFormat(WindowDC, GivenPixelFormatIndex, &GivenPixelFormat);
 
-  HGLRC opengl_rc = wglCreateContext(window_dc);
-  if(!wglMakeCurrent(window_dc, opengl_rc))
+  HGLRC OpenglRC = wglCreateContext(WindowDC);
+  if(!wglMakeCurrent(WindowDC, OpenglRC))
   {
     // TODO: Diags
     InvalidCodePath;
@@ -38,8 +38,8 @@ static void win32_init_opengl(HWND window_handle)
 
   wgl_create_context_attribs_arb *wglCreateContextAttribsARB = (wgl_create_context_attribs_arb *)wglGetProcAddress("wglCreateContextAttribsARB");
   if (wglCreateContextAttribsARB) {
-    HGLRC shared_context = 0;
-    int attribs[] = {
+    HGLRC SharedContext = 0;
+    int Attribs[] = {
       WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
       WGL_CONTEXT_MINOR_VERSION_ARB, 5,
       WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
@@ -47,11 +47,11 @@ static void win32_init_opengl(HWND window_handle)
       WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
       0
     };
-    HGLRC modern_glrc = wglCreateContextAttribsARB(window_dc, shared_context, attribs);
-    if (modern_glrc) {
-      if (wglMakeCurrent(window_dc, modern_glrc)) {
-        wglDeleteContext(opengl_rc);
-        opengl_rc = modern_glrc;
+    HGLRC ModernGLRC = wglCreateContextAttribsARB(WindowDC, SharedContext, Attribs);
+    if (ModernGLRC) {
+      if (wglMakeCurrent(WindowDC, ModernGLRC)) {
+        wglDeleteContext(OpenglRC);
+        OpenglRC = ModernGLRC;
         OutputDebugStringA((char *)glGetString(GL_SHADING_LANGUAGE_VERSION));
         OutputDebugStringA("\n");
       }
@@ -85,67 +85,67 @@ static void win32_init_opengl(HWND window_handle)
   glUniform1i = (gluniform1i *)wglGetProcAddress("glUniform1i");
   glUniformMatrix4fv = (gluniformmatrix4fv *)wglGetProcAddress("glUniformMatrix4fv");
 
-  ReleaseDC(window_handle, window_dc);
+  ReleaseDC(WindowHandle, WindowDC);
 }
 
-static win32_win_dimensions win32_get_win_dimensions(HWND win_handle)
+static win32_win_dimensions win32_GetWindowDims(HWND WindowHandle)
 {
-  win32_win_dimensions window_dimensions = {};
-  RECT client_rect;
-  GetClientRect(win_handle, &client_rect);
+  win32_win_dimensions WindowDims = {};
+  RECT ClientRect;
+  GetClientRect(WindowHandle, &ClientRect);
 
-  window_dimensions.width = client_rect.right - client_rect.left;
-  window_dimensions.height = client_rect.bottom - client_rect.top;
+  WindowDims.width = ClientRect.right - ClientRect.left;
+  WindowDims.height = ClientRect.bottom - ClientRect.top;
 
-  return window_dimensions;
+  return WindowDims;
 }
 
-static void win32_resize_DIB_section(win32_bitmap_buffer *buffer, int _width,
-                                     int _height)
+static void win32_ResizeDIBSection(win32_bitmap_buffer *Buffer,
+                                   int _Width, int _Height)
 {
   // Need to free the memory but only when it will be reallocated right away
   // since a paint will happen every frame
-  if (buffer->memory)
+  if (Buffer->memory)
   {
-    VirtualFree(buffer->memory, 0, MEM_RELEASE);
+    VirtualFree(Buffer->memory, 0, MEM_RELEASE);
   }
 
-  buffer->width = _width;
-  buffer->height = _height;
+  Buffer->width = _Width;
+  Buffer->height = _Height;
 
   // Step one is to create the DIB
-  buffer->info.bmiHeader.biSize = sizeof(buffer->info.bmiHeader);
-  buffer->info.bmiHeader.biWidth = _width;
-  buffer->info.bmiHeader.biHeight = -_height; // Making this negative to have the bitmap layout start top-left and go top-down
-  buffer->info.bmiHeader.biPlanes = 1;
-  buffer->info.bmiHeader.biBitCount = 32;
-  buffer->info.bmiHeader.biCompression = BI_RGB;
+  Buffer->info.bmiHeader.biSize = sizeof(Buffer->info.bmiHeader);
+  Buffer->info.bmiHeader.biWidth = _Width;
+  Buffer->info.bmiHeader.biHeight = -_Height; // Making this negative to have the bitmap layout start top-left and go top-down
+  Buffer->info.bmiHeader.biPlanes = 1;
+  Buffer->info.bmiHeader.biBitCount = 32;
+  Buffer->info.bmiHeader.biCompression = BI_RGB;
 
-  buffer->bytes_per_pixel = 4;
-  int bm_mem_size = buffer->bytes_per_pixel * (_width * _height);
-  buffer->memory =
-    VirtualAlloc(0, bm_mem_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  Buffer->bytes_per_pixel = 4;
+  int BitmapMemSize = Buffer->bytes_per_pixel * (_Width * _Height);
+  Buffer->memory = VirtualAlloc(0, BitmapMemSize,
+                                MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-  buffer->pitch = buffer->bytes_per_pixel * _width;
+  Buffer->pitch = Buffer->bytes_per_pixel * _Width;
 }
 
-inline LARGE_INTEGER win32_get_seconds_wallclock()
+inline LARGE_INTEGER win32_GetSecondsWallclock()
 {
-  LARGE_INTEGER result;
-  QueryPerformanceCounter(&result);
-  return result;
+  LARGE_INTEGER Result;
+  QueryPerformanceCounter(&Result);
+  return Result;
 }
 
-inline f32 win32_get_seconds_elapsed(LARGE_INTEGER start, LARGE_INTEGER end)
+inline f32 win32_GetSecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
 {
-  f32 result = ((f32) (end.QuadPart - start.QuadPart) / (f32) g_perf_count_freq);
-  return result;
+  f32 Result = ((f32) (End.QuadPart - Start.QuadPart) / (f32) g_PerfCountFreq);
+  return Result;
 }
 
 // This is needed to force rePaint to get a set fps
-static void win32_update_win_with_buffer(HDC device_context,
-                                         engine_bitmap_buffer *buffer,
-                                         int win_width, int win_height)
+static void win32_UpdateWindownWithBuffer(HDC DeviceContext,
+                                          engine_bitmap_buffer *Buffer,
+                                          int WindowWidth, int WindowHeight)
 {
 #if 0
   // NOTE: Need to make a win32_bitmap_buffer when using this bliting
@@ -172,7 +172,7 @@ static void win32_update_win_with_buffer(HDC device_context,
     SRCCOPY);       // Raster Operation Code - Copy our bitmap to the dest
 
 #else
-  glViewport(0, 0, win_width, win_height);
+  glViewport(0, 0, WindowWidth, WindowHeight);
   // TODO: Do aspect ratio
   //
   // glMatrixMode(GL_PROJECTION);
@@ -184,33 +184,33 @@ static void win32_update_win_with_buffer(HDC device_context,
 
   // DRAW
   // glPolygonMode(GL_FRONT, GL_LINE);
-  glUseProgram(g_shader_program);
+  glUseProgram(g_ShaderProgram);
   // glDrawArrays(GL_TRIANGLES, 0, 3);
   glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
 
   // TODO: Look up what swapbuffers should be used
-  SwapBuffers(device_context);
+  SwapBuffers(DeviceContext);
 #endif
 }
-static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
-                                                   UINT message, WPARAM WParam,
-                                                   LPARAM LParam)
+static LRESULT CALLBACK win32_MainWindowCallback(HWND WindowHandle,
+                                                 UINT Message, WPARAM WParam,
+                                                 LPARAM LParam)
 {
-  LRESULT result = 0;
+  LRESULT Result = 0;
 
-  switch (message)
+  switch (Message)
   {
     case WM_CLOSE:
       {
         OutputDebugStringA("WM_CLOSE\n");
-        g_running = false;
+        g_Running = false;
         break;
       }
 
     case WM_DESTROY:
       {
         OutputDebugStringA("WM_DESTROY\n");
-        g_running = false;
+        g_Running = false;
         break;
       }
 
@@ -230,28 +230,28 @@ static LRESULT CALLBACK win32_main_window_callback(HWND win_handle,
 
     default:
       {
-        result = DefWindowProc(win_handle, message, WParam, LParam);
+        Result = DefWindowProc(WindowHandle, Message, WParam, LParam);
       }
   }
 
-  return result;
+  return Result;
 }
 
-static void win32_process_keeb_message(engine_button_state *new_state, b32 is_down)
+static void win32_ProcessKeebMessage(engine_button_state *NewState, b32 IsDown)
 {
-  if (new_state->is_down != is_down)
+  if (NewState->is_down != IsDown)
   {
-    new_state->is_down = is_down;
-    ++new_state->half_transitions;
+    NewState->is_down = IsDown;
+    ++NewState->half_transitions;
   }
 }
 
-static void win32_process_pending_win_messages(engine_controller_input *keyboard)
+static void win32_ProcessPendingWinMessages(engine_controller_input *Keyboard)
 {
-  MSG message;
-  while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
+  MSG Message;
+  while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
   {
-    switch(message.message)
+    switch(Message.message)
     {
       case WM_SYSKEYDOWN:
       case WM_SYSKEYUP:
@@ -260,52 +260,52 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
         {
           // virt keycode that tells us what the key was
           // Okay to truncate b/c vk_codes are not 64-bit![HHD016]
-          u32 vk_code = (u32) message.wParam;
-          b32 was_down = ((message.lParam & (1 << 30)) != 0);
-          b32 is_down = ((message.lParam & (1 << 31)) == 0);
-          if (is_down != was_down)
+          u32 VkCode = (u32) Message.wParam;
+          b32 WasDown = ((Message.lParam & (1 << 30)) != 0);
+          b32 IsDown = ((Message.lParam & (1 << 31)) == 0);
+          if (IsDown != WasDown)
           {
-            switch (vk_code)
+            switch (VkCode)
             {
               case 'W':
                 {
-                  win32_process_keeb_message(&keyboard->move_up, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->move_up, IsDown);
                 } break;
               case 'A':
                 {
-                  win32_process_keeb_message(&keyboard->move_left, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->move_left, IsDown);
                 } break;
               case 'S':
                 {
-                  win32_process_keeb_message(&keyboard->move_down, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->move_down, IsDown);
                 } break;
               case 'D':
                 {
-                  win32_process_keeb_message(&keyboard->move_right, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->move_right, IsDown);
                 } break;
               case 'Q':
                 {
-                  win32_process_keeb_message(&keyboard->left_shoulder, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->left_shoulder, IsDown);
                 } break;
               case 'E':
                 {
-                  win32_process_keeb_message(&keyboard->right_shoulder, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->right_shoulder, IsDown);
                 } break;
               case VK_UP:
                 {
-                  win32_process_keeb_message(&keyboard->action_up, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->action_up, IsDown);
                 } break;
               case VK_DOWN:
                 {
-                  win32_process_keeb_message(&keyboard->action_down, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->action_down, IsDown);
                 } break;
               case VK_LEFT:
                 {
-                  win32_process_keeb_message(&keyboard->action_left, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->action_left, IsDown);
                 } break;
               case VK_RIGHT:
                 {
-                  win32_process_keeb_message(&keyboard->action_right, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->action_right, IsDown);
                 } break;
               case VK_SPACE:
                 {
@@ -318,28 +318,28 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
                 } break;
               case VK_ESCAPE:
                 {
-                  win32_process_keeb_message(&keyboard->start, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->start, IsDown);
                   // TODO: this really needs to be sent to our main menu
-                  g_running = false;
+                  g_Running = false;
                 } break;
               case VK_BACK:
                 {
-                  win32_process_keeb_message(&keyboard->back, is_down);
+                  win32_ProcessKeebMessage(&Keyboard->back, IsDown);
                 } break;
             }
           }
 
-          b32 alt_key_was_down = ((message.lParam & (1 << 29)) != 0);
-          if ((vk_code == VK_F4) && alt_key_was_down)
+          b32 AltKeyWasDown = ((Message.lParam & (1 << 29)) != 0);
+          if ((VkCode == VK_F4) && AltKeyWasDown)
           {
-            g_running = false;
+            g_Running = false;
           }
         } break;
 
       default:
         {
-          TranslateMessage(&message);
-          DispatchMessage(&message);
+          TranslateMessage(&Message);
+          DispatchMessage(&Message);
         } break;
 
     }
@@ -347,66 +347,65 @@ static void win32_process_pending_win_messages(engine_controller_input *keyboard
   }
 }
 
-INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
-                   PSTR cmd_line, INT show_command)
+INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
+                   PSTR CmdLine, INT ShowCommand)
 {
-  UINT desired_scheduler_timing = 1;
-  b32 granular_sleep = (timeBeginPeriod(desired_scheduler_timing) == TIMERR_NOERROR);
+  UINT DesiredSchedulerTiming = 1;
+  b32 GranularSleep = (timeBeginPeriod(DesiredSchedulerTiming) == TIMERR_NOERROR);
 
-  LARGE_INTEGER perf_count_freq;
-  QueryPerformanceFrequency(&perf_count_freq);
-  g_perf_count_freq = perf_count_freq.QuadPart;
+  LARGE_INTEGER PerfCountFreq;
+  QueryPerformanceFrequency(&PerfCountFreq);
+  g_PerfCountFreq = PerfCountFreq.QuadPart;
 
   // Creates a window class that defines a window
-  WNDCLASSA win_class = {};
-  win_class.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC; // necessary flags to redraw the entire window.
-  win_class.lpfnWndProc = win32_main_window_callback;
-  win_class.hInstance = win_instance;
-  win_class.lpszClassName = "MainWindowClass";
+  WNDCLASSA WinClass = {};
+  WinClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC; // necessary flags to redraw the entire window.
+  WinClass.lpfnWndProc = win32_MainWindowCallback;
+  WinClass.hInstance = WinInstance;
+  WinClass.lpszClassName = "MainWindowClass";
 
-  win32_resize_DIB_section(&g_bm_buffer, 960, 540);
+  win32_ResizeDIBSection(&g_BitmapBuffer, 960, 540);
 
-  if (!RegisterClassA(&win_class))
+  if (!RegisterClassA(&WinClass))
     return false;
 
-  HWND window = CreateWindowExA(0, win_class.lpszClassName, "Blackjack Buddy",
+  HWND Window = CreateWindowExA(0, WinClass.lpszClassName, "Blackjack Buddy",
                                 WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT,
                                 CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0,
-                                0, win_instance, 0);
-  if(!window)
+                                0, WinInstance, 0);
+  if(!Window)
     return false;
 
   // Based on how the device context system functions, when specifying a
   // CS_OWNDC flag for the window, it is possible to get the DC for the window
   // and then never give it back because we now own it for the duration of the
   // program.
-  HDC device_context = GetDC(window);
+  HDC DeviceContext = GetDC(Window);
 
-  // NOTE: Due to having a higher than 60hz display, I will figure out the GetDeviceCaps call later!
-  int monitor_hz = 60;
+  // TODO: Variable refresh rate!
+  int MonitorHz = 60;
 
-  f32 update_hz = monitor_hz / 2.0f;
-  f32 target_seconds_per_frame = 1.0f / update_hz;
+  f32 UpdateHz = MonitorHz / 2.0f;
+  f32 TargetSecondsPerFrame = 1.0f / UpdateHz;
 
 #if NEO_INTERNAL
-  LPVOID base_address = (LPVOID) terabytes(2);
+  LPVOID BaseAddress = (LPVOID) terabytes(2);
 #else
-  LPVOID base_address = 0;
+  LPVOID BaseAddress = 0;
 #endif
 
-  app_memory app_memory = {};
-  app_memory.perm_storage_space = megabytes(64);
-  app_memory.flex_storage_space = gigabytes(4);
-  app_memory.DEBUG_free_file = DEBUG_free_file;
-  app_memory.DEBUG_read_entire_file = DEBUG_read_entire_file;
-  app_memory.DEBUG_write_entire_file = DEBUG_write_entire_file;
+  app_memory AppMemory = {};
+  AppMemory.perm_storage_space = megabytes(64);
+  AppMemory.flex_storage_space = gigabytes(4);
+  AppMemory.DEBUG_free_file = DEBUG_free_file;
+  AppMemory.DEBUG_read_entire_file = DEBUG_read_entire_file;
+  AppMemory.DEBUG_write_entire_file = DEBUG_write_entire_file;
 
   // TODO: Probably want to look into MEM_LARGE_PAGES?? HHD[024]
-  u64 total_size = app_memory.perm_storage_space + app_memory.flex_storage_space;
-  app_memory.perm_mem_storage =
-    VirtualAlloc(base_address, total_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-  app_memory.flex_mem_storage =
-    ((u8 *) app_memory.perm_mem_storage + app_memory.perm_storage_space);
+  u64 TotalSize = AppMemory.perm_storage_space + AppMemory.flex_storage_space;
+  AppMemory.perm_mem_storage = VirtualAlloc(BaseAddress, TotalSize,
+                                            MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  AppMemory.flex_mem_storage = ((u8 *)AppMemory.perm_mem_storage + AppMemory.perm_storage_space);
 
 #if 0
   loaded_jpg crate_tex = {};
@@ -419,74 +418,72 @@ INT WINAPI WinMain(HINSTANCE win_instance, HINSTANCE prev_instance,
 #endif
 
   // Init OpenGL
-  win32_init_opengl(window);
+  win32_InitOpengl(Window);
 
-  engine_input input[2] = {};
-  engine_input *new_input = &input[0];
-  engine_input *old_input = &input[1];
+  engine_input Input[2] = {};
+  engine_input *NewInput = &Input[0];
+  engine_input *OldInput = &Input[1];
 
   // Global Loop
-  g_running = true;
-  while (g_running)
+  g_Running = true;
+  while (g_Running)
   {
-    new_input->time_step_over_frame = target_seconds_per_frame;
+    NewInput->time_step_over_frame = TargetSecondsPerFrame;
 
-    engine_controller_input *new_keeb = get_controller(new_input, 0);
-    engine_controller_input *old_keeb = get_controller(old_input, 0);
-    *new_keeb = {};
+    engine_controller_input *NewKeeb = GetController(NewInput, 0);
+    engine_controller_input *OldKeeb = GetController(OldInput, 0);
+    *NewKeeb = {};
 
-    for (int button_index = 0;
-    button_index < ArrayCount(new_keeb->buttons);
-    button_index++)
+    for (ums ButtonIndex = 0;
+    ButtonIndex < ArrayCount(NewKeeb->buttons);
+    ButtonIndex++)
     {
-      new_keeb->buttons[button_index].is_down = old_keeb->buttons[button_index].is_down;
+      NewKeeb->buttons[ButtonIndex].is_down = OldKeeb->buttons[ButtonIndex].is_down;
     }
 
-    win32_process_pending_win_messages(new_keeb);
+    win32_ProcessPendingWinMessages(NewKeeb);
 
-    POINT mouse_point;
-    GetCursorPos(&mouse_point);
-    ScreenToClient(window, &mouse_point);
-    new_input->mouseX = mouse_point.x;
-    new_input->mouseY = mouse_point.y;
-    new_input->mouseZ = 0;
-    win32_process_keeb_message(&new_input->mouse_buttons[0], GetKeyState(VK_LBUTTON) & (1 << 15));
-    win32_process_keeb_message(&new_input->mouse_buttons[1], GetKeyState(VK_MBUTTON) & (1 << 15));
-    win32_process_keeb_message(&new_input->mouse_buttons[2], GetKeyState(VK_RBUTTON) & (1 << 15));
+    POINT MousePoint;
+    GetCursorPos(&MousePoint);
+    ScreenToClient(Window, &MousePoint);
+    NewInput->mouseX = MousePoint.x;
+    NewInput->mouseY = MousePoint.y;
+    NewInput->mouseZ = 0;
+    win32_ProcessKeebMessage(&NewInput->mouse_buttons[0], GetKeyState(VK_LBUTTON) & (1 << 15));
+    win32_ProcessKeebMessage(&NewInput->mouse_buttons[1], GetKeyState(VK_MBUTTON) & (1 << 15));
+    win32_ProcessKeebMessage(&NewInput->mouse_buttons[2], GetKeyState(VK_RBUTTON) & (1 << 15));
 
-    DWORD max_controller_count = KEEB_COUNT;
-    if (max_controller_count > ArrayCount(new_input->controllers)) {
-      max_controller_count = ArrayCount(new_input->controllers);
+    DWORD MaxControllerCount = KEEB_COUNT;
+    if (MaxControllerCount > ArrayCount(NewInput->controllers)) {
+      MaxControllerCount = ArrayCount(NewInput->controllers);
     }
+
     // First controller is the keyboard
-    for (DWORD controller_index = KEEB_COUNT; controller_index < max_controller_count;
-    controller_index++)
+    for (DWORD ControllerIndex = KEEB_COUNT;
+    ControllerIndex < MaxControllerCount;
+    ControllerIndex++)
     {
-
-      engine_controller_input *old_control_state =
-        get_controller(old_input, controller_index);
-      engine_controller_input *new_control_state =
-        get_controller(new_input, controller_index);
-
+      engine_controller_input *OldControlState = GetController(OldInput, ControllerIndex);
+      engine_controller_input *NewControlState = GetController(NewInput, ControllerIndex);
     }
 
-    thread_context thread = {};
+    thread_context Thread = {};
     // This pulls from our platform-independent code from nebula.h
-    engine_bitmap_buffer bm_buffer = {};
-    bm_buffer.memory = g_bm_buffer.memory;
-    bm_buffer.width = g_bm_buffer.width;
-    bm_buffer.height = g_bm_buffer.height;
-    bm_buffer.pitch = g_bm_buffer.pitch;
-    bm_buffer.bytes_per_pixel = g_bm_buffer.bytes_per_pixel;
-    update_and_render(&thread, &app_memory, new_input, &bm_buffer);
+    engine_bitmap_buffer BitmapBuffer = {};
+    BitmapBuffer.memory = g_BitmapBuffer.memory;
+    BitmapBuffer.width = g_BitmapBuffer.width;
+    BitmapBuffer.height = g_BitmapBuffer.height;
+    BitmapBuffer.pitch = g_BitmapBuffer.pitch;
+    BitmapBuffer.bytes_per_pixel = g_BitmapBuffer.bytes_per_pixel;
+    UpdateAndRender(&Thread, &AppMemory, NewInput, &BitmapBuffer);
 
-    win32_win_dimensions win_size = win32_get_win_dimensions(window);
-    win32_update_win_with_buffer(device_context, &bm_buffer,
-                                 win_size.width, win_size.height);
+    win32_win_dimensions WindowDims = win32_GetWindowDims(Window);
+    win32_UpdateWindownWithBuffer(DeviceContext, &BitmapBuffer,
+                                  WindowDims.width, WindowDims.height);
 
-    engine_input *temp = new_input;
-    new_input = old_input;
-    old_input = temp;
+    engine_input *Temp = NewInput;
+    NewInput = OldInput;
+    OldInput = Temp;
   }
 
   return 0;
