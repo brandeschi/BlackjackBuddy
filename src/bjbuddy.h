@@ -272,13 +272,13 @@ struct deck
 
 struct app_state
 {
-    memory_arena gm_arena;
+    memory_arena arena;
     deck base_deck;
     loaded_bmp tex_atlas;
 };
 
-static void UpdateAndRender(thread_context *thread, app_memory *memory, engine_input *input,
-                              engine_bitmap_buffer *buffer);
+static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input,
+                              engine_bitmap_buffer *Buffer);
 
-static void app_get_sound_samples(thread_context *thread, app_memory *memory, engine_sound_buffer *sound_buffer);
+static void app_get_sound_samples(thread_context *Thread, app_memory *Memory, engine_sound_buffer *SoundBuffer);
 

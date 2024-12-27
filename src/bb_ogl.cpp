@@ -73,8 +73,8 @@ static void DrawCard(vertex_data *VertexArray, loaded_bmp TexAtlas, v2 CardIndex
     {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height },
     {(CardIndex.x * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height }
   };
-  for (u32 i = 0; i < 4; ++i) {
-    VertexArray[i].tex_coords = ComputedTexCoords[i];
+  for (u32 Index = 0; Index < 4; ++Index) {
+    VertexArray[Index].tex_coords = ComputedTexCoords[Index];
   }
 }
 

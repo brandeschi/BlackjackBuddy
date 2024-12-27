@@ -82,8 +82,6 @@ global gluniform1i *glUniform1i;
 typedef void gluniformmatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 global gluniformmatrix4fv *glUniformMatrix4fv;
 
-#include <gl/GL.h>
-
 struct entity_render_data
 {
     int x;

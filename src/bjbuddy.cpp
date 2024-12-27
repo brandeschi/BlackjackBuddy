@@ -321,7 +321,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
   if(!Memory->is_init)
   {
-    InitArena(&GameState->gm_arena, Memory->perm_storage_space - sizeof(app_state),
+    InitArena(&GameState->arena, Memory->perm_storage_space - sizeof(app_state),
                (u8 *)Memory->perm_mem_storage + sizeof(app_state));
     // NOTE: Each card is like 98 hori and 153 vert
     GameState->tex_atlas = DEBUG_load_bmp(Thread, Memory->DEBUG_read_entire_file, "test/cards.bmp");
@@ -418,6 +418,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       { {150.0f, 125.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
       { {150.0f, 50.0f, 0.0f},  {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
       { {100.0f, 50.0f, 0.0f},  {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
+
       { {200.0f, 125.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
       { {250.0f, 125.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
       { {250.0f, 50.0f, 0.0f},  {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
@@ -426,12 +427,15 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     u32 Indices[] = {
       0, 1, 3,    // T1
       1, 2, 3,     // T2
+
       4, 5, 7,    // T3
       5, 6, 7     // T4
     };
 
     DrawCard(Vertices, GameState->tex_atlas, {12.0f, 4.0f});
     DrawCard(&Vertices[4], GameState->tex_atlas, {11.0f, 4.0f});
+    // NOTE: I believe this all should move into a InitRenderer func
+    //
     // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
     u32 VAO;
     u32 VBO;

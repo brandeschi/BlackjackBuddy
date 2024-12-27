@@ -192,6 +192,7 @@ static void win32_UpdateWindownWithBuffer(HDC DeviceContext,
   SwapBuffers(DeviceContext);
 #endif
 }
+
 static LRESULT CALLBACK win32_MainWindowCallback(HWND WindowHandle,
                                                  UINT Message, WPARAM WParam,
                                                  LPARAM LParam)
@@ -463,6 +464,7 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
     ControllerIndex < MaxControllerCount;
     ControllerIndex++)
     {
+      // TODO: Figure out what we are doing with the input here... and maybe in general...
       engine_controller_input *OldControlState = GetController(OldInput, ControllerIndex);
       engine_controller_input *NewControlState = GetController(NewInput, ControllerIndex);
     }
