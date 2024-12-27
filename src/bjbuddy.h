@@ -25,21 +25,21 @@
 
 struct thread_context
 {
-    int placeholder;
+  int placeholder;
 };
 
 inline u32 SafeTruncateU64(u64 Value)
 {
-    NeoAssert(Value <= 0xFFFFFFFF);
-    u32 Result = (u32)Value;
-    return Result;
+  NeoAssert(Value <= 0xFFFFFFFF);
+  u32 Result = (u32)Value;
+  return Result;
 }
 
 // #if NEO_INTERNAL
 struct debug_file_result
 {
-    u32 contents_size;
-    void *contents;
+  u32 contents_size;
+  void *contents;
 };
 
 #define DEBUG_FREE_FILE_MEMORY(name) void name(thread_context *thread, void *file)
@@ -55,64 +55,64 @@ typedef DEBUG_WRITE_ENTIRE_FILE(debug_write_entire_file);
 // NOTE: Debug file handling
 DEBUG_FREE_FILE_MEMORY(DEBUG_free_file)
 {
-    if (file)
-    {
-        VirtualFree(file, 0, MEM_RELEASE);
-    }
+  if (file)
+  {
+    VirtualFree(file, 0, MEM_RELEASE);
+  }
 }
 
 DEBUG_READ_ENTIRE_FILE(DEBUG_read_entire_file)
 {
-    debug_file_result result = {};
-    HANDLE file_handle = CreateFile(file_name, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
-    if (file_handle != INVALID_HANDLE_VALUE)
+  debug_file_result result = {};
+  HANDLE file_handle = CreateFile(file_name, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+  if (file_handle != INVALID_HANDLE_VALUE)
+  {
+    LARGE_INTEGER file_size;
+    if (GetFileSizeEx(file_handle, &file_size))
     {
-        LARGE_INTEGER file_size;
-        if (GetFileSizeEx(file_handle, &file_size))
+      u32 file_size32 = SafeTruncateU64(file_size.QuadPart);
+      result.contents = VirtualAlloc(0, file_size32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+      if (result.contents)
+      {
+        DWORD bytes_read;
+        if (ReadFile(file_handle, result.contents, file_size32, &bytes_read, 0) &&
+          (file_size32 == bytes_read))
         {
-           u32 file_size32 = SafeTruncateU64(file_size.QuadPart);
-           result.contents = VirtualAlloc(0, file_size32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-           if (result.contents)
-           {
-               DWORD bytes_read;
-               if (ReadFile(file_handle, result.contents, file_size32, &bytes_read, 0) &&
-                   (file_size32 == bytes_read))
-               {
-                   result.contents_size = file_size32;
-               }
-               else
-               {
-                   DEBUG_free_file(thread, result.contents);
-                   result.contents = 0;
-               }
-           }
+          result.contents_size = file_size32;
         }
+        else
+      {
+          DEBUG_free_file(thread, result.contents);
+          result.contents = 0;
+        }
+      }
     }
-    CloseHandle(file_handle);
-    return result;
+  }
+  CloseHandle(file_handle);
+  return result;
 }
 
 DEBUG_WRITE_ENTIRE_FILE(DEBUG_write_entire_file)
 {
-    b32 result = false;
-    HANDLE file_handle = CreateFile(file_name, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
-    if (file_handle != INVALID_HANDLE_VALUE)
+  b32 result = false;
+  HANDLE file_handle = CreateFile(file_name, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+  if (file_handle != INVALID_HANDLE_VALUE)
+  {
+    DWORD bytes_written;
+    if (WriteFile(file_handle, file, file_size, &bytes_written, 0))
+
     {
-        DWORD bytes_written;
-        if (WriteFile(file_handle, file, file_size, &bytes_written, 0))
-
-        {
-            result = (bytes_written == file_size);
-        }
-        else
-        {
-            // TODO: LOGGING
-        }
-
+      result = (bytes_written == file_size);
+    }
+    else
+  {
+      // TODO: LOGGING
     }
 
-    CloseHandle(file_handle);
-    return result;
+  }
+
+  CloseHandle(file_handle);
+  return result;
 }
 
 struct engine_bitmap_buffer
@@ -170,115 +170,114 @@ struct engine_controller_input
 
 struct engine_input
 {
-    engine_button_state mouse_buttons [3];
-    s32 mouseX, mouseY, mouseZ;
+  engine_button_state mouse_buttons [3];
+  s32 mouseX, mouseY, mouseZ;
 
-    f32 time_step_over_frame;
-    engine_controller_input controllers[5];
+  f32 time_step_over_frame;
+  engine_controller_input controllers[5];
 };
 
 inline engine_controller_input *GetController(engine_input *Input, ums ControllerIndex)
 {
-    // NOTE: might want to make controller_index unsigned if we don't want neg arr access
-    NeoAssert(ArrayCount(Input->controllers) > ControllerIndex);
+  // NOTE: might want to make controller_index unsigned if we don't want neg arr access
+  NeoAssert(ArrayCount(Input->controllers) > ControllerIndex);
 
-    engine_controller_input *Result = &Input->controllers[ControllerIndex];
-    return Result;
+  engine_controller_input *Result = &Input->controllers[ControllerIndex];
+  return Result;
 }
 
 struct app_memory
 {
-    b32 is_init;
+  b32 is_init;
 
-    u64 perm_storage_space;
-    void *perm_mem_storage; // NOTE: This needs to be cleared to 0 when allocated at startup
+  u64 perm_storage_space;
+  void *perm_mem_storage; // NOTE: This needs to be cleared to 0 when allocated at startup
 
-    u64 flex_storage_space;
-    void *flex_mem_storage;
+  u64 flex_storage_space;
+  void *flex_mem_storage;
 
-    debug_free_file *DEBUG_free_file;
-    debug_read_entire_file *DEBUG_read_entire_file;
-    debug_write_entire_file *DEBUG_write_entire_file;
+  debug_free_file *DEBUG_free_file;
+  debug_read_entire_file *DEBUG_read_entire_file;
+  debug_write_entire_file *DEBUG_write_entire_file;
 };
 
 // TODO: Make neo file for arenas
 struct memory_arena
 {
-    ums size;
-    u8 *base_address;
-    mem_index used_space;
+  ums size;
+  u8 *base_address;
+  mem_index used_space;
 };
 
 static void InitArena(memory_arena *Arena, ums Size, u8 *BaseAddress)
 {
-    Arena->size = Size;
-    Arena->base_address = BaseAddress;
-    Arena->used_space = 0;
+  Arena->size = Size;
+  Arena->base_address = BaseAddress;
+  Arena->used_space = 0;
 }
 
 #define PushStruct(ma, type) (type *)PushSize_(ma, sizeof(type))
 #define PushArray(ma, count, type) (type *)PushSize_(ma, (count) * sizeof(type))
 void *PushSize_(memory_arena *Arena, ums Size)
 {
-    NeoAssert((Arena->used_space + Size) <= Arena->size);
-    void *Result = Arena->base_address + Arena->used_space;
-    Arena->used_space += Size;
-    return Result;
+  NeoAssert((Arena->used_space + Size) <= Arena->size);
+  void *Result = Arena->base_address + Arena->used_space;
+  Arena->used_space += Size;
+  return Result;
 }
 
 struct loaded_jpg
 {
-    u8 *pixels;
-    s32 channels;
-    s32 width;
-    s32 height;
+  u8 *pixels;
+  s32 channels;
+  s32 width;
+  s32 height;
 };
 struct loaded_bmp
 {
-    u8 *pixels;
-    s32 channels;
-    u32 width;
-    u32 height;
+  u8 *pixels;
+  s32 channels;
+  u32 width;
+  u32 height;
 };
 
 enum card_type
 {
-    FACE_DOWN = 0,
-    TWO = 2,
-    THREE,
-    FOUR,
-    FIVE,
-    SIX,
-    SEVEN,
-    EIGHT,
-    NINE,
-    TEN,
-    JACK = 10,
-    QUEEN = 10,
-    KING = 10,
-    ACE
+  FACE_DOWN = 0,
+  TWO = 2,
+  THREE,
+  FOUR,
+  FIVE,
+  SIX,
+  SEVEN,
+  EIGHT,
+  NINE,
+  TEN,
+  JACK = 10,
+  QUEEN = 10,
+  KING = 10,
+  ACE
 };
 
 struct card
 {
-    card_type value;
-    char *suit;
+  card_type value;
+  char *suit;
 };
 
 struct deck
 {
-    card cards[52];
+  card cards[52];
 };
 
 struct app_state
 {
-    memory_arena arena;
-    deck base_deck;
-    loaded_bmp tex_atlas;
+  memory_arena arena;
+  deck base_deck;
 };
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input,
-                              engine_bitmap_buffer *Buffer);
+                            engine_bitmap_buffer *Buffer);
 
 static void app_get_sound_samples(thread_context *Thread, app_memory *Memory, engine_sound_buffer *SoundBuffer);
 

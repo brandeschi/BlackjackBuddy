@@ -46,10 +46,12 @@ typedef double f64;
 #include "neo_random.h"
 #include "bb_ogl.h"
 #include "bjbuddy.h"
+#include "neo_render.h"
 
 
 // Sub TU
 #include "neo_math.cpp"
 #include "bb_ogl.cpp"
 #include "bjbuddy.cpp"
+#include "neo_render.cpp"
 

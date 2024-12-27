@@ -318,14 +318,14 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 {
   NeoAssert(sizeof(app_state) <= Memory->perm_storage_space);
   app_state *GameState = (app_state *)Memory->perm_mem_storage;
+  static renderer Renderer;
 
   if(!Memory->is_init)
   {
     InitArena(&GameState->arena, Memory->perm_storage_space - sizeof(app_state),
-               (u8 *)Memory->perm_mem_storage + sizeof(app_state));
-    // NOTE: Each card is like 98 hori and 153 vert
-    GameState->tex_atlas = DEBUG_load_bmp(Thread, Memory->DEBUG_read_entire_file, "test/cards.bmp");
-    // game_state->tex_atlas = DEBUG_load_bmp(thread, memory->DEBUG_read_entire_file, "test/debug-art.bmp");
+              (u8 *)Memory->perm_mem_storage + sizeof(app_state));
+
+    InitRenderer(&Renderer, Thread, Memory);
     // loaded_bmp *card_bmps = slice_card_atlas(&game_state->gm_arena, game_state->tex_atlas);
 
     GameState->base_deck = {
@@ -413,7 +413,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     // };
 
     vertex_data Vertices[] = {
-    //  pos                     color               tex-coords
+      //  pos                     color               tex-coords
       { {100.0f, 125.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
       { {150.0f, 125.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
       { {150.0f, 50.0f, 0.0f},  {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
@@ -432,8 +432,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       5, 6, 7     // T4
     };
 
-    DrawCard(Vertices, GameState->tex_atlas, {12.0f, 4.0f});
-    DrawCard(&Vertices[4], GameState->tex_atlas, {11.0f, 4.0f});
+    DrawCard(Vertices, Renderer.tex_atlas, {12.0f, 4.0f});
+    DrawCard(&Vertices[4], Renderer.tex_atlas, {11.0f, 4.0f});
     // NOTE: I believe this all should move into a InitRenderer func
     //
     // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
@@ -480,7 +480,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
     // TODO: GL_BGRA_EXT is a windows specific value, I believe I need to somehow handle this in the platform layer
     // or when I pull this rendering code out
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, GameState->tex_atlas.width, GameState->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, GameState->tex_atlas.pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer.tex_atlas.width, Renderer.tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer.tex_atlas.pixels);
 
     // NOTE: Start here!
     mat4 Projection = Mat4Ortho(0.0f, (f32)BitmapBuffer->width, 0.0f, (f32)BitmapBuffer->height, -1.0f, 1.0f);
@@ -494,15 +494,15 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     Memory->is_init = true;
   }
   for (ums ControllerIndex = 0;
-       ControllerIndex < ArrayCount(Input->controllers);
-       ControllerIndex++)
+  ControllerIndex < ArrayCount(Input->controllers);
+  ControllerIndex++)
   {
     engine_controller_input *Controller = GetController(Input, ControllerIndex);
     if (Controller->is_analog)
     {
     }
     else
-    {
+  {
     }
   }
 
