@@ -81,95 +81,6 @@ static void app_get_sound_samples(thread_context *thread, app_memory *memory, en
   // output_sound(game_state, sound_buffer);
 }
 
-// NOTE: CPP is not obligated to pack structs the way we want so sometimes this is necessary
-#pragma pack(push, 1) // Push how closely to pack bytes
-struct bmp_header
-{
-  u16 file_type;
-  u32 file_size;
-  u16 res_1;
-  u16 res_2;
-  u32 bitmap_offset;
-  // DIB Header v5
-  u32 size;
-  s32 width;
-  s32 height;
-  u16 planes;
-  u16 bits_per_pixel;
-  u32 compression;
-  u32 size_of_bitmap;
-  s32 horz_resolution;
-  s32 vert_resolution;
-  u32 colors_used;
-  u32 colors_important;
-  u32 red_mask;
-  u32 green_mask;
-  u32 blue_mask;
-  u32 alpha_mask;
-  // DWORD        bV5CSType;
-  // CIEXYZTRIPLE bV5Endpoints;
-  // DWORD        bV5GammaRed;
-  // DWORD        bV5GammaGreen;
-  // DWORD        bV5GammaBlue;
-  // DWORD        bV5Intent;
-  // DWORD        bV5ProfileData;
-  // DWORD        bV5ProfileSize;
-  // DWORD        bV5Reserved;
-};
-#pragma pack(pop) // Pop back to how the compiler was packing previously
-
-// TODO: This is not final bmp loading code!
-static loaded_bmp DEBUG_load_bmp(thread_context *thread, debug_read_entire_file *read_entire_file, char *file_name)
-{
-  loaded_bmp result = {};
-  debug_file_result read_result = read_entire_file(thread, file_name);
-  if (read_result.contents_size != 0)
-  {
-    bmp_header *header = (bmp_header *)read_result.contents;
-    u8 *pixels = ((u8 *)read_result.contents + header->bitmap_offset);
-    u32 *test_pix = (u32 *)pixels;
-
-
-    result.pixels = pixels;
-    result.channels = header->bits_per_pixel / 8;
-    result.width = header->width;
-    result.height = header->height;
-
-    // NOTE: For some reason I did not have to do any shifting of the bits for my bmp file?
-    // If I always take images and export them through gimp, I should be good.
-#if 0
-    // NOTE: Byte order of the bmp pixels in memory is deteremined by the header itself!
-    u32 alpha_mask = ~(header->red_mask | header->green_mask | header->blue_mask);
-
-    bit_scan_result red_shift = find_least_sig_set_bit_32(header->red_mask);
-    bit_scan_result green_shift = find_least_sig_set_bit_32(header->green_mask);
-    bit_scan_result blue_shift = find_least_sig_set_bit_32(header->blue_mask);
-    bit_scan_result alpha_shift = find_least_sig_set_bit_32(alpha_mask);
-
-    NeoAssert(red_shift.found);
-    NeoAssert(green_shift.found);
-    NeoAssert(blue_shift.found);
-    NeoAssert(alpha_shift.found);
-
-    u32 *src_dest = (u32 *)pixels;
-    for (s32 Y = 0; Y < header->height; Y++)
-    {
-      for (s32 X = 0; X < header->width; X++)
-      {
-        u32 color = *src_dest;
-        *src_dest++ = ((((color >> alpha_shift.index) & 0xFF) << 24) |
-          (((color >> red_shift.index) & 0xFF) << 16) |
-          (((color >> green_shift.index) & 0xFF) << 8) |
-          (((color >> blue_shift.index) & 0xFF) << 0)
-        );
-      }
-    }
-#endif
-  }
-
-
-  return result;
-}
 static void draw_bmp(engine_bitmap_buffer *buffer, loaded_bmp *bmp)
 {
   s32 min_X = RoundF32ToS32(0);
@@ -318,15 +229,13 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 {
   NeoAssert(sizeof(app_state) <= Memory->perm_storage_space);
   app_state *GameState = (app_state *)Memory->perm_mem_storage;
-  static renderer Renderer;
 
   if(!Memory->is_init)
   {
     InitArena(&GameState->arena, Memory->perm_storage_space - sizeof(app_state),
               (u8 *)Memory->perm_mem_storage + sizeof(app_state));
 
-    InitRenderer(&Renderer, Thread, Memory);
-    // loaded_bmp *card_bmps = slice_card_atlas(&game_state->gm_arena, game_state->tex_atlas);
+    InitRenderer(Thread, Memory);
 
     GameState->base_deck = {
       {

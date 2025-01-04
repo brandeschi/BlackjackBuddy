@@ -44,14 +44,16 @@ typedef double f64;
 // Headers
 #include "neo_math.h"
 #include "neo_random.h"
+#include "neo_platform.h"
 #include "bb_ogl.h"
-#include "bjbuddy.h"
 #include "neo_render.h"
+#include "bjbuddy.h"
 
 
 // Sub TU
 #include "neo_math.cpp"
+#include "neo_platform.cpp"
 #include "bb_ogl.cpp"
-#include "bjbuddy.cpp"
 #include "neo_render.cpp"
+#include "bjbuddy.cpp"
 

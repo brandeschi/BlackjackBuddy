@@ -18,4 +18,4 @@ struct renderer
   loaded_bmp tex_atlas;
 };
 
-internal void InitRenderer(renderer *Renderer, thread_context *Thread, app_memory *Memory);
+internal void InitRenderer(thread_context *Thread, app_memory *Memory);
