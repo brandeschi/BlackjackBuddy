@@ -59,6 +59,7 @@ static void win32_InitOpengl(HWND WindowHandle)
   }
 
   // OpenGL func ptrs
+  glGenVertexArrays = (glgenvertexarrays *)wglGetProcAddress("glGenVertexArrays");
   glGenBuffers = (glgenbuffers *)wglGetProcAddress("glGenBuffers");
   glBindBuffer = (glbindbuffer *)wglGetProcAddress("glBindBuffer");
   glBufferData = (glbufferdata *)wglGetProcAddress("glBufferData");
@@ -76,7 +77,6 @@ static void win32_InitOpengl(HWND WindowHandle)
   glGetProgramInfoLog = (glgetprograminfolog *)wglGetProcAddress("glGetProgramInfoLog");
   glVertexAttribPointer = (glvertexattribpointer *)wglGetProcAddress("glVertexAttribPointer");
   glEnableVertexAttribArray = (glenablevertexattribarray *)wglGetProcAddress("glEnableVertexAttribArray");
-  glGenVertexArrays = (glgenvertexarrays *)wglGetProcAddress("glGenVertexArrays");
   glBindVertexArray = (glbindvertexarray *)wglGetProcAddress("glBindVertexArray");
   glGetUniformLocation = (glgetuniformlocation *)wglGetProcAddress("glGetUniformLocation");
   glUniform4f = (gluniform4f *)wglGetProcAddress("glUniform4f");
@@ -143,54 +143,83 @@ inline f32 win32_GetSecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
 }
 
 // This is needed to force rePaint to get a set fps
-static void win32_UpdateWindownWithBuffer(HDC DeviceContext,
-                                          engine_bitmap_buffer *Buffer,
+static void win32_UpdateWindowWithBuffer(HDC DeviceContext,
+                                          engine_bitmap_buffer *BMBuffer,
                                           int WindowWidth, int WindowHeight)
 {
-#if 0
   // NOTE: Need to make a win32_bitmap_buffer when using this bliting
+  // TODO: Probably need to make sure info points to something??
+  win32_bitmap_buffer Buffer = {0};
+  Buffer.memory = BMBuffer->memory;
+  Buffer.pitch = BMBuffer->pitch;
+  Buffer.width = BMBuffer->width;
+  Buffer.height = BMBuffer->height;
+  Buffer.bytes_per_pixel = BMBuffer->bytes_per_pixel;
 
   // Clear the unused client pixels to black
-  PatBlt(device_context, 0, g_bm_buffer.height, win_width, win_height, BLACKNESS);
-  PatBlt(device_context, g_bm_buffer.width, 0, win_width, win_height, BLACKNESS);
+  PatBlt(DeviceContext, 0, Buffer.height, WindowWidth, WindowHeight, BLACKNESS);
+  PatBlt(DeviceContext, Buffer.width, 0, WindowWidth, WindowHeight, BLACKNESS);
 
   // TODO:
   // Fix the aspect ratio with math (either through floating point or
   // integer)
   StretchDIBits(
-    device_context,
+    DeviceContext,
     // _x, _y, _width, _height, // Props for dest bitmap
     // _x, _y, _width, _height, // Props of src bitmap
     // To make a simple rect first, we  stretch the bits to the whole window
     // NOTE: HHD[024]: casey wanted to make the displayed pixels be one-to-one
     // so instead of taking in the win dimensions for this function,
-    // we will be making it based on the g_bm_buffer's initial dims
-    0, 0, g_bm_buffer.width, g_bm_buffer.height,
-    0, 0, g_bm_buffer.width, g_bm_buffer.height,
-    g_bm_buffer.memory, &g_bm_buffer.info,
+    // we will be making it based on the Buffer's initial dims
+    0, 0, Buffer.width, Buffer.height,
+    0, 0, Buffer.width, Buffer.height,
+    Buffer.memory, &Buffer.info,
     DIB_RGB_COLORS, // iUsage - Use literal rgb values to color in the pixels
     SRCCOPY);       // Raster Operation Code - Copy our bitmap to the dest
+}
 
-#else
-  glViewport(0, 0, WindowWidth, WindowHeight);
-  // TODO: Do aspect ratio
-  //
-  // glMatrixMode(GL_PROJECTION);
-  // glLoadIdentity();
-  // gluPerspective(45.0, 16.0/9.0*float(win_width)/float(win_height), 0.1, 100.0);
+static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
+                               int WindowWidth, int WindowHeight)
+{
+  // TODO: Make this into flags that are switched over for
+  // which graphics API to render to.
+  b32 IsHardware = true;
+  if (IsHardware)
+  {
+    glViewport(0, 0, WindowWidth, WindowHeight);
+    // TODO: Do aspect ratio
+    //
+    // glMatrixMode(GL_PROJECTION);
+    // glLoadIdentity();
+    // gluPerspective(45.0, 16.0/9.0*float(win_width)/float(win_height), 0.1, 100.0);
 
-  glClearColor(0.2f, 0.66f, 0.44f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(0.2f, 0.66f, 0.44f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
 
-  // DRAW
-  // glPolygonMode(GL_FRONT, GL_LINE);
-  glUseProgram(g_ShaderProgram);
-  // glDrawArrays(GL_TRIANGLES, 0, 3);
-  glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
+    // DRAW
+    for (ums Index = 0; Index < Renderer->unit_count; ++Index)
+    {
+      render_unit *Unit = (render_unit *)(Renderer->units + (Index*sizeof(render_unit)));
+      // glPolygonMode(GL_FRONT, GL_LINE);
+      glUseProgram(g_ShaderProgram);
+      // glDrawArrays(GL_TRIANGLES, 0, 3);
+      glDrawElements(GL_TRIANGLES, Unit->index_count, GL_UNSIGNED_INT, 0);
+    }
 
-  // TODO: Look up what swapbuffers should be used
-  SwapBuffers(DeviceContext);
-#endif
+    // glUseProgram(g_ShaderProgram);
+    // glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
+
+    // TODO: Look up what swapbuffers should be used
+    SwapBuffers(DeviceContext);
+  }
+  else
+  {
+    // TODO: Replace this with other render apis
+    engine_bitmap_buffer *BMBuffer = 0;
+    win32_UpdateWindowWithBuffer(DeviceContext, BMBuffer,
+                                 WindowWidth, WindowHeight);
+  }
+
 }
 
 static LRESULT CALLBACK win32_MainWindowCallback(HWND WindowHandle,
@@ -232,6 +261,7 @@ static LRESULT CALLBACK win32_MainWindowCallback(HWND WindowHandle,
     default:
       {
         Result = DefWindowProc(WindowHandle, Message, WParam, LParam);
+        break;
       }
   }
 
@@ -338,13 +368,11 @@ static void win32_ProcessPendingWinMessages(engine_controller_input *Keyboard)
         } break;
 
       default:
-        {
-          TranslateMessage(&Message);
-          DispatchMessage(&Message);
-        } break;
-
+      {
+        TranslateMessage(&Message);
+        DispatchMessage(&Message);
+      } break;
     }
-
   }
 }
 
@@ -377,6 +405,7 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   if(!Window)
     return false;
 
+  thread_context Thread = {};
   // Based on how the device context system functions, when specifying a
   // CS_OWNDC flag for the window, it is possible to get the DC for the window
   // and then never give it back because we now own it for the duration of the
@@ -395,7 +424,7 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   LPVOID BaseAddress = 0;
 #endif
 
-  app_memory AppMemory = {};
+  app_memory AppMemory = {0};
   AppMemory.perm_storage_space = megabytes(64);
   AppMemory.flex_storage_space = gigabytes(4);
   AppMemory.DEBUG_free_file = DEBUG_free_file;
@@ -408,6 +437,14 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
                                             MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
   AppMemory.flex_mem_storage = ((u8 *)AppMemory.perm_mem_storage + AppMemory.perm_storage_space);
 
+  renderer Renderer = {0};
+  Renderer.max_units = megabytes(4);
+  void *Units = VirtualAlloc(0, Renderer.max_units, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  Renderer.units = (u8 *)Units;
+  // Renderer.width = 960;
+  // Renderer.height = 540;
+  // Renderer.tex_atlas = DEBUG_load_bmp(&Thread, AppMemory.DEBUG_read_entire_file, "test/cards.bmp");
+
 #if 0
   loaded_jpg crate_tex = {};
   crate_tex = DEBUG_load_jpg(&global_arena, &g_thread_context, DEBUG_read_entire_file, "test/cardback.jpeg", DEBUG_free_file);
@@ -418,8 +455,13 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   }
 #endif
 
+  // TODO: Figure out how to init each graphics API
+  // in order to allow us to easily switch between
+  // the different APIs.
+
   // Init OpenGL
   win32_InitOpengl(Window);
+  InitRenderer(&Thread, &AppMemory, &Renderer);
 
   engine_input Input[2] = {};
   engine_input *NewInput = &Input[0];
@@ -431,9 +473,9 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   {
     NewInput->time_step_over_frame = TargetSecondsPerFrame;
 
-    engine_controller_input *NewKeeb = GetController(NewInput, 0);
-    engine_controller_input *OldKeeb = GetController(OldInput, 0);
-    *NewKeeb = {};
+    engine_controller_input *NewKeeb = GetController(NewInput);
+    engine_controller_input *OldKeeb = GetController(OldInput);
+    *NewKeeb = {0};
 
     for (ums ButtonIndex = 0;
     ButtonIndex < ArrayCount(NewKeeb->buttons);
@@ -469,19 +511,9 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
       engine_controller_input *NewControlState = GetController(NewInput, ControllerIndex);
     }
 
-    thread_context Thread = {};
-    // This pulls from our platform-independent code from nebula.h
-    engine_bitmap_buffer BitmapBuffer = {};
-    BitmapBuffer.memory = g_BitmapBuffer.memory;
-    BitmapBuffer.width = g_BitmapBuffer.width;
-    BitmapBuffer.height = g_BitmapBuffer.height;
-    BitmapBuffer.pitch = g_BitmapBuffer.pitch;
-    BitmapBuffer.bytes_per_pixel = g_BitmapBuffer.bytes_per_pixel;
-    UpdateAndRender(&Thread, &AppMemory, NewInput, &BitmapBuffer);
-
+    UpdateAndRender(&Thread, &AppMemory, NewInput, &Renderer);
     win32_win_dimensions WindowDims = win32_GetWindowDims(Window);
-    win32_UpdateWindownWithBuffer(DeviceContext, &BitmapBuffer,
-                                  WindowDims.width, WindowDims.height);
+    win32_UpdateWindow(DeviceContext, &Renderer, WindowDims.width, WindowDims.height);
 
     engine_input *Temp = NewInput;
     NewInput = OldInput;

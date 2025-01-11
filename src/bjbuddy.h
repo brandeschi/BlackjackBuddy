@@ -60,7 +60,7 @@ struct engine_input
   engine_controller_input controllers[5];
 };
 
-inline engine_controller_input *GetController(engine_input *Input, ums ControllerIndex)
+inline engine_controller_input *GetController(engine_input *Input, ums ControllerIndex = 0)
 {
   // NOTE: might want to make controller_index unsigned if we don't want neg arr access
   NeoAssert(ArrayCount(Input->controllers) > ControllerIndex);

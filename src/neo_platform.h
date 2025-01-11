@@ -74,15 +74,15 @@ struct app_memory
 // TODO: Make neo file for arenas
 struct memory_arena
 {
-  ums size;
   u8 *base_address;
-  mem_index used_space;
+  ums size;
+  ums used_space;
 };
 
-static void InitArena(memory_arena *Arena, ums Size, u8 *BaseAddress)
+static void InitArena(memory_arena *Arena, ums Size, void *BaseAddress)
 {
+  Arena->base_address = (u8 *)BaseAddress;
   Arena->size = Size;
-  Arena->base_address = BaseAddress;
   Arena->used_space = 0;
 }
 

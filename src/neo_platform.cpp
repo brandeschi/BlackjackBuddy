@@ -1,5 +1,9 @@
 // Platform stuff
 
+// Globals
+global thread_context g_ThreadContext = {};
+global GLuint g_ShaderProgram;
+
 // NOTE: Debug file handling
 DEBUG_FREE_FILE_MEMORY(DEBUG_free_file)
 {
@@ -73,7 +77,6 @@ static loaded_bmp DEBUG_load_bmp(thread_context *thread, debug_read_entire_file 
   {
     bmp_header *header = (bmp_header *)read_result.contents;
     u8 *pixels = ((u8 *)read_result.contents + header->bitmap_offset);
-    u32 *test_pix = (u32 *)pixels;
 
 
     result.pixels = pixels;

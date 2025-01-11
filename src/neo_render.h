@@ -7,15 +7,24 @@ struct vertex_data
 
 struct render_unit
 {
-  vertex_data *vertices;
+  u32 index_count;
+  u32 *indices;
   u32 vertex_count;
+  vertex_data *vertices;
+
+  u32 offset;
 };
 
 struct renderer
 {
-  render_unit *units;
   u32 unit_count;
+  u32 max_units;
+  u8 *units;
+
+  u32 VAO, VBO, EBO;
+  u32 width, height;
+
   loaded_bmp tex_atlas;
 };
 
-internal void InitRenderer(thread_context *Thread, app_memory *Memory);
+internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer *Renderer);

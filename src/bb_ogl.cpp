@@ -1,11 +1,11 @@
 #pragma once
 #include "core.unity.h"
 
-static GLuint create_ogl_shader_program(thread_context tc, char *vertex_file_name, char *fragment_file_name)
+static GLuint CreateOpenGLShaderProgram(thread_context *tc, char *vertex_file_name, char *fragment_file_name)
 {
   GLuint prog_id = 0;
-  debug_file_result s_vertex_file = DEBUG_read_entire_file(&tc, vertex_file_name);
-  debug_file_result s_fragment_file = DEBUG_read_entire_file(&tc, fragment_file_name);
+  debug_file_result s_vertex_file = DEBUG_read_entire_file(tc, vertex_file_name);
+  debug_file_result s_fragment_file = DEBUG_read_entire_file(tc, fragment_file_name);
 
   // Create shaders
   const char *vertexShaderSource = (char *)s_vertex_file.contents;
@@ -53,28 +53,9 @@ static GLuint create_ogl_shader_program(thread_context tc, char *vertex_file_nam
   }
   glDeleteShader(vertex_shader);
   glDeleteShader(fragment_shader);
-  DEBUG_free_file(&tc, s_vertex_file.contents);
-  DEBUG_free_file(&tc, s_fragment_file.contents);
+  DEBUG_free_file(tc, s_vertex_file.contents);
+  DEBUG_free_file(tc, s_fragment_file.contents);
 
   return prog_id;
-}
-
-static void init_renderer(void) {
-  return;
-}
-
-static void DrawCard(vertex_data *VertexArray, loaded_bmp TexAtlas, v2 CardIndex) {
-  f32 CardWidth = (f32)TexAtlas.width / 13.0f;
-  f32 CardHeight = (f32)TexAtlas.height / 5.0f;
-
-  v2 ComputedTexCoords[] = {
-    {(CardIndex.x * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
-    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
-    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height },
-    {(CardIndex.x * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height }
-  };
-  for (u32 Index = 0; Index < 4; ++Index) {
-    VertexArray[Index].tex_coords = ComputedTexCoords[Index];
-  }
 }
 
