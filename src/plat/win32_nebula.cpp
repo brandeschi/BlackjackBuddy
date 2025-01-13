@@ -63,6 +63,7 @@ static void win32_InitOpengl(HWND WindowHandle)
   glGenBuffers = (glgenbuffers *)wglGetProcAddress("glGenBuffers");
   glBindBuffer = (glbindbuffer *)wglGetProcAddress("glBindBuffer");
   glBufferData = (glbufferdata *)wglGetProcAddress("glBufferData");
+  glBufferSubData = (glbuffersubdata *)wglGetProcAddress("glBufferSubData");
   glCreateShader = (glcreateshader *)wglGetProcAddress("glCreateShader");
   glShaderSource = (glshadersource *)wglGetProcAddress("glShaderSource");
   glCompileShader = (glcompileshader *)wglGetProcAddress("glCompileShader");
@@ -195,19 +196,24 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
 
     glClearColor(0.2f, 0.66f, 0.44f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+    glBindVertexArray(Renderer->VAO);
 
     // DRAW
     for (ums Index = 0; Index < Renderer->unit_count; ++Index)
     {
       render_unit *Unit = (render_unit *)(Renderer->units + (Index*sizeof(render_unit)));
-      // glPolygonMode(GL_FRONT, GL_LINE);
       glUseProgram(g_ShaderProgram);
-      // glDrawArrays(GL_TRIANGLES, 0, 3);
+      glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
+      // TODO: Look into using glBufferSubData as it is more efficient if we are
+      // soley updating already allocated memory.
+      // Utilize offset for each unit to get access to the pointers for indices and vertices.
+      glBufferSubData(GL_ARRAY_BUFFER, 0, Unit->vertex_count*sizeof(vertex_data), Unit->vertices);
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
+      glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, Unit->index_count*sizeof(u32), Unit->indices);
       glDrawElements(GL_TRIANGLES, Unit->index_count, GL_UNSIGNED_INT, 0);
+      // TODO: Expand how we catch OGL errors
+      NeoAssert(glGetError() == GL_NO_ERROR);
     }
-
-    // glUseProgram(g_ShaderProgram);
-    // glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
 
     // TODO: Look up what swapbuffers should be used
     SwapBuffers(DeviceContext);
@@ -345,7 +351,6 @@ static void win32_ProcessPendingWinMessages(engine_controller_input *Keyboard)
                   // new_hand_deal(&base_deck);
                   // _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
                   //             base_deck.cards[4].value, base_deck.cards[4].suit);
-                  // OutputDebugStringA(put_string);
                 } break;
               case VK_ESCAPE:
                 {

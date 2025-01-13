@@ -221,20 +221,20 @@ loaded_bmp *SliceCardAtlas(memory_arena *Arena, loaded_bmp CardAtlas)
   return Result;
 }
 
-// static void DrawCard(vertex_data *VertexArray, loaded_bmp TexAtlas, v2 CardIndex) {
-//   f32 CardWidth = (f32)TexAtlas.width / 13.0f;
-//   f32 CardHeight = (f32)TexAtlas.height / 5.0f;
-//
-//   v2 ComputedTexCoords[] = {
-//     {(CardIndex.x * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
-//     {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
-//     {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height },
-//     {(CardIndex.x * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height }
-//   };
-//   for (u32 Index = 0; Index < 4; ++Index) {
-//     VertexArray[Index].tex_coords = ComputedTexCoords[Index];
-//   }
-// }
+static void DrawCard(vertex_data *VertexArray, loaded_bmp TexAtlas, v2 CardIndex) {
+  f32 CardWidth = (f32)TexAtlas.width / 13.0f;
+  f32 CardHeight = (f32)TexAtlas.height / 5.0f;
+
+  v2 ComputedTexCoords[] = {
+    {(CardIndex.x * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
+    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
+    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height },
+    {(CardIndex.x * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height }
+  };
+  for (u32 Index = 0; Index < 4; ++Index) {
+    VertexArray[Index].tex_coords = ComputedTexCoords[Index];
+  }
+}
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
 {
@@ -243,7 +243,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
   if(!Memory->is_init)
   {
-    InitArena(&GameState->arena, Memory->perm_storage_space - sizeof(app_state),
+    InitArena(&GameState->core_arena, Memory->perm_storage_space - sizeof(app_state),
               (u8 *)Memory->perm_mem_storage + sizeof(app_state));
 
     GameState->base_deck = {
@@ -303,12 +303,11 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       }
     };
 
-    // TODO : Rethink how to make sending draw card create units to draw...
-    // likely setup some system that updates the VBO?
-    // render_unit *Unit = (render_unit *)Renderer->units;
-    // vertex_data *Vertices = Unit->vertices;
-    // DrawCard(Vertices, Renderer->tex_atlas, {0.0f, 4.0f});
-    // DrawCard(&Vertices[4], Renderer->tex_atlas, {0.0f, 4.0f});
+    // TODO: This is temp... probably want to not do this...
+    render_unit *Unit = (render_unit *)Renderer->units;
+    vertex_data *Vertices = Unit->vertices;
+    DrawCard(Vertices, Renderer->tex_atlas, {0.0f, 4.0f});
+    DrawCard(&Vertices[4], Renderer->tex_atlas, {0.0f, 4.0f});
 
     Memory->is_init = true;
   }

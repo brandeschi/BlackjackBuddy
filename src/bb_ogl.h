@@ -1,9 +1,11 @@
 // NOTE: Opengl definitions
 typedef s64 GLsizeiptr;
+typedef s32 GLintptr;
 typedef char GLchar;
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_ELEMENT_ARRAY_BUFFER           0x8893
 #define GL_STATIC_DRAW                    0x88E4
+#define GL_DYNAMIC_DRAW                   0x88E8
 #define GL_VERTEX_SHADER                  0x8B31
 #define GL_FRAGMENT_SHADER                0x8B30
 #define GL_COMPILE_STATUS                 0x8B81
@@ -13,6 +15,7 @@ typedef char GLchar;
 #define GL_CLAMP_TO_EDGE                  0x812F
 #define GL_TEXTURE0                       0x84C0
 #define GL_SHADING_LANGUAGE_VERSION       0x8B8C
+#define GL_NO_ERROR                       0
 
 // Accepted as an attribute name in <*attribList>:
 #define WGL_CONTEXT_MAJOR_VERSION_ARB           0x2091
@@ -37,6 +40,8 @@ typedef void glbindbuffer(GLenum target, GLuint buffer);
 global glbindbuffer *glBindBuffer;
 typedef void glbufferdata(GLenum target, GLsizeiptr size, const void *data, GLenum usage);
 global glbufferdata *glBufferData;
+typedef void glbuffersubdata(GLenum target, GLintptr offset, GLsizeiptr size, const void *data);
+global glbuffersubdata *glBufferSubData;
 typedef GLuint glcreateshader(GLenum type);
 global glcreateshader *glCreateShader;
 typedef void glshadersource(GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);

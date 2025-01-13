@@ -2,21 +2,6 @@
 
 #include "core.unity.h"
 
-static void DrawCard(vertex_data *VertexArray, loaded_bmp TexAtlas, v2 CardIndex) {
-  f32 CardWidth = (f32)TexAtlas.width / 13.0f;
-  f32 CardHeight = (f32)TexAtlas.height / 5.0f;
-
-  v2 ComputedTexCoords[] = {
-    {(CardIndex.x * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
-    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
-    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height },
-    {(CardIndex.x * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height }
-  };
-  for (u32 Index = 0; Index < 4; ++Index) {
-    VertexArray[Index].tex_coords = ComputedTexCoords[Index];
-  }
-}
-
 // TODO: Probably want to move the creation of this to the platform layer
 // when we are picking which rendering API to use.
 // NOTE: Only expecting to have one renderer. This could change in the future.
@@ -28,29 +13,6 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
 
   // Create Shader Program
   g_ShaderProgram = CreateOpenGLShaderProgram(Thread, "..\\vert.glsl", "..\\frag.glsl");
-  // Vertex Data
-  // v3 vertices[] = {
-  //     { -0.5f, -0.5f, 0.0f }, // V1 pos data
-  //     { 1.0f, 0.0f, 0.0f }, // V1 color data
-  //     { 0.5f, -0.5f, 0.0f }, // V2 pos data
-  //     { 0.0f, 1.0f, 0.0f }, // V2 color data
-  //     { 0.0f, 0.5f, 0.0f }, // V3 pos data
-  //     { 0.0f, 0.0f, 1.0f }, // V3 color data
-  // };
-  //
-  // v2 tex_coords[] = {
-  //     { 0.0f, 0.0f },
-  //     { 1.0f, 0.0f },
-  //     { 0.5f, 1.0f },
-  // };
-  //
-  // v3 vertices[] = {
-  //     { 0.5f, 0.5f, 0.0f },   // top-right
-  //     { 0.5f, -0.5f, 0.0f },  // bottom-right
-  //     { -0.5f, -0.5f, 0.0f }, // bottom-left
-  //     { -0.5f, 0.5f, 0.0f },  // top-left
-  // };
-
   vertex_data Vertices[] = {
     //  pos                     color               tex-coords
     { {100.0f, 125.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
@@ -71,13 +33,14 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
     5, 6, 7     // T4
   };
 
+  // TODO: Look into nailing this down.
+  // Also I think I should use an arena for managing the unit memory.
   u32 CurrentUnitSize = Renderer->unit_count*sizeof(render_unit);
   if (CurrentUnitSize + sizeof(render_unit) < Renderer->max_units)
   {
     render_unit *Unit = (render_unit *)Renderer->units;
     u32 *IndicesBase = (u32 *)(Renderer->units + sizeof(render_unit));
     u32 IndexCount = ArrayCount(Indices);
-    // TODO: Remove memcpy?
     memcpy(IndicesBase, Indices, IndexCount*sizeof(u32));
     Unit->indices = IndicesBase;
     Unit->index_count = IndexCount;
@@ -94,38 +57,35 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
   }
 
   // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
-
   glGenVertexArrays(1, &Renderer->VAO);
   glGenBuffers(1, &Renderer->VBO);
   glGenBuffers(1, &Renderer->EBO);
 
-  render_unit *FirstUnit = (render_unit *)Renderer->units;
-  vertex_data *Vertices_ = FirstUnit->vertices;
-  DrawCard(Vertices_, Renderer->tex_atlas, {0.0f, 4.0f});
-  DrawCard(&Vertices_[4], Renderer->tex_atlas, {0.0f, 3.0f});
+  render_unit *FirstUnit = (render_unit *)(Renderer->units);
 
   // Bind VAO, the bind and set VBOs, then config vertex attribs
   glBindVertexArray(Renderer->VAO);
   glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
-  glBufferData(GL_ARRAY_BUFFER, FirstUnit->vertex_count*sizeof(vertex_data), FirstUnit->vertices, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, FirstUnit->vertex_count*sizeof(vertex_data), FirstUnit->vertices, GL_DYNAMIC_DRAW);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, FirstUnit->index_count*sizeof(u32), FirstUnit->indices, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, FirstUnit->index_count*sizeof(u32), FirstUnit->indices, GL_DYNAMIC_DRAW);
 
   // Tell opengl how to interpret our vertex data by setting pointers to the attribs
   // pos attrib
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
   glEnableVertexAttribArray(0);
-  // color attrib
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
-  glEnableVertexAttribArray(1);
-  // tex coord attrib
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
-  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
 
-  GLuint Texture;
-  glGenTextures(1, &Texture);
-  glBindTexture(GL_TEXTURE_2D, Texture);
-  // glBindTexture(GL_TEXTURE_2D, 1);
+  // color attrib
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
+  // tex coord attrib
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
+
+  u32 TextureAtlas;
+  glGenTextures(1, &TextureAtlas);
+  glBindTexture(GL_TEXTURE_2D, TextureAtlas);
+
   // Setting Texture wrapping method
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
@@ -141,6 +101,7 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
   // or when I pull this rendering code out
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->tex_atlas.width, Renderer->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->tex_atlas.pixels);
 
+
   const u32 Width = 960;
   const u32 Height = 540;
   mat4 Projection = Mat4Ortho(0.0f, (f32)Width, 0.0f, (f32)Height, -1.0f, 1.0f);
@@ -151,5 +112,10 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
   glUseProgram(g_ShaderProgram);
   GLint u_MvpId = glGetUniformLocation(g_ShaderProgram, "u_MVP");
   glUniformMatrix4fv(u_MvpId, 1, GL_FALSE, (f32 *)MVP.e);
+
+  // Unbind the buffers
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
   glUseProgram(0);
 }
