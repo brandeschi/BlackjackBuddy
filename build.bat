@@ -13,5 +13,7 @@ set CompilerFlags= -MTd /Zi /EHsc /FC -Oi -GR- -EHa- -Gm-
 rem WX is supposed to represent don't compile with warnings. We will edit our warnings to only the ones we care about!
 rem -Wd[warning#] is how to ignore certain warnings.
 set WarningFlags=-WX -W4 -wd4201 -wd4100 -wd4189 -wd4505
+ctime -begin bb_timing.ctm
 cl -nologo %WarningFlags% -DNEO_SPEED=0 -DNEO_INTERNAL=1 %CompilerFlags% ..\src\plat\win32_nebula.cpp user32.lib gdi32.lib winmm.lib opengl32.lib
+ctime -end bb_timing.ctm
 popd
