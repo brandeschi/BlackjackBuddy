@@ -119,3 +119,22 @@ static loaded_bmp DEBUG_load_bmp(thread_context *thread, debug_read_entire_file 
 
   return result;
 }
+
+// TODO: Remove this forward decs when working on setting up another platform.
+inline static void *win32_AllocateMemory(ums Size);
+inline static void win32_DeallocateMemory(memory_arena *Arena);
+
+inline static void *PlatformAllocateMemory(ums Size)
+{
+  // TODO: Use preprocessor to set which platform func to call
+  // for memory allocations.
+  void *Result = win32_AllocateMemory(Size);
+  return Result;
+}
+inline static void PlatformDeallocateMemory(memory_arena *Arena)
+{
+  // TODO: Use preprocessor to set which platform func to call
+  // for memory allocations.
+  win32_DeallocateMemory(Arena);
+}
+

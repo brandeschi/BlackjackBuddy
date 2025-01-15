@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+// TODO: Move these includes into a diff file that imports
+// them based on platform.
+//
+// Platform includes
 #include <Windows.h>
 #include <gl/GL.h>
 #include <dsound.h>
@@ -48,7 +52,6 @@ typedef double f64;
 #include "bb_ogl.h"
 #include "neo_render.h"
 #include "bjbuddy.h"
-
 
 // Sub TU
 #include "neo_math.cpp"

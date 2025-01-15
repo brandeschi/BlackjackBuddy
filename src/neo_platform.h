@@ -60,11 +60,14 @@ struct app_memory
 {
   b32 is_init;
 
-  u64 perm_storage_space;
-  void *perm_mem_storage; // NOTE: This needs to be cleared to 0 when allocated at startup
+  u64 perm_storage_size;
+  void *perm_memory; // NOTE: This needs to be cleared to 0 when allocated at startup
 
-  u64 flex_storage_space;
-  void *flex_mem_storage;
+  u64 flex_storage_size;
+  void *flex_memory;
+
+  u64 frame_storage_size;
+  void *frame_memory;
 
   debug_free_file *DEBUG_free_file;
   debug_read_entire_file *DEBUG_read_entire_file;
@@ -74,24 +77,24 @@ struct app_memory
 // TODO: Make neo file for arenas
 struct memory_arena
 {
-  u8 *base_address;
+  u8 *base;
   ums size;
   ums used_space;
 };
 
 static void InitArena(memory_arena *Arena, ums Size, void *BaseAddress)
 {
-  Arena->base_address = (u8 *)BaseAddress;
+  Arena->base = (u8 *)BaseAddress;
   Arena->size = Size;
   Arena->used_space = 0;
 }
 
 #define PushStruct(ma, type) (type *)PushSize_(ma, sizeof(type))
 #define PushArray(ma, count, type) (type *)PushSize_(ma, (count) * sizeof(type))
-void *PushSize_(memory_arena *Arena, ums Size)
+static void *PushSize_(memory_arena *Arena, ums Size)
 {
   NeoAssert((Arena->used_space + Size) <= Arena->size);
-  void *Result = Arena->base_address + Arena->used_space;
+  void *Result = Arena->base + Arena->used_space;
   Arena->used_space += Size;
   return Result;
 }

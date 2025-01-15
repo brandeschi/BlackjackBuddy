@@ -17,9 +17,10 @@ struct render_unit
 
 struct renderer
 {
+  memory_arena frame_arena;
+
   u32 unit_count;
-  u32 max_units;
-  u8 *units;
+  render_unit *units;
 
   u32 VAO, VBO, EBO;
   u32 width, height;

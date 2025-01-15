@@ -101,8 +101,6 @@ struct deck
 struct app_state
 {
   memory_arena core_arena;
-  // TODO: Set this up to be used by renderer.
-  memory_arena frame_arena;
   deck base_deck;
 };
 

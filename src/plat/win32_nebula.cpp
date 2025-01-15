@@ -11,7 +11,22 @@ global s64 g_PerfCountFreq;
 // typedef HGLRC WINAPI wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList);
 typedef HGLRC WINAPI wgl_create_context_attribs_arb(HDC hDC, HGLRC hShareContext, const int *attribList);
 
-static void win32_InitOpengl(HWND WindowHandle)
+inline static void *win32_AllocateMemory(ums Size)
+{
+  void *Result = VirtualAlloc(0, Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  return Result;
+
+}
+inline static void win32_DeallocateMemory(memory_arena *Arena)
+{
+  if (Arena->base)
+  {
+    VirtualFree(Arena->base, 0, MEM_RELEASE);
+    Arena->base = 0;
+  }
+}
+
+static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer *Renderer)
 {
   HDC WindowDC = GetDC(WindowHandle);
 
@@ -85,6 +100,68 @@ static void win32_InitOpengl(HWND WindowHandle)
   glActiveTexture = (glactivetexture *)wglGetProcAddress("glActiveTexture");
   glUniform1i = (gluniform1i *)wglGetProcAddress("glUniform1i");
   glUniformMatrix4fv = (gluniformmatrix4fv *)wglGetProcAddress("glUniformMatrix4fv");
+
+  // Create Shader Program
+  g_ShaderProgram = CreateOpenGLShaderProgram(Thread, "..\\vert.glsl", "..\\frag.glsl");
+
+  // Create a (V)ertex (B)uffer (O)bject and (V)ertex (A)rray (O)bject
+  glGenVertexArrays(1, &Renderer->VAO);
+  glGenBuffers(1, &Renderer->VBO);
+  glGenBuffers(1, &Renderer->EBO);
+
+  render_unit *FirstUnit = Renderer->units;
+
+  // Bind VAO, the bind and set VBOs, then config vertex attribs
+  glBindVertexArray(Renderer->VAO);
+  glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
+  glBufferData(GL_ARRAY_BUFFER, FirstUnit->vertex_count*sizeof(vertex_data), FirstUnit->vertices, GL_DYNAMIC_DRAW);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, FirstUnit->index_count*sizeof(u32), FirstUnit->indices, GL_DYNAMIC_DRAW);
+
+  // Tell opengl how to interpret our vertex data by setting pointers to the attribs
+  // pos attrib
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
+
+  // color attrib
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
+  // tex coord attrib
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
+
+  u32 TextureAtlas;
+  glGenTextures(1, &TextureAtlas);
+  glBindTexture(GL_TEXTURE_2D, TextureAtlas);
+
+  // Setting Texture wrapping method
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  // Setting Texture filtering methods
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+  // TODO: GL_BGRA_EXT is a windows specific value, I believe I need to somehow handle this in the platform layer
+  // or when I pull this rendering code out
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->tex_atlas.width, Renderer->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->tex_atlas.pixels);
+
+
+  mat4 Projection = Mat4Ortho(0.0f, (f32)Renderer->width, 0.0f, (f32)Renderer->height, -1.0f, 1.0f);
+  mat4 MVP = Projection*Mat4Iden()*Mat4Iden();
+
+  glUseProgram(g_ShaderProgram);
+  GLint u_MvpId = glGetUniformLocation(g_ShaderProgram, "u_MVP");
+  glUniformMatrix4fv(u_MvpId, 1, GL_FALSE, (f32 *)MVP.e);
+
+  // Unbind the buffers
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+  glUseProgram(0);
 
   ReleaseDC(WindowHandle, WindowDC);
 }
@@ -430,25 +507,17 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
 #endif
 
   app_memory AppMemory = {0};
-  AppMemory.perm_storage_space = megabytes(64);
-  AppMemory.flex_storage_space = gigabytes(4);
+  AppMemory.perm_storage_size = megabytes(64);
+  AppMemory.flex_storage_size = gigabytes(4);
   AppMemory.DEBUG_free_file = DEBUG_free_file;
   AppMemory.DEBUG_read_entire_file = DEBUG_read_entire_file;
   AppMemory.DEBUG_write_entire_file = DEBUG_write_entire_file;
 
   // TODO: Probably want to look into MEM_LARGE_PAGES?? HHD[024]
-  u64 TotalSize = AppMemory.perm_storage_space + AppMemory.flex_storage_space;
-  AppMemory.perm_mem_storage = VirtualAlloc(BaseAddress, TotalSize,
+  u64 TotalSize = AppMemory.perm_storage_size + AppMemory.flex_storage_size;
+  AppMemory.perm_memory = VirtualAlloc(BaseAddress, TotalSize,
                                             MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-  AppMemory.flex_mem_storage = ((u8 *)AppMemory.perm_mem_storage + AppMemory.perm_storage_space);
-
-  renderer Renderer = {0};
-  Renderer.max_units = megabytes(4);
-  void *Units = VirtualAlloc(0, Renderer.max_units, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-  Renderer.units = (u8 *)Units;
-  // Renderer.width = 960;
-  // Renderer.height = 540;
-  // Renderer.tex_atlas = DEBUG_load_bmp(&Thread, AppMemory.DEBUG_read_entire_file, "test/cards.bmp");
+  AppMemory.flex_memory = ((u8 *)AppMemory.perm_memory + AppMemory.perm_storage_size);
 
 #if 0
   loaded_jpg crate_tex = {};
@@ -464,9 +533,13 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   // in order to allow us to easily switch between
   // the different APIs.
 
-  // Init OpenGL
-  win32_InitOpengl(Window);
+
+  // NOTE: Only expecting to have one renderer. This could change in the future.
+  renderer Renderer = {0};
   InitRenderer(&Thread, &AppMemory, &Renderer);
+
+  // Init OpenGL
+  win32_InitOpengl(Window, &Thread, &Renderer);
 
   engine_input Input[2] = {};
   engine_input *NewInput = &Input[0];

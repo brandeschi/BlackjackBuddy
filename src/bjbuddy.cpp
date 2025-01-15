@@ -73,7 +73,7 @@ static void output_sound(app_state *game_state, engine_sound_buffer *sound_buffe
 
 static void app_get_sound_samples(thread_context *thread, app_memory *memory, engine_sound_buffer *sound_buffer)
 {
-  app_state *game_state = (app_state *) memory->perm_mem_storage;
+  app_state *game_state = (app_state *) memory->perm_memory;
   // output_sound(game_state, sound_buffer);
 }
 
@@ -238,13 +238,13 @@ static void DrawCard(vertex_data *VertexArray, loaded_bmp TexAtlas, v2 CardIndex
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
 {
-  NeoAssert(sizeof(app_state) <= Memory->perm_storage_space);
-  app_state *GameState = (app_state *)Memory->perm_mem_storage;
+  NeoAssert(sizeof(app_state) <= Memory->perm_storage_size);
+  app_state *GameState = (app_state *)Memory->perm_memory;
 
   if(!Memory->is_init)
   {
-    InitArena(&GameState->core_arena, Memory->perm_storage_space - sizeof(app_state),
-              (u8 *)Memory->perm_mem_storage + sizeof(app_state));
+    InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
+              (u8 *)Memory->perm_memory + sizeof(app_state));
 
     GameState->base_deck = {
       {
