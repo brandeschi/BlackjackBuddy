@@ -11,8 +11,6 @@ struct render_unit
   u32 *indices;
   u32 vertex_count;
   vertex_data *vertices;
-
-  u32 offset;
 };
 
 struct renderer
@@ -20,6 +18,7 @@ struct renderer
   memory_arena frame_arena;
 
   u32 unit_count;
+  u32 max_units;
   render_unit *units;
 
   u32 VAO, VBO, EBO;

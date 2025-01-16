@@ -37,7 +37,11 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
   // TODO: Make some kind of PushUnit once it becomes apparent how I want
   // to push units to the Renderer.
   memory_arena *FrameArena = &Renderer->frame_arena;
-  render_unit *FirstUnit = PushStruct(FrameArena, render_unit);
+  // TODO: Not too sure if this is efficient at all for when these units get processed
+  // so should probably try to make this into a linked list at some point... maybe?
+  Renderer->max_units = kilobytes(1);
+  Renderer->units = PushArray(FrameArena, Renderer->max_units, render_unit);
+  render_unit *FirstUnit = &Renderer->units[Renderer->unit_count++];
   u32 IndexCount = ArrayCount(Indices);
   FirstUnit->indices = PushArray(FrameArena, IndexCount, u32);
   FirstUnit->index_count = IndexCount;
@@ -46,7 +50,4 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
   FirstUnit->vertices = PushArray(FrameArena, VertexCount, vertex_data);
   FirstUnit->vertex_count = VertexCount;
   memcpy(FirstUnit->vertices, Vertices, VertexCount*sizeof(vertex_data));
-  // TODO: Find some way to be able to move through the arena to get to each unit
-  FirstUnit->offset = Renderer->unit_count++;
-  Renderer->units = FirstUnit;
 }

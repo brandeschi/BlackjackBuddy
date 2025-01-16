@@ -278,7 +278,7 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
     // DRAW
     for (ums Index = 0; Index < Renderer->unit_count; ++Index)
     {
-      render_unit *Unit = (render_unit *)(Renderer->units + (Index*sizeof(render_unit)));
+      render_unit *Unit = &Renderer->units[Index];
       glUseProgram(g_ShaderProgram);
       glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
       // TODO: Look into using glBufferSubData as it is more efficient if we are
