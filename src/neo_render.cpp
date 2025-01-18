@@ -37,11 +37,12 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
   // TODO: Make some kind of PushUnit once it becomes apparent how I want
   // to push units to the Renderer.
   memory_arena *FrameArena = &Renderer->frame_arena;
-  // TODO: Not too sure if this is efficient at all for when these units get processed
-  // so should probably try to make this into a linked list at some point... maybe?
-  Renderer->max_units = kilobytes(1);
-  Renderer->units = PushArray(FrameArena, Renderer->max_units, render_unit);
-  render_unit *FirstUnit = &Renderer->units[Renderer->unit_count++];
+  // TODO: Renderer now uses a linked list however, I want to test
+  // at some point if using the linked list is better or worse than
+  // having all the units next to each other at the front of the arena.
+  Renderer->max_units = 128;
+  render_unit *FirstUnit = PushStruct(FrameArena, render_unit);
+  Renderer->head = FirstUnit;
   u32 IndexCount = ArrayCount(Indices);
   FirstUnit->indices = PushArray(FrameArena, IndexCount, u32);
   FirstUnit->index_count = IndexCount;
@@ -50,4 +51,5 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
   FirstUnit->vertices = PushArray(FrameArena, VertexCount, vertex_data);
   FirstUnit->vertex_count = VertexCount;
   memcpy(FirstUnit->vertices, Vertices, VertexCount*sizeof(vertex_data));
+  ++Renderer->unit_count;
 }

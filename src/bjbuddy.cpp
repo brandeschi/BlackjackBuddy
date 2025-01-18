@@ -304,7 +304,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     };
 
     // TODO: This is temp... probably want to not do this...
-    render_unit *Unit = (render_unit *)Renderer->units;
+    render_unit *Unit = Renderer->head;
     vertex_data *Vertices = Unit->vertices;
     // TODO: Update how DrawCard works since we now have the render units.
     // Need to ideally add batching or something as I do not see a reason for

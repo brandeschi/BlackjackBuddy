@@ -11,6 +11,8 @@ struct render_unit
   u32 *indices;
   u32 vertex_count;
   vertex_data *vertices;
+
+  render_unit *next;
 };
 
 struct renderer
@@ -19,7 +21,7 @@ struct renderer
 
   u32 unit_count;
   u32 max_units;
-  render_unit *units;
+  render_unit *head;
 
   u32 VAO, VBO, EBO;
   u32 width, height;

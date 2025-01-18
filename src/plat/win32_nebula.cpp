@@ -109,7 +109,7 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
   glGenBuffers(1, &Renderer->VBO);
   glGenBuffers(1, &Renderer->EBO);
 
-  render_unit *FirstUnit = Renderer->units;
+  render_unit *FirstUnit = Renderer->head;
 
   // Bind VAO, the bind and set VBOs, then config vertex attribs
   glBindVertexArray(Renderer->VAO);
@@ -276,9 +276,8 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
     glBindVertexArray(Renderer->VAO);
 
     // DRAW
-    for (ums Index = 0; Index < Renderer->unit_count; ++Index)
+    for (render_unit *Unit = Renderer->head; Unit != 0;)
     {
-      render_unit *Unit = &Renderer->units[Index];
       glUseProgram(g_ShaderProgram);
       glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
       // TODO: Look into using glBufferSubData as it is more efficient if we are
@@ -290,6 +289,7 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
       glDrawElements(GL_TRIANGLES, Unit->index_count, GL_UNSIGNED_INT, 0);
       // TODO: Expand how we catch OGL errors
       NeoAssert(glGetError() == GL_NO_ERROR);
+      Unit = Unit->next;
     }
 
     // TODO: Look up what swapbuffers should be used
