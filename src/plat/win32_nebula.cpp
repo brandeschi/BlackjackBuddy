@@ -360,7 +360,7 @@ static void win32_ProcessKeebMessage(engine_button_state *NewState, b32 IsDown)
   }
 }
 
-static void win32_ProcessPendingWinMessages(engine_controller_input *Keyboard)
+static void win32_ProcessPendingWinMessages(app_memory *Memory, engine_controller_input *Keyboard)
 {
   MSG Message;
   while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
@@ -423,11 +423,23 @@ static void win32_ProcessPendingWinMessages(engine_controller_input *Keyboard)
                 } break;
               case VK_SPACE:
                 {
-                  // char put_string[256];
-                  //
-                  // new_hand_deal(&base_deck);
-                  // _snprintf_s(put_string, sizeof(put_string), "RANK: %d SUIT: %s\n",
-                  //             base_deck.cards[4].value, base_deck.cards[4].suit);
+                  // if (Memory->is_init)
+                  // {
+                  //   app_state *GameState = (app_state *)Memory->perm_memory;
+                  //   char OutStr[256];
+                  //   card *Cards = GameState->base_deck.cards;
+                  //   for (s32 Index = 0; Index < 4; ++Index)
+                  //   {
+                  //     Shuffle(Cards, ArrayCount(GameState->base_deck.cards));
+                  //   }
+                  //   // NewHandDeal(&GameState->base_deck);
+                  //   for (s32 Index = 0; Index < 13; ++Index)
+                  //   {
+                  //     _snprintf_s(OutStr, sizeof(OutStr), "RANK: %d SUIT: %s\n",
+                  //                 Cards[Index].value, Cards[Index].suit);
+                  //     OutputDebugStringA(OutStr);
+                  //   }
+                  // }
                 } break;
               case VK_ESCAPE:
                 {
@@ -562,7 +574,7 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
       NewKeeb->buttons[ButtonIndex].is_down = OldKeeb->buttons[ButtonIndex].is_down;
     }
 
-    win32_ProcessPendingWinMessages(NewKeeb);
+    win32_ProcessPendingWinMessages(&AppMemory, NewKeeb);
 
     POINT MousePoint;
     GetCursorPos(&MousePoint);

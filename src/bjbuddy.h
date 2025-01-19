@@ -57,12 +57,11 @@ struct engine_input
   s32 mouseX, mouseY, mouseZ;
 
   f32 time_step_over_frame;
-  engine_controller_input controllers[5];
+  engine_controller_input controllers[2];
 };
 
 inline engine_controller_input *GetController(engine_input *Input, ums ControllerIndex = 0)
 {
-  // NOTE: might want to make controller_index unsigned if we don't want neg arr access
   NeoAssert(ArrayCount(Input->controllers) > ControllerIndex);
 
   engine_controller_input *Result = &Input->controllers[ControllerIndex];
@@ -71,7 +70,8 @@ inline engine_controller_input *GetController(engine_input *Input, ums Controlle
 
 enum card_type
 {
-  FACE_DOWN = 0,
+  NULL_CARD = 0,
+  FACE_DOWN,
   TWO = 2,
   THREE,
   FOUR,
@@ -93,15 +93,28 @@ struct card
   char *suit;
 };
 
+// NOTE: Technically a deck is 52 cards however, in shoe games
+// there are multiple decks and so currenlty I am not sure
+// if I should define a deck to have 52 cards or if it should
+// just be a ptr and a deck is treated as one big unit.
 struct deck
 {
   card cards[52];
+  card *current;
+};
+
+struct hand
+{
+  card *cards;
+  u32 card_count;
 };
 
 struct app_state
 {
   memory_arena core_arena;
   deck base_deck;
+  hand dealer;
+  hand player;
 };
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input,
