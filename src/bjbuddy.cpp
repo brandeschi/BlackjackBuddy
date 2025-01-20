@@ -145,31 +145,42 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         { ACE, "DIAMONDS" }
       },
     };
-    GameState->base_deck.current = &GameState->base_deck.cards[1];
 
-    u32 MAX_HAND_COUNT = 13;
-    hand PlayerHand = {0};
-    PlayerHand.cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
+    // Blackjack Setup
 
     for (s32 Index = 0; Index < 4; ++Index)
     {
       Shuffle(GameState->base_deck.cards,
               ArrayCount(GameState->base_deck.cards));
     }
+    // TODO: This is to 'burn' the first card of the deck but I should
+    // make this into an option/setting for the type of game.
+    GameState->base_deck.current = &GameState->base_deck.cards[1];
 
-    Hit(&GameState->base_deck, &PlayerHand);
-    Hit(&GameState->base_deck, &PlayerHand);
+    u32 MAX_HAND_COUNT = 13;
+
+    hand PlayerHand = {0};
+    PlayerHand.cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
     GameState->player = PlayerHand;
 
+    hand DealerHand = {0};
+    DealerHand.cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
+    GameState->dealer = DealerHand;
+
+    Hit(&GameState->base_deck, &PlayerHand);
+    Hit(&GameState->base_deck, &DealerHand);
+    Hit(&GameState->base_deck, &PlayerHand);
+    Hit(&GameState->base_deck, &DealerHand);
+
     // TODO: This is temp... probably want to not do this...
+    // TODO: This makes me think I should catergorize each unit so that way at the end,
+    // I can stuff all the data for units of the same kind into their respective glBufferSubData
+    // calls and then execute the draw call for each type of unit.
     render_unit *Unit = Renderer->head;
     vertex_data *Vertices = Unit->vertices;
     // TODO: Update how DrawCard works since we now have the render units.
     // Need to ideally add batching or something as I do not see a reason for
     // why I should not just stuff all the data for a card into one unit.
-    // This makes me think I should catergorize each unit so that way at the end,
-    // I can stuff all the data for units of the same kind into their respective glBufferSubData
-    // calls and then execute the draw call for each type of unit.
     DrawCard(Vertices, Renderer->tex_atlas, {0.0f, 4.0f});
     DrawCard(&Vertices[4], Renderer->tex_atlas, {0.0f, 4.0f});
 
@@ -194,6 +205,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         char OutStr[256];
         card *Cards = GameState->base_deck.cards;
         // NewHandDeal(&GameState->base_deck);
+        OutputDebugStringA("Deck (Base) Output:\n");
         for (s32 Index = 0; Index < 8; ++Index)
         {
           _snprintf_s(OutStr, sizeof(OutStr), "RANK: %d SUIT: %s\n",
@@ -207,6 +219,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         char OutStr[256];
         hand PlayerHand = GameState->player;
         card *Cards = PlayerHand.cards;
+        OutputDebugStringA("Player's Hand\n");
         for (u32 Index = 0; Index < PlayerHand.card_count; ++Index)
         {
           _snprintf_s(OutStr, sizeof(OutStr), "RANK: %d SUIT: %s\n",
@@ -219,6 +232,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       {
         char OutStr[256];
         card *Cards = GameState->base_deck.current;
+        OutputDebugStringA("Deck (current)\n");
         for (u32 Index = 0; Index < 4; ++Index)
         {
           _snprintf_s(OutStr, sizeof(OutStr), "RANK: %d SUIT: %s\n",
