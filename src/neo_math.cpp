@@ -337,6 +337,12 @@ inline mat4 Mat4Translate(f32 x, f32 y, f32 z)
     0.0f, 0.0f, 1.0f, z,
     0.0f, 0.0f, 0.0f, 1.0f
   };
+  // mat4 Result = {
+  //   1.0f, 0.0f, 0.0f, 0.0f,
+  //   0.0f, 1.0f, 0.0f, 0.0f,
+  //   0.0f, 0.0f, 1.0f, 0.0f,
+  //   x,    y,    z,    1.0f
+  // };
 
   return Result;
 }
@@ -388,6 +394,30 @@ inline mat4 Mat4RotateZ(f32 Angle)
   };
 
   return Result;
+}
+
+inline mat4 Mat4Transpose(mat4 Mat)
+{
+    mat4 Result = { 0 };
+
+    Result.m0 = Mat.m0;
+    Result.m1 = Mat.m4;
+    Result.m2 = Mat.m8;
+    Result.m3 = Mat.m12;
+    Result.m4 = Mat.m1;
+    Result.m5 = Mat.m5;
+    Result.m6 = Mat.m9;
+    Result.m7 = Mat.m13;
+    Result.m8 = Mat.m2;
+    Result.m9 = Mat.m6;
+    Result.m10 = Mat.m10;
+    Result.m11 = Mat.m14;
+    Result.m12 = Mat.m3;
+    Result.m13 = Mat.m7;
+    Result.m14 = Mat.m11;
+    Result.m15 = Mat.m15;
+
+    return Result;
 }
 
 inline mat4 Mat4Ortho(f32 Left, f32 Right, f32 Top, f32 Bottom, f32 NearP, f32 FarP)

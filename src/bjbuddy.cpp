@@ -161,16 +161,16 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
     hand PlayerHand = {0};
     PlayerHand.cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
-    GameState->player = PlayerHand;
-
     hand DealerHand = {0};
     DealerHand.cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
-    GameState->dealer = DealerHand;
 
     Hit(&GameState->base_deck, &PlayerHand);
     Hit(&GameState->base_deck, &DealerHand);
     Hit(&GameState->base_deck, &PlayerHand);
     Hit(&GameState->base_deck, &DealerHand);
+
+    GameState->dealer = DealerHand;
+    GameState->player = PlayerHand;
 
     // TODO: This is temp... probably want to not do this...
     // TODO: This makes me think I should catergorize each unit so that way at the end,
@@ -181,8 +181,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     // TODO: Update how DrawCard works since we now have the render units.
     // Need to ideally add batching or something as I do not see a reason for
     // why I should not just stuff all the data for a card into one unit.
-    DrawCard(Vertices, Renderer->tex_atlas, {0.0f, 4.0f});
-    DrawCard(&Vertices[4], Renderer->tex_atlas, {0.0f, 4.0f});
+    // DrawCard(Vertices, Renderer->tex_atlas, {0.0f, 4.0f});
 
     Memory->is_init = true;
   }
@@ -192,7 +191,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   ControllerIndex++)
   {
     engine_controller_input *Controller = GetController(Input, ControllerIndex);
-    if (Controller->is_analog)
+   if (Controller->is_analog)
     {
     }
     else
@@ -246,25 +245,3 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
 }
 
-#if 0
-static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, engine_bitmap_buffer *BitmapBuffer)
-{
-  NeoAssert(sizeof(app_state) <= Memory->perm_storage_space);
-  app_state *GameState = (app_state *)Memory->perm_mem_storage;
-
-  if(!Memory->is_init)
-  {
-    InitArena(&GameState->arena, Memory->perm_storage_space - sizeof(app_state),
-              (u8 *)Memory->perm_mem_storage + sizeof(app_state));
-
-    Memory->is_init = true;
-  }
-
-  // Draw debug backgroun in client area.
-  v2 Min = {};
-  v2 Max = { (f32)BitmapBuffer->width, (f32)BitmapBuffer->height };
-  draw_rect(BitmapBuffer, Min, Max, 0.8f, 0.56f, 0.64f);
-  loaded_bmp StubBM = {0};
-  draw_bmp(BitmapBuffer, &StubBM);
-}
-#endif

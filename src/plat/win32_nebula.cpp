@@ -114,9 +114,9 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
   // Bind VAO, the bind and set VBOs, then config vertex attribs
   glBindVertexArray(Renderer->VAO);
   glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
-  glBufferData(GL_ARRAY_BUFFER, FirstUnit->vertex_count*sizeof(vertex_data), FirstUnit->vertices, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, FirstUnit->vertex_count*sizeof(vertex_data), FirstUnit->vertices, GL_STATIC_DRAW);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, FirstUnit->index_count*sizeof(u32), FirstUnit->indices, GL_DYNAMIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, FirstUnit->index_count*sizeof(u32), FirstUnit->indices, GL_STATIC_DRAW);
 
   // Tell opengl how to interpret our vertex data by setting pointers to the attribs
   // pos attrib
@@ -151,7 +151,10 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
 
 
   mat4 Projection = Mat4Ortho(0.0f, (f32)Renderer->width, 0.0f, (f32)Renderer->height, -1.0f, 1.0f);
-  mat4 MVP = Projection*Mat4Iden()*Mat4Iden();
+  // TODO: Set this up to use Right-handed coord system where:
+  // -Y is right, up is +Z, and forward +X.
+  mat4 Model = Mat4Transpose(Mat4Translate(0.5f, 0.0f, 0.0f));
+  mat4 MVP = Projection*Mat4Iden()*Model;
 
   glUseProgram(g_ShaderProgram);
   GLint u_MvpId = glGetUniformLocation(g_ShaderProgram, "u_MVP");
@@ -276,16 +279,19 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
     glBindVertexArray(Renderer->VAO);
 
     // DRAW
-    for (render_unit *Unit = Renderer->head; Unit != 0;)
+    render_unit *Unit = Renderer->head;
+    while (Unit != 0)
     {
       glUseProgram(g_ShaderProgram);
       glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
       // TODO: Look into using glBufferSubData as it is more efficient if we are
       // soley updating already allocated memory.
       // Utilize offset for each unit to get access to the pointers for indices and vertices.
-      glBufferSubData(GL_ARRAY_BUFFER, 0, Unit->vertex_count*sizeof(vertex_data), Unit->vertices);
-      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
-      glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, Unit->index_count*sizeof(u32), Unit->indices);
+      //
+      // glBufferSubData(GL_ARRAY_BUFFER, 0, Unit->vertex_count*sizeof(vertex_data), Unit->vertices);
+      // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
+      // glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, Unit->index_count*sizeof(u32), Unit->indices);
       glDrawElements(GL_TRIANGLES, Unit->index_count, GL_UNSIGNED_INT, 0);
       // TODO: Expand how we catch OGL errors
       NeoAssert(glGetError() == GL_NO_ERROR);
