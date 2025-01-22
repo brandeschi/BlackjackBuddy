@@ -2,6 +2,24 @@
 
 #include "core.unity.h"
 
+internal void SetCardTexCoord(loaded_bmp TexAtlas, vertex_data *Vertices, v2 CardIndex)
+{
+  f32 CardWidth = (f32)TexAtlas.width / 13.0f;
+  f32 CardHeight = (f32)TexAtlas.height / 5.0f;
+
+  v2 ComputedTexCoords[] =
+  {
+    {(CardIndex.x * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
+    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
+    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height },
+    {(CardIndex.x * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height }
+  };
+  for (u32 Index = 0; Index < 4; ++Index)
+  {
+    Vertices[Index].tex_coords = ComputedTexCoords[Index];
+  }
+}
+
 internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer *Renderer)
 {
   InitArena(&Renderer->frame_arena, megabytes(4), PlatformAllocateMemory(megabytes(4)));
@@ -21,10 +39,10 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
   vertex_data Vertices[] =
   {
     // pos                                                                                          color               tex-coords
-    { {ScreenCenter.x - (CardWidth*0.5f / 2.0f), ScreenCenter.y + (CardHeight*0.5f / 2.0f), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
-    { {ScreenCenter.x + (CardWidth*0.5f / 2.0f), ScreenCenter.y + (CardHeight*0.5f / 2.0f), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
-    { {ScreenCenter.x + (CardWidth*0.5f / 2.0f), ScreenCenter.y - (CardHeight*0.5f / 2.0f), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
-    { {ScreenCenter.x - (CardWidth*0.5f / 2.0f), ScreenCenter.y - (CardHeight*0.5f / 2.0f), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
+    { {ScreenCenter.x - (CardWidth*0.25f), ScreenCenter.y - (CardHeight*0.25f), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
+    { {ScreenCenter.x + (CardWidth*0.25f), ScreenCenter.y - (CardHeight*0.25f), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
+    { {ScreenCenter.x + (CardWidth*0.25f), ScreenCenter.y + (CardHeight*0.25f), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
+    { {ScreenCenter.x - (CardWidth*0.25f), ScreenCenter.y + (CardHeight*0.25f), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
   };
   u32 Indices[] =
   {
@@ -32,18 +50,7 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
     1, 2, 3,    // T2
   };
 
-  v2 CardIndex = {0.0f, 4.0f};
-  v2 ComputedTexCoords[] =
-  {
-    {(CardIndex.x * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
-    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
-    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height },
-    {(CardIndex.x * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height }
-  };
-  for (u32 Index = 0; Index < 4; ++Index)
-  {
-    Vertices[Index].tex_coords = ComputedTexCoords[Index];
-  }
+  SetCardTexCoord(Renderer->tex_atlas, Vertices, { 0.0f, 2.0f });
 
   // TODO: Make some kind of PushUnit once it becomes apparent how I want
   // to push units to the Renderer.

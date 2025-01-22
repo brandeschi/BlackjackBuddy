@@ -145,26 +145,27 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
   // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-  // TODO: GL_BGRA_EXT is a windows specific value, I believe I need to somehow handle this in the platform layer
-  // or when I pull this rendering code out
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->tex_atlas.width, Renderer->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->tex_atlas.pixels);
 
 
   mat4 Projection = Mat4Ortho(0.0f, (f32)Renderer->width, 0.0f, (f32)Renderer->height, -1.0f, 1.0f);
   // TODO: Set this up to use Right-handed coord system where:
   // -Y is right, up is +Z, and forward +X.
-  mat4 Model = Mat4Transpose(Mat4Translate(0.5f, 0.0f, 0.0f));
+  mat4 Model = Mat4Translate(-100.0f, 0.0f, 0.0f)*Mat4Scale(0.8f, 0.8f, 1.0f);
   mat4 MVP = Projection*Mat4Iden()*Model;
 
   glUseProgram(g_ShaderProgram);
   GLint u_MvpId = glGetUniformLocation(g_ShaderProgram, "u_MVP");
-  glUniformMatrix4fv(u_MvpId, 1, GL_FALSE, (f32 *)MVP.e);
+  // NOTE: Since OGL is col-major, need to transpose here (GL_TRUE in the func below).
+  glUniformMatrix4fv(u_MvpId, 1, GL_TRUE, (f32 *)MVP.e);
 
-  // Unbind the buffers
+  // NOTE: I might unbind the buffers at some point.
+  // Only need VAO bound and EBO since the
+  // VertexAttribPointer links the VBO to VAO.
   glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-  glBindVertexArray(0);
-  glUseProgram(0);
+  // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+  // glBindVertexArray(0);
+  // glUseProgram(0);
 
   ReleaseDC(WindowHandle, WindowDC);
 }
@@ -276,15 +277,11 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
 
     glClearColor(0.2f, 0.66f, 0.44f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    glBindVertexArray(Renderer->VAO);
 
     // DRAW
     render_unit *Unit = Renderer->head;
     while (Unit != 0)
     {
-      glUseProgram(g_ShaderProgram);
-      glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
-      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
       // TODO: Look into using glBufferSubData as it is more efficient if we are
       // soley updating already allocated memory.
       // Utilize offset for each unit to get access to the pointers for indices and vertices.
@@ -524,6 +521,7 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   LPVOID BaseAddress = 0;
 #endif
 
+  s32 Err = 0;
   app_memory AppMemory = {0};
   AppMemory.perm_storage_size = megabytes(64);
   AppMemory.flex_storage_size = gigabytes(4);
@@ -535,6 +533,7 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   u64 TotalSize = AppMemory.perm_storage_size + AppMemory.flex_storage_size;
   AppMemory.perm_memory = VirtualAlloc(BaseAddress, TotalSize,
                                             MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  if (AppMemory.perm_memory == 0) Err = GetLastError();
   AppMemory.flex_memory = ((u8 *)AppMemory.perm_memory + AppMemory.perm_storage_size);
 
 #if 0

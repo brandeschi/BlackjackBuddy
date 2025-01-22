@@ -279,6 +279,8 @@ inline v3 V3FromV4(v4 Vector) {
 }
 
 // Matrices
+// NOTE: mat4 and all functions dealing with mat4
+// in this mini math lib are row-major!!
 inline mat4 Mat4Iden()
 {
   mat4 Result = {
@@ -337,12 +339,6 @@ inline mat4 Mat4Translate(f32 x, f32 y, f32 z)
     0.0f, 0.0f, 1.0f, z,
     0.0f, 0.0f, 0.0f, 1.0f
   };
-  // mat4 Result = {
-  //   1.0f, 0.0f, 0.0f, 0.0f,
-  //   0.0f, 1.0f, 0.0f, 0.0f,
-  //   0.0f, 0.0f, 1.0f, 0.0f,
-  //   x,    y,    z,    1.0f
-  // };
 
   return Result;
 }
@@ -359,7 +355,6 @@ inline mat4 Mat4Scale(f32 x, f32 y, f32 z)
   return Result;
 }
 
-// Right-Handed Rotation Matrices
 inline mat4 Mat4RotateX(f32 Angle)
 {
   mat4 Result = {
@@ -396,6 +391,54 @@ inline mat4 Mat4RotateZ(f32 Angle)
   return Result;
 }
 
+inline mat4 Mat4Ortho(f32 Left, f32 Right, f32 Bottom, f32 Top, f32 NearP, f32 FarP)
+{
+  f32 RlRange = Right - Left;
+  f32 TbRange = Top - Bottom;
+  f32 FnRange = FarP - NearP;
+
+  mat4 Result = {
+    (2.0f/RlRange), 0.0f,           0.0f,            -((Right + Left)/(RlRange)),
+    0.0f,           (2.0f/TbRange), 0.0f,            -((Top + Bottom)/(TbRange)),
+    0.0f,           0.0f,           (-2.0f/FnRange), -((FarP + NearP)/(FnRange)),
+    0.0f,           0.0f,           0.0f,             1.0f
+  };
+
+  return Result;
+}
+
+// TODO: Make sure this is for right-handed coord system.
+inline mat4 Mat4Projection(f32 AspectRatio, f32 FOV, f32 ZNear, f32 ZFar)
+{
+  f32 FOVFunc = (1.0f / tanf((FOV / 2.0f)));
+  f32 NormRatio = (ZFar / (ZFar - ZNear));
+  mat4 Result = {
+    AspectRatio*FOVFunc, 0.0f,    0.0f,      0.0f,
+    0.0f,                FOVFunc, 0.0f,      0.0f,
+    0.0f,                0.0f,    NormRatio, -NormRatio*ZNear,
+    0.0f,                0.0f,    1.0f,      0.0f
+  };
+  return Result;
+}
+
+mat4 M4LookAt(v3 Eye, v3 Target, v3 Up)
+{
+  v3 Z = Target - Eye;
+  V3Normalize(&Z);
+  v3 X = CrossProduct(Up, Z);
+  V3Normalize(&X);
+  v3 Y = CrossProduct(Z, X);
+
+  mat4 Result = {
+    X.x,  X.y,  X.z,  -DotProduct(X, Eye),
+    Y.x,  Y.y,  Y.z,  -DotProduct(Y, Eye),
+    Z.x,  Z.y,  Z.z,  -DotProduct(Z, Eye),
+    0.0f, 0.0f, 0.0f, 1.0f,
+  };
+
+  return Result;
+}
+
 inline mat4 Mat4Transpose(mat4 Mat)
 {
     mat4 Result = { 0 };
@@ -418,53 +461,6 @@ inline mat4 Mat4Transpose(mat4 Mat)
     Result.m15 = Mat.m15;
 
     return Result;
-}
-
-inline mat4 Mat4Ortho(f32 Left, f32 Right, f32 Top, f32 Bottom, f32 NearP, f32 FarP)
-{
-  f32 RlRange = Right - Left;
-  f32 TbRange = Top - Bottom;
-  f32 FnRange = FarP - NearP;
-
-  // NOTE: This is colunm-major(OGL inforced); which means the rows in these map to columns in math notation.
-  mat4 Result = {
-    (2.0f/RlRange),              0.0f,                         0.0f,                       0.0f,
-    0.0f,                         (2.0f/TbRange),              0.0f,                       0.0f,
-    0.0f,                         0.0f,                         (-2.0f/FnRange),           0.0f,
-    -((Right + Left)/(RlRange)), -((Top + Bottom)/(TbRange)), -((FarP + NearP)/(FnRange)), 1.0f
-  };
-
-  return Result;
-}
-
-inline mat4 Mat4Projection(f32 AspectRatio, f32 FOV, f32 ZNear, f32 ZFar)
-{
-  f32 FOVFunc = (1.0f / tanf((FOV / 2.0f)));
-  f32 NormRatio = (ZFar / (ZFar - ZNear));
-  mat4 Result = {
-    AspectRatio*FOVFunc, 0.0f,    0.0f,      0.0f,
-    0.0f,                FOVFunc, 0.0f,      0.0f,
-    0.0f,                0.0f,    NormRatio, -NormRatio*ZNear,
-    0.0f,                0.0f,    1.0f,      0.0f
-  };
-  return Result;
-}
-
-mat4 M4LookAt(v3 Eye, v3 Target, v3 Up) {
-  v3 Z = Target - Eye;
-  V3Normalize(&Z);
-  v3 X = CrossProduct(Up, Z);
-  V3Normalize(&X);
-  v3 Y = CrossProduct(Z, X);
-
-  mat4 Result = {
-    X.x,  X.y,  X.z,  -DotProduct(X, Eye),
-    Y.x,  Y.y,  Y.z,  -DotProduct(Y, Eye),
-    Z.x,  Z.y,  Z.z,  -DotProduct(Z, Eye),
-    0.0f, 0.0f, 0.0f, 1.0f,
-  };
-
-  return Result;
 }
 
 // Mixed Funcs
