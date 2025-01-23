@@ -11,6 +11,7 @@ struct render_unit
   u32 *indices;
   u32 vertex_count;
   vertex_data *vertices;
+  mat4 model;
 
   render_unit *next;
 };
@@ -27,6 +28,7 @@ struct renderer
   u32 width, height;
 
   loaded_bmp tex_atlas;
+
+  mat4 mvp;
 };
 
-internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer *Renderer);

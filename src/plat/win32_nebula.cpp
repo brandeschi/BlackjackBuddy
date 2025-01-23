@@ -114,9 +114,10 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
   // Bind VAO, the bind and set VBOs, then config vertex attribs
   glBindVertexArray(Renderer->VAO);
   glBindBuffer(GL_ARRAY_BUFFER, Renderer->VBO);
-  glBufferData(GL_ARRAY_BUFFER, FirstUnit->vertex_count*sizeof(vertex_data), FirstUnit->vertices, GL_STATIC_DRAW);
+  // NOTE: 4 is for Quads (vertices per quad) and 6 is the # of indices needed per quad.
+  glBufferData(GL_ARRAY_BUFFER, Renderer->max_units*4*sizeof(vertex_data), 0, GL_DYNAMIC_DRAW);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, FirstUnit->index_count*sizeof(u32), FirstUnit->indices, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, Renderer->max_units*6*sizeof(u32), 0, GL_DYNAMIC_DRAW);
 
   // Tell opengl how to interpret our vertex data by setting pointers to the attribs
   // pos attrib
@@ -147,22 +148,20 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
 
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->tex_atlas.width, Renderer->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->tex_atlas.pixels);
 
-
   mat4 Projection = Mat4Ortho(0.0f, (f32)Renderer->width, 0.0f, (f32)Renderer->height, -1.0f, 1.0f);
   // TODO: Set this up to use Right-handed coord system where:
   // -Y is right, up is +Z, and forward +X.
-  mat4 Model = Mat4Translate(-100.0f, 0.0f, 0.0f)*Mat4Scale(0.8f, 0.8f, 1.0f);
-  mat4 MVP = Projection*Mat4Iden()*Model;
+  mat4 Mvp = Projection*Mat4Iden()*Mat4Iden();
 
   glUseProgram(g_ShaderProgram);
   GLint u_MvpId = glGetUniformLocation(g_ShaderProgram, "u_MVP");
+  Renderer->mvp = Mvp;
   // NOTE: Since OGL is col-major, need to transpose here (GL_TRUE in the func below).
-  glUniformMatrix4fv(u_MvpId, 1, GL_TRUE, (f32 *)MVP.e);
+  glUniformMatrix4fv(u_MvpId, 1, GL_TRUE, (f32 *)Mvp.e);
 
   // NOTE: I might unbind the buffers at some point.
-  // Only need VAO bound and EBO since the
-  // VertexAttribPointer links the VBO to VAO.
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  //
+  // glBindBuffer(GL_ARRAY_BUFFER, 0);
   // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   // glBindVertexArray(0);
   // glUseProgram(0);
@@ -280,20 +279,35 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
 
     // DRAW
     render_unit *Unit = Renderer->head;
-    while (Unit != 0)
+    // TODO: Use this path!
+#if 0
+    for (u32 UnitCount = 0; UnitCount < Renderer->unit_count; ++UnitCount)
     {
-      // TODO: Look into using glBufferSubData as it is more efficient if we are
-      // soley updating already allocated memory.
-      // Utilize offset for each unit to get access to the pointers for indices and vertices.
-      //
-      // glBufferSubData(GL_ARRAY_BUFFER, 0, Unit->vertex_count*sizeof(vertex_data), Unit->vertices);
-      // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Renderer->EBO);
-      // glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, Unit->index_count*sizeof(u32), Unit->indices);
-      glDrawElements(GL_TRIANGLES, Unit->index_count, GL_UNSIGNED_INT, 0);
-      // TODO: Expand how we catch OGL errors
-      NeoAssert(glGetError() == GL_NO_ERROR);
+      s32 DataSize = Unit->vertex_count*sizeof(vertex_data);
+      s32 DataOffset = (s32)UnitCount*DataSize;
+      s32 IndexSize = Unit->index_count*sizeof(u32);
+      s32 IndexOffset = (s32)UnitCount*IndexSize;
+      glBufferSubData(GL_ARRAY_BUFFER, DataOffset, DataSize, Unit->vertices);
+      glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, IndexOffset, IndexSize, Unit->indices);
       Unit = Unit->next;
     }
+
+    // TODO: Somehow encode the 6 which represents the number of indices per quad.
+    glDrawElements(GL_TRIANGLES, Renderer->unit_count*6, GL_UNSIGNED_INT, 0);
+#else
+    while (Unit != 0)
+    {
+      mat4 TrueMvp = Renderer->mvp*Unit->model;
+      glUniformMatrix4fv(glGetUniformLocation(g_ShaderProgram, "u_MVP"), 1, GL_TRUE, (f32 *)TrueMvp.e);
+      glBufferSubData(GL_ARRAY_BUFFER, 0, Unit->vertex_count*sizeof(vertex_data), Unit->vertices);
+      glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, Unit->index_count*sizeof(u32), Unit->indices);
+      glDrawElements(GL_TRIANGLES, Unit->index_count, GL_UNSIGNED_INT, 0);
+      Unit = Unit->next;
+    }
+#endif
+
+    // TODO: Expand how we catch OGL errors
+    NeoAssert(glGetError() == GL_NO_ERROR);
 
     // TODO: Look up what swapbuffers should be used
     SwapBuffers(DeviceContext);

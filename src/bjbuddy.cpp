@@ -172,17 +172,6 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     GameState->dealer = DealerHand;
     GameState->player = PlayerHand;
 
-    // TODO: This is temp... probably want to not do this...
-    // TODO: This makes me think I should catergorize each unit so that way at the end,
-    // I can stuff all the data for units of the same kind into their respective glBufferSubData
-    // calls and then execute the draw call for each type of unit.
-    render_unit *Unit = Renderer->head;
-    vertex_data *Vertices = Unit->vertices;
-    // TODO: Update how DrawCard works since we now have the render units.
-    // Need to ideally add batching or something as I do not see a reason for
-    // why I should not just stuff all the data for a card into one unit.
-    // DrawCard(Vertices, Renderer->tex_atlas, {0.0f, 4.0f});
-
     Memory->is_init = true;
   }
 
@@ -203,7 +192,6 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       {
         char OutStr[256];
         card *Cards = GameState->base_deck.cards;
-        // NewHandDeal(&GameState->base_deck);
         OutputDebugStringA("Deck (Base) Output:\n");
         for (s32 Index = 0; Index < 8; ++Index)
         {
@@ -243,5 +231,9 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     }
   }
 
+  ResetRenderer(Renderer);
+  mat4 Model = Mat4Translate(-100.0f, 0.0f, 0.0f);
+  PushQuad(Renderer, { 0.0f, 1.0f }, Model);
+  PushQuad(Renderer, { 0.0f, 3.0f });
 }
 
