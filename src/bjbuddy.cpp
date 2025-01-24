@@ -79,6 +79,40 @@ static void DrawCard(vertex_data *VertexArray, loaded_bmp TexAtlas, v2 CardIndex
   }
 }
 
+static inline char *TypeToCStr(s32 CardType)
+{
+  switch(CardType)
+  {
+    case ACE: return "ACE";
+    case TWO: return "TWO";
+    case THREE: return "THREE";
+    case FOUR: return "FOUR";
+    case FIVE: return "FIVE";
+    case SIX: return "SIX";
+    case SEVEN: return "SEVEN";
+    case EIGHT: return "EIGHT";
+    case NINE: return "NINE";
+    case TEN: return "TEN";
+    case JACK: return "JACK";
+    case QUEEN: return "QUEEN";
+    case KING: return "KING";
+  }
+
+  return "";
+}
+static inline char *SuitToCStr(s32 CardSuit)
+{
+  switch(CardSuit)
+  {
+    case SPADES: return "SPADES";
+    case HEARTS: return "HEARTS";
+    case DIAMONDS: return "DIAMONDS";
+    case CLUBS: return "CLUBS";
+  }
+
+  return "";
+}
+
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
 {
   NeoAssert(sizeof(app_state) <= Memory->perm_storage_size);
@@ -91,58 +125,58 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
     GameState->base_deck = {
       {
-        { TWO, "SPADES" },
-        { THREE, "SPADES" },
-        { FOUR, "SPADES" },
-        { FIVE, "SPADES" },
-        { SIX, "SPADES" },
-        { SEVEN, "SPADES" },
-        { EIGHT, "SPADES" },
-        { NINE, "SPADES" },
-        { TEN, "SPADES" },
-        { JACK, "SPADES" },
-        { QUEEN, "SPADES" },
-        { KING, "SPADES" },
-        { ACE, "SPADES" },
-        { TWO, "HEARTS" },
-        { THREE, "HEARTS" },
-        { FOUR, "HEARTS" },
-        { FIVE, "HEARTS" },
-        { SIX, "HEARTS" },
-        { SEVEN, "HEARTS" },
-        { EIGHT, "HEARTS" },
-        { NINE, "HEARTS" },
-        { TEN, "HEARTS" },
-        { JACK, "HEARTS" },
-        { QUEEN, "HEARTS" },
-        { KING, "HEARTS" },
-        { ACE, "HEARTS" },
-        { TWO, "CLUBS" },
-        { THREE, "CLUBS" },
-        { FOUR, "CLUBS" },
-        { FIVE, "CLUBS" },
-        { SIX, "CLUBS" },
-        { SEVEN, "CLUBS" },
-        { EIGHT, "CLUBS" },
-        { NINE, "CLUBS" },
-        { TEN, "CLUBS" },
-        { JACK, "CLUBS" },
-        { QUEEN, "CLUBS" },
-        { KING, "CLUBS" },
-        { ACE, "CLUBS" },
-        { TWO, "DIAMONDS" },
-        { THREE, "DIAMONDS" },
-        { FOUR, "DIAMONDS" },
-        { FIVE, "DIAMONDS" },
-        { SIX, "DIAMONDS" },
-        { SEVEN, "DIAMONDS" },
-        { EIGHT, "DIAMONDS" },
-        { NINE, "DIAMONDS" },
-        { TEN, "DIAMONDS" },
-        { JACK, "DIAMONDS" },
-        { QUEEN, "DIAMONDS" },
-        { KING, "DIAMONDS" },
-        { ACE, "DIAMONDS" }
+        { TWO, SPADES },
+        { THREE, SPADES },
+        { FOUR, SPADES },
+        { FIVE, SPADES },
+        { SIX, SPADES },
+        { SEVEN, SPADES },
+        { EIGHT, SPADES },
+        { NINE, SPADES },
+        { TEN, SPADES },
+        { JACK, SPADES },
+        { QUEEN, SPADES },
+        { KING, SPADES },
+        { ACE, SPADES },
+        { TWO, HEARTS },
+        { THREE, HEARTS },
+        { FOUR, HEARTS },
+        { FIVE, HEARTS },
+        { SIX, HEARTS },
+        { SEVEN, HEARTS },
+        { EIGHT, HEARTS },
+        { NINE, HEARTS },
+        { TEN, HEARTS },
+        { JACK, HEARTS },
+        { QUEEN, HEARTS },
+        { KING, HEARTS },
+        { ACE, HEARTS },
+        { TWO, CLUBS },
+        { THREE, CLUBS },
+        { FOUR, CLUBS },
+        { FIVE, CLUBS },
+        { SIX, CLUBS },
+        { SEVEN, CLUBS },
+        { EIGHT, CLUBS },
+        { NINE, CLUBS },
+        { TEN, CLUBS },
+        { JACK, CLUBS },
+        { QUEEN, CLUBS },
+        { KING, CLUBS },
+        { ACE, CLUBS },
+        { TWO, DIAMONDS },
+        { THREE, DIAMONDS },
+        { FOUR, DIAMONDS },
+        { FIVE, DIAMONDS },
+        { SIX, DIAMONDS },
+        { SEVEN, DIAMONDS },
+        { EIGHT, DIAMONDS },
+        { NINE, DIAMONDS },
+        { TEN, DIAMONDS },
+        { JACK, DIAMONDS },
+        { QUEEN, DIAMONDS },
+        { KING, DIAMONDS },
+        { ACE, DIAMONDS }
       },
     };
 
@@ -195,8 +229,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         OutputDebugStringA("Deck (Base) Output:\n");
         for (s32 Index = 0; Index < 8; ++Index)
         {
-          _snprintf_s(OutStr, sizeof(OutStr), "RANK: %d SUIT: %s\n",
-                      Cards[Index].value, Cards[Index].suit);
+          _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
+                      TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
           OutputDebugStringA(OutStr);
         }
         OutputDebugStringA("======================\n");
@@ -209,8 +243,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         OutputDebugStringA("Player's Hand\n");
         for (u32 Index = 0; Index < PlayerHand.card_count; ++Index)
         {
-          _snprintf_s(OutStr, sizeof(OutStr), "RANK: %d SUIT: %s\n",
-                      Cards[Index].value, Cards[Index].suit);
+          _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
+                      TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
           OutputDebugStringA(OutStr);
         }
         OutputDebugStringA("======================\n");
@@ -222,8 +256,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         OutputDebugStringA("Deck (current)\n");
         for (u32 Index = 0; Index < 4; ++Index)
         {
-          _snprintf_s(OutStr, sizeof(OutStr), "RANK: %d SUIT: %s\n",
-                      Cards[Index].value, Cards[Index].suit);
+          _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
+                      TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
           OutputDebugStringA(OutStr);
         }
         OutputDebugStringA("======================\n");
@@ -233,7 +267,6 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
   ResetRenderer(Renderer);
   mat4 Model = Mat4Translate(-100.0f, 0.0f, 0.0f);
-  PushQuad(Renderer, { 0.0f, 1.0f }, Model);
-  PushQuad(Renderer, { 0.0f, 3.0f });
+  PushQuad(Renderer, { ACE, HEARTS }, Model);
 }
 

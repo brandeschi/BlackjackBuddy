@@ -70,9 +70,9 @@ inline engine_controller_input *GetController(engine_input *Input, ums Controlle
 
 enum card_type
 {
-  NULL_CARD = 0,
-  FACE_DOWN,
-  TWO = 2,
+  // FACE_DOWN,
+  ACE = 0,
+  TWO,
   THREE,
   FOUR,
   FIVE,
@@ -81,16 +81,23 @@ enum card_type
   EIGHT,
   NINE,
   TEN,
-  JACK = 10,
-  QUEEN = 10,
-  KING = 10,
-  ACE
+  JACK,
+  QUEEN,
+  KING
+};
+
+enum suit
+{
+  SPADES = 1,
+  HEARTS,
+  DIAMONDS,
+  CLUBS
 };
 
 struct card
 {
-  card_type value;
-  char *suit;
+  card_type type;
+  suit suit;
 };
 
 // NOTE: Technically a deck is 52 cards however, in shoe games
