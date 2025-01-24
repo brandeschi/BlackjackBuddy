@@ -110,8 +110,8 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
 internal void ResetRenderer(renderer *Renderer)
 {
   if (Renderer->unit_count == 0) return;
-  memory_arena Arena = Renderer->frame_arena;
-  InitArena(&Arena, Arena.size, Arena.base);
+  memory_arena *Arena = &Renderer->frame_arena;
+  InitArena(Arena, Arena->size, Arena->base);
   Renderer->head = 0;
   Renderer->unit_count = 0;
 }
