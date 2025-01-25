@@ -94,10 +94,21 @@ enum suit
   CLUBS
 };
 
+enum phase
+{
+  NULL_PHASE = 0,
+  START,
+  PLAYER,
+  DEALER,
+  END
+};
+
 struct card
 {
   card_type type;
   suit suit;
+
+  u32 value;
 };
 
 // NOTE: Technically a deck is 52 cards however, in shoe games
@@ -114,14 +125,20 @@ struct hand
 {
   card *cards;
   u32 card_count;
+
+  u32 value;
 };
 
+// TODO: Optimize size of game structs.
 struct app_state
 {
   memory_arena core_arena;
   deck base_deck;
   hand dealer;
   hand player;
+
+  phase game_phase;
+
 };
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input,

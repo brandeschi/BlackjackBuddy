@@ -15,6 +15,8 @@ inline static void Hit(deck *Deck, hand *Hand)
   if (Hand->card_count >= 13) return;
   card DrawnCard = *Deck->current++;
   Hand->cards[Hand->card_count++] = DrawnCard;
+
+  Hand->value += DrawnCard.value;
 }
 
 #if 0
@@ -128,63 +130,64 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
     GameState->base_deck = {
       {
-        { TWO, SPADES },
-        { THREE, SPADES },
-        { FOUR, SPADES },
-        { FIVE, SPADES },
-        { SIX, SPADES },
-        { SEVEN, SPADES },
-        { EIGHT, SPADES },
-        { NINE, SPADES },
-        { TEN, SPADES },
-        { JACK, SPADES },
-        { QUEEN, SPADES },
-        { KING, SPADES },
-        { ACE, SPADES },
-        { TWO, HEARTS },
-        { THREE, HEARTS },
-        { FOUR, HEARTS },
-        { FIVE, HEARTS },
-        { SIX, HEARTS },
-        { SEVEN, HEARTS },
-        { EIGHT, HEARTS },
-        { NINE, HEARTS },
-        { TEN, HEARTS },
-        { JACK, HEARTS },
-        { QUEEN, HEARTS },
-        { KING, HEARTS },
-        { ACE, HEARTS },
-        { TWO, CLUBS },
-        { THREE, CLUBS },
-        { FOUR, CLUBS },
-        { FIVE, CLUBS },
-        { SIX, CLUBS },
-        { SEVEN, CLUBS },
-        { EIGHT, CLUBS },
-        { NINE, CLUBS },
-        { TEN, CLUBS },
-        { JACK, CLUBS },
-        { QUEEN, CLUBS },
-        { KING, CLUBS },
-        { ACE, CLUBS },
-        { TWO, DIAMONDS },
-        { THREE, DIAMONDS },
-        { FOUR, DIAMONDS },
-        { FIVE, DIAMONDS },
-        { SIX, DIAMONDS },
-        { SEVEN, DIAMONDS },
-        { EIGHT, DIAMONDS },
-        { NINE, DIAMONDS },
-        { TEN, DIAMONDS },
-        { JACK, DIAMONDS },
-        { QUEEN, DIAMONDS },
-        { KING, DIAMONDS },
-        { ACE, DIAMONDS }
+        { TWO, SPADES, 2 },
+        { THREE, SPADES, 3 },
+        { FOUR, SPADES, 4 },
+        { FIVE, SPADES, 5 },
+        { SIX, SPADES, 6 },
+        { SEVEN, SPADES, 7 },
+        { EIGHT, SPADES, 8 },
+        { NINE, SPADES, 9 },
+        { TEN, SPADES, 10 },
+        { JACK, SPADES, 10 },
+        { QUEEN, SPADES, 10 },
+        { KING, SPADES, 10 },
+        { ACE, SPADES, 11 },
+        { TWO, HEARTS, 2 },
+        { THREE, HEARTS, 3 },
+        { FOUR, HEARTS, 4 },
+        { FIVE, HEARTS, 5 },
+        { SIX, HEARTS, 6 },
+        { SEVEN, HEARTS, 7 },
+        { EIGHT, HEARTS, 8 },
+        { NINE, HEARTS, 9 },
+        { TEN, HEARTS, 10 },
+        { JACK, HEARTS, 10 },
+        { QUEEN, HEARTS, 10 },
+        { KING, HEARTS, 10 },
+        { ACE, HEARTS, 11 },
+        { TWO, CLUBS, 2 },
+        { THREE, CLUBS, 3 },
+        { FOUR, CLUBS, 4 },
+        { FIVE, CLUBS, 5 },
+        { SIX, CLUBS, 6 },
+        { SEVEN, CLUBS, 7 },
+        { EIGHT, CLUBS, 8 },
+        { NINE, CLUBS, 9 },
+        { TEN, CLUBS, 10 },
+        { JACK, CLUBS, 10 },
+        { QUEEN, CLUBS, 10 },
+        { KING, CLUBS, 10 },
+        { ACE, CLUBS, 11 },
+        { TWO, DIAMONDS, 2 },
+        { THREE, DIAMONDS, 3 },
+        { FOUR, DIAMONDS, 4 },
+        { FIVE, DIAMONDS, 5 },
+        { SIX, DIAMONDS, 6 },
+        { SEVEN, DIAMONDS, 7 },
+        { EIGHT, DIAMONDS, 8 },
+        { NINE, DIAMONDS, 9 },
+        { TEN, DIAMONDS, 10 },
+        { JACK, DIAMONDS, 10 },
+        { QUEEN, DIAMONDS, 10 },
+        { KING, DIAMONDS, 10 },
+        { ACE, DIAMONDS, 11 }
       },
     };
 
     // Blackjack Setup
 
+    GameState->game_phase = START;
     for (s32 Index = 0; Index < 4; ++Index)
     {
       Shuffle(GameState->base_deck.cards,
@@ -207,6 +210,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     GameState->dealer = DealerHand;
     GameState->player = PlayerHand;
 
+    GameState->game_phase = PLAYER;
+
     Memory->is_init = true;
   }
 
@@ -217,7 +222,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   ControllerIndex++)
   {
     engine_controller_input *Controller = GetController(Input, ControllerIndex);
-   if (Controller->is_analog)
+    if (Controller->is_analog)
     {
     }
     else
@@ -226,58 +231,112 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       engine_button_state ActionUp = Controller->action_up;
       engine_button_state ActionRight = Controller->action_right;
       engine_button_state ActionLeft = Controller->action_left;
-      if (ActionDown.half_transitions != 0 && ActionDown.is_down)
+      engine_button_state RShoulder = Controller->right_shoulder;
+
+      switch (GameState->game_phase)
       {
-        char OutStr[256];
-        card *Cards = GameState->base_deck.cards;
-        OutputDebugStringA("Deck (Base) Output:\n");
-        for (s32 Index = 0; Index < 8; ++Index)
+        case START:
         {
-          _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
-                      TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
-          OutputDebugStringA(OutStr);
-        }
-        OutputDebugStringA("======================\n");
-      }
-      else if (ActionUp.half_transitions != 0 && ActionUp.is_down)
-      {
-        char OutStr[256];
-        hand PlayerHand = GameState->player;
-        card *Cards = PlayerHand.cards;
-        OutputDebugStringA("Player's Hand\n");
-        for (u32 Index = 0; Index < PlayerHand.card_count; ++Index)
+          if (ActionRight.half_transitions != 0 && ActionRight.is_down)
+          {
+            char OutStr[256];
+            card *Cards = GameState->base_deck.current;
+            OutputDebugStringA("Deck (current)\n");
+            for (u32 Index = 0; Index < 4; ++Index)
+            {
+              _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
+                          TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
+              OutputDebugStringA(OutStr);
+            }
+            OutputDebugStringA("======================\n");
+          }
+        } break;
+        case PLAYER:
         {
-          _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
-                      TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
-          OutputDebugStringA(OutStr);
-        }
-        OutputDebugStringA("======================\n");
-      }
-      else if (ActionRight.half_transitions != 0 && ActionRight.is_down)
-      {
-        char OutStr[256];
-        card *Cards = GameState->base_deck.current;
-        OutputDebugStringA("Deck (current)\n");
-        for (u32 Index = 0; Index < 4; ++Index)
+          if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
+          {
+            Hit(&GameState->base_deck, &GameState->player);
+
+            char OutStr[256];
+            _snprintf_s(OutStr, sizeof(OutStr), "Hand Value: %d\n", GameState->player.value);
+            OutputDebugStringA(OutStr);
+
+            OutputDebugStringA("======================\n");
+          }
+          else if (RShoulder.half_transitions != 0 && RShoulder.is_down)
+          {
+            GameState->game_phase = DEALER;
+          }
+        } break;
+        case DEALER:
         {
-          _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
-                      TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
-          OutputDebugStringA(OutStr);
+          if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
+          {
+            Hit(&GameState->base_deck, &GameState->dealer);
+
+            char OutStr[256];
+            _snprintf_s(OutStr, sizeof(OutStr), "Hand Value: %d\n", GameState->dealer.value);
+            OutputDebugStringA(OutStr);
+
+            OutputDebugStringA("======================\n");
+          }
+        } break;
+
+        default:
+        {
+          if (ActionDown.half_transitions != 0 && ActionDown.is_down)
+          {
+            char OutStr[256];
+            card *Cards = GameState->base_deck.cards;
+            OutputDebugStringA("Deck (Base) Output:\n");
+            for (s32 Index = 0; Index < 8; ++Index)
+            {
+              _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
+                          TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
+              OutputDebugStringA(OutStr);
+            }
+            OutputDebugStringA("======================\n");
+          }
+          else if (ActionUp.half_transitions != 0 && ActionUp.is_down)
+          {
+            char OutStr[256];
+            hand PlayerHand = GameState->player;
+            card *Cards = PlayerHand.cards;
+            OutputDebugStringA("Player's Hand\n");
+            for (u32 Index = 0; Index < PlayerHand.card_count; ++Index)
+            {
+              _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
+                          TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
+              OutputDebugStringA(OutStr);
+            }
+            OutputDebugStringA("======================\n");
+          }
+          else if (ActionRight.half_transitions != 0 && ActionRight.is_down)
+          {
+            char OutStr[256];
+            card *Cards = GameState->base_deck.current;
+            OutputDebugStringA("Deck (current)\n");
+            for (u32 Index = 0; Index < 4; ++Index)
+            {
+              _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
+                          TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
+              OutputDebugStringA(OutStr);
+            }
+            OutputDebugStringA("======================\n");
+          }
         }
-        OutputDebugStringA("======================\n");
-      }
-      else if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
-      {
-        Hit(&GameState->base_deck, &GameState->player);
       }
     }
   }
 
+  // UPDATE
+
+  // RENDER
   {
     hand Hand = GameState->dealer;
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
     {
-      if (Index == 0)
+      if (Index == 0 && GameState->game_phase != DEALER)
       {
         PushQuad(Renderer, { 2.0f, 0.0f },
                  Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 100.0f, 1.0f));
