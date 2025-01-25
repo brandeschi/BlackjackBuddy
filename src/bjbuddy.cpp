@@ -14,8 +14,15 @@ inline static void Hit(deck *Deck, hand *Hand)
   NeoAssert(Deck->current - Deck->cards < 52);
   if (Hand->card_count >= 13) return;
   card DrawnCard = *Deck->current++;
-  Hand->cards[Hand->card_count++] = DrawnCard;
 
+  // TODO: Need to handle making the ACE valued at 11 again
+  // in the split function.
+  if (DrawnCard.type == ACE && (Hand->value + DrawnCard.value) > 21)
+  {
+    DrawnCard.value = 1;
+  }
+
+  Hand->cards[Hand->card_count++] = DrawnCard;
   Hand->value += DrawnCard.value;
 }
 
@@ -50,38 +57,14 @@ inline static void Shuffle(card *Cards, ums CardCount)
 }
 #endif
 
-// NOTE: players includes the dealer
-inline static void NewHandDeal(deck *deck, u32 players = 2)
-{
-  // TODO: Pass the removed cards to the players/board;
-  u32 cards_to_remove = players*2;
-  // card *cards_removed;
-  // for (u32 i = 0; i < cards_to_remove; ++i)
-  // {
-  //     cards_removed++ = &deck->cards[i];
-  // }
-
-  // return cards_removed;
-}
-
 #if 0
 #include "neo_jpg.h"
 #include "neo_jpg.cpp"
 #endif
 
-static void DrawCard(vertex_data *VertexArray, loaded_bmp TexAtlas, v2 CardIndex) {
-  f32 CardWidth = (f32)TexAtlas.width / 13.0f;
-  f32 CardHeight = (f32)TexAtlas.height / 5.0f;
-
-  v2 ComputedTexCoords[] = {
-    {(CardIndex.x * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
-    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, (CardIndex.y * CardHeight) / TexAtlas.height },
-    {((CardIndex.x + 1) * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height },
-    {(CardIndex.x * CardWidth) / TexAtlas.width, ((CardIndex.y + 1) * CardHeight) / TexAtlas.height }
-  };
-  for (u32 Index = 0; Index < 4; ++Index) {
-    VertexArray[Index].tex_coords = ComputedTexCoords[Index];
-  }
+static inline void NextPhase(enum phase *Phase)
+{
+    *Phase = (enum phase)((s32)(*Phase) + 1);
 }
 
 static inline char *TypeToCStr(s32 CardType)
@@ -116,6 +99,15 @@ static inline char *SuitToCStr(s32 CardSuit)
   }
 
   return "";
+}
+
+static void ResetRound(app_state *GameState)
+{
+  GameState->dealer.card_count = 0;
+  GameState->dealer.value = 0;
+
+  GameState->player.card_count = 0;
+  GameState->player.value = 0;
 }
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
@@ -210,11 +202,28 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     GameState->dealer = DealerHand;
     GameState->player = PlayerHand;
 
-    GameState->game_phase = PLAYER;
+    NextPhase(&GameState->game_phase);
 
     Memory->is_init = true;
   }
 
+  if (GameState->game_phase == START)
+  {
+    hand *DealerHand = &GameState->dealer;
+    hand *PlayerHand = &GameState->player;
+
+    Hit(&GameState->base_deck, PlayerHand);
+    Hit(&GameState->base_deck, DealerHand);
+    Hit(&GameState->base_deck, PlayerHand);
+    Hit(&GameState->base_deck, DealerHand);
+
+    NextPhase(&GameState->game_phase);
+  }
+  if (GameState->game_phase == END)
+  {
+    ResetRound(GameState);
+    GameState->game_phase = START;
+  }
   ResetRenderer(Renderer);
 
   for (ums ControllerIndex = 0;
@@ -330,13 +339,19 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   }
 
   // UPDATE
+  b32 PlayerBust = GameState->game_phase == PLAYER && GameState->player.value > 21;
+  b32 DealerBust = GameState->game_phase == DEALER && GameState->dealer.value > 21;
+  if (PlayerBust || DealerBust)
+  {
+    NextPhase(&GameState->game_phase);
+  }
 
   // RENDER
   {
     hand Hand = GameState->dealer;
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
     {
-      if (Index == 0 && GameState->game_phase != DEALER)
+      if (Index == 0 && (GameState->game_phase == START || GameState->game_phase == PLAYER))
       {
         PushQuad(Renderer, { 2.0f, 0.0f },
                  Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 100.0f, 1.0f));
