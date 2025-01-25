@@ -28,6 +28,9 @@ struct renderer
   u32 width, height;
 
   loaded_bmp tex_atlas;
+  // TODO: Likely should move this out of the renderer.
+  f32 card_width;
+  f32 card_height;
 
   mat4 mvp;
 };

@@ -209,6 +209,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     Memory->is_init = true;
   }
 
+  ResetRenderer(Renderer);
+
   for (ums ControllerIndex = 0;
   ControllerIndex < ArrayCount(Input->controllers);
   ControllerIndex++)
@@ -265,8 +267,29 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     }
   }
 
-  ResetRenderer(Renderer);
-  mat4 Model = Mat4Translate(-100.0f, 0.0f, 0.0f);
-  PushQuad(Renderer, { ACE, HEARTS }, Model);
+  {
+    hand Hand = GameState->dealer;
+    for (u32 Index = 0; Index < Hand.card_count; ++Index)
+    {
+      if (Index == 0)
+      {
+        PushQuad(Renderer, { 2.0f, 0.0f },
+                 Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 100.0f, 1.0f));
+      }
+      else
+      {
+        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit },
+                 Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 100.0f, 1.0f));
+      }
+    }
+  }
+  {
+    hand Hand = GameState->player;
+    for (u32 Index = 0; Index < Hand.card_count; ++Index)
+    {
+      PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit },
+               Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 100.0f, 1.0f));
+    }
+  }
 }
 

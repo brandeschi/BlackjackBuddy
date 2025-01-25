@@ -24,19 +24,18 @@ internal void PushQuad(renderer *Renderer, v2 TexCoords, mat4 Model = Mat4Iden()
 {
   u32 Width = Renderer->width;
   u32 Height = Renderer->height;
+  f32 CardWidth = Renderer->card_width;
+  f32 CardHeight = Renderer->card_height;
 
-  loaded_bmp TexAtlas = Renderer->tex_atlas;
-  f32 CardWidth = (f32)TexAtlas.width / 13.0f;
-  f32 CardHeight = (f32)TexAtlas.height / 5.0f;
   v2 ScreenCenter = { (f32)Width / 2.0f, (f32)Height / 2.0f };
 
   vertex_data Vertices[] =
     {
       // pos                                                                             color               tex-coords
-      { {ScreenCenter.x - (CardWidth*0.20f), ScreenCenter.y - (CardHeight*0.20f), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
-      { {ScreenCenter.x + (CardWidth*0.20f), ScreenCenter.y - (CardHeight*0.20f), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
-      { {ScreenCenter.x + (CardWidth*0.20f), ScreenCenter.y + (CardHeight*0.20f), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
-      { {ScreenCenter.x - (CardWidth*0.20f), ScreenCenter.y + (CardHeight*0.20f), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
+      { {ScreenCenter.x - (CardWidth), ScreenCenter.y - (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
+      { {ScreenCenter.x + (CardWidth), ScreenCenter.y - (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
+      { {ScreenCenter.x + (CardWidth), ScreenCenter.y + (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
+      { {ScreenCenter.x - (CardWidth), ScreenCenter.y + (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
     };
 
   u32 EboIndexPattern[] =
@@ -45,7 +44,7 @@ internal void PushQuad(renderer *Renderer, v2 TexCoords, mat4 Model = Mat4Iden()
     1, 2, 3,
   };
 
-  SetCardTexCoords(TexAtlas, Vertices, TexCoords);
+  SetCardTexCoords(Renderer->tex_atlas, Vertices, TexCoords);
 
   // TODO: Make some kind of PushUnit once it becomes apparent how I want
   // to push units to the Renderer.
@@ -75,6 +74,11 @@ internal void PushQuad(renderer *Renderer, v2 TexCoords, mat4 Model = Mat4Iden()
   Unit->vertex_count = VertexCount;
   memcpy(Unit->vertices, Vertices, VertexCount*sizeof(vertex_data));
   Unit->model = Model;
+  // NOTE: Since I am using an arena and reusing memory for the exact same
+  // struct type, I need to make sure all fields are zero'd out to ensure
+  // no old state messes with the new pushes
+  // TODO: Make ZeroStruct macro for structs in arenas?
+  Unit->next = 0;
 
   if (UnitCount == 0)
   {
@@ -98,12 +102,10 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
 
   // NOTE: Each card is like 98 hori and 153 vert
   Renderer->tex_atlas = DEBUG_load_bmp(Thread, Memory->DEBUG_read_entire_file, "test/cards.bmp");
-
-  u32 Width = 960;
-  u32 Height = 540;
-  Renderer->width = Width;
-  Renderer->height = Height;
-
+  Renderer->width = 960;
+  Renderer->height = 540;
+  Renderer->card_width = (f32)Renderer->tex_atlas.width / 13.0f * 0.21f;
+  Renderer->card_height = (f32)Renderer->tex_atlas.height / 5.0f * 0.21f;
   Renderer->max_units = MAX_UNITS;
 }
 
