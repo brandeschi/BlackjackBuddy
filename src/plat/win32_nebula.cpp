@@ -530,7 +530,7 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   f32 TargetSecondsPerFrame = 1.0f / UpdateHz;
 
 #if NEO_INTERNAL
-  LPVOID BaseAddress = (LPVOID) terabytes(2);
+  LPVOID BaseAddress = (LPVOID) terabytes(1);
 #else
   LPVOID BaseAddress = 0;
 #endif
@@ -538,7 +538,7 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   s32 Err = 0;
   app_memory AppMemory = {0};
   AppMemory.perm_storage_size = megabytes(64);
-  AppMemory.flex_storage_size = gigabytes(4);
+  AppMemory.flex_storage_size = gigabytes(1);
   AppMemory.DEBUG_free_file = DEBUG_free_file;
   AppMemory.DEBUG_read_entire_file = DEBUG_read_entire_file;
   AppMemory.DEBUG_write_entire_file = DEBUG_write_entire_file;
