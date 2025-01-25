@@ -7,9 +7,12 @@
 #pragma once
 #include "core.unity.h"
 
+global u32 MAX_HAND_COUNT = 13;
+
 inline static void Hit(deck *Deck, hand *Hand)
 {
   NeoAssert(Deck->current - Deck->cards < 52);
+  if (Hand->card_count >= 13) return;
   card DrawnCard = *Deck->current++;
   Hand->cards[Hand->card_count++] = DrawnCard;
 }
@@ -191,8 +194,6 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     // make this into an option/setting for the type of game.
     GameState->base_deck.current = &GameState->base_deck.cards[1];
 
-    u32 MAX_HAND_COUNT = 13;
-
     hand PlayerHand = {0};
     PlayerHand.cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
     hand DealerHand = {0};
@@ -224,6 +225,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       engine_button_state ActionDown = Controller->action_down;
       engine_button_state ActionUp = Controller->action_up;
       engine_button_state ActionRight = Controller->action_right;
+      engine_button_state ActionLeft = Controller->action_left;
       if (ActionDown.half_transitions != 0 && ActionDown.is_down)
       {
         char OutStr[256];
@@ -263,6 +265,10 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           OutputDebugStringA(OutStr);
         }
         OutputDebugStringA("======================\n");
+      }
+      else if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
+      {
+        Hit(&GameState->base_deck, &GameState->player);
       }
     }
   }
