@@ -9,7 +9,12 @@
 
 global u32 MAX_HAND_COUNT = 13;
 
-inline static void Hit(deck *Deck, hand *Hand)
+static inline void NextPhase(enum phase *Phase)
+{
+    *Phase = (enum phase)((s32)(*Phase) + 1);
+}
+
+static void Hit(deck *Deck, hand *Hand)
 {
   NeoAssert(Deck->current - Deck->cards < 52);
   if (Hand->card_count >= 13) return;
@@ -24,6 +29,16 @@ inline static void Hit(deck *Deck, hand *Hand)
 
   Hand->cards[Hand->card_count++] = DrawnCard;
   Hand->value += DrawnCard.value;
+}
+
+static inline void DoubleDown(deck *Deck, hand *Hand,
+                              enum phase *Phase)
+{
+  Hit(Deck, Hand);
+  Hand->cards[Hand->card_count - 1].is_dd = true;
+  // TODO: When split is implemented, will need to move on
+  // to the next player's hand (if they have one) or to next player.
+  NextPhase(Phase);
 }
 
 #if 0
@@ -61,11 +76,6 @@ inline static void Shuffle(card *Cards, ums CardCount)
 #include "neo_jpg.h"
 #include "neo_jpg.cpp"
 #endif
-
-static inline void NextPhase(enum phase *Phase)
-{
-    *Phase = (enum phase)((s32)(*Phase) + 1);
-}
 
 static inline char *TypeToCStr(s32 CardType)
 {
@@ -272,9 +282,19 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
             OutputDebugStringA("======================\n");
           }
-          else if (RShoulder.half_transitions != 0 && RShoulder.is_down)
+          else if (ActionRight.half_transitions != 0 && ActionRight.is_down)
           {
-            GameState->game_phase = DEALER;
+              NextPhase(&GameState->game_phase);
+          }
+          else if (ActionDown.half_transitions != 0 && ActionDown.is_down)
+          {
+            DoubleDown(&GameState->base_deck, &GameState->player, &GameState->game_phase);
+
+            char OutStr[256];
+            _snprintf_s(OutStr, sizeof(OutStr), "Hand Value: %d\n", GameState->player.value);
+            OutputDebugStringA(OutStr);
+
+            OutputDebugStringA("======================\n");
           }
         } break;
         case DEALER:
@@ -288,6 +308,10 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
             OutputDebugStringA(OutStr);
 
             OutputDebugStringA("======================\n");
+          }
+          else if (ActionRight.half_transitions != 0 && ActionRight.is_down)
+          {
+              NextPhase(&GameState->game_phase);
           }
         } break;
 
@@ -367,8 +391,20 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     hand Hand = GameState->player;
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
     {
-      PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit },
-               Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 100.0f, 1.0f));
+      if (Hand.cards[Index].is_dd)
+      {
+        // mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 100.0f, 1.0f)*Mat4RotateZ(0.5f);
+        // TODO: try to translate to origin, rotate, than translate to desired location.
+        mat4 Transform = Mat4Translate((f32)Renderer->width - 160.0f, -290.0f, 1.0f)*Mat4RotateZ(PI32 / 2.0f);
+
+        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit },
+                 Transform);
+      }
+      else
+      {
+        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit },
+                 Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 100.0f, 1.0f));
+      }
     }
   }
 }

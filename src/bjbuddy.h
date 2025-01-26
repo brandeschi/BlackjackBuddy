@@ -109,6 +109,7 @@ struct card
   suit suit;
 
   u32 value;
+  b32 is_dd = false;
 };
 
 // NOTE: Technically a deck is 52 cards however, in shoe games

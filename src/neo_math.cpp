@@ -372,7 +372,7 @@ inline mat4 Mat4RotateY(f32 Angle)
   mat4 Result = {
     cosf(Angle),  0.0f, sinf(Angle), 0.0f,
     0.0f,         1.0f, 0.0f,        0.0f,
-    -sinf(Angle),  0.0f, cosf(Angle), 0.0f,
+    -sinf(Angle), 0.0f, cosf(Angle), 0.0f,
     0.0f,         0.0f, 0.0f,        1.0f
   };
 
@@ -382,10 +382,10 @@ inline mat4 Mat4RotateY(f32 Angle)
 inline mat4 Mat4RotateZ(f32 Angle)
 {
   mat4 Result = {
-    cosf(Angle),  -sinf(Angle),  0.0f, 0.0f,
+    cosf(Angle), -sinf(Angle), 0.0f, 0.0f,
     sinf(Angle), cosf(Angle),  0.0f, 0.0f,
-    0.0f,         0.0f,         1.0f, 0.0f,
-    0.0f,         0.0f,         0.0f, 1.0f
+    0.0f,        0.0f,         1.0f, 0.0f,
+    0.0f,        0.0f,         0.0f, 1.0f
   };
 
   return Result;
