@@ -138,6 +138,7 @@ struct app_state
   hand dealer;
   hand player;
 
+  u32 player_money;
   phase game_phase;
 
 };

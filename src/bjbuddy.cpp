@@ -20,6 +20,15 @@
 #include "core.unity.h"
 
 global u32 MAX_HAND_COUNT = 13;
+global u32 MIN_BET_SIZE   = 10;
+global u32 MAX_BET_SIZE   = 100;
+
+static inline void PlaceBet(app_state *GameState, u32 BetSize = MIN_BET_SIZE)
+{
+  u32 *PlayerMoney = &GameState->player_money;
+  NeoAssert(*PlayerMoney - BetSize >= 0);
+  *PlayerMoney -= BetSize;
+}
 
 static inline void NextPhase(enum phase *Phase)
 {
@@ -207,6 +216,10 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       Shuffle(GameState->base_deck.cards,
               ArrayCount(GameState->base_deck.cards));
     }
+
+    GameState->player_money = 5000;
+    PlaceBet(GameState);
+
     // TODO: This is to 'burn' the first card of the deck but I should
     // make this into an option/setting for the type of game.
     GameState->base_deck.current = &GameState->base_deck.cards[1];
@@ -224,6 +237,9 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     GameState->dealer = DealerHand;
     GameState->player = PlayerHand;
 
+    // TODO: Need a period before the cards are dealt to
+    // set bet amount for player.
+
     NextPhase(&GameState->game_phase);
 
     Memory->is_init = true;
@@ -231,6 +247,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
   if (GameState->game_phase == START)
   {
+    PlaceBet(GameState);
+
     hand *DealerHand = &GameState->dealer;
     hand *PlayerHand = &GameState->player;
 
