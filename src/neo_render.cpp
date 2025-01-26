@@ -27,16 +27,14 @@ internal void PushQuad(renderer *Renderer, v2 TexCoords, mat4 Model = Mat4Iden()
   f32 CardWidth = Renderer->card_width;
   f32 CardHeight = Renderer->card_height;
 
-  v2 ScreenCenter = { (f32)Width / 2.0f, (f32)Height / 2.0f };
-
   vertex_data Vertices[] =
-    {
-      // pos                                                                             color               tex-coords
-      { {ScreenCenter.x - (CardWidth), ScreenCenter.y - (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
-      { {ScreenCenter.x + (CardWidth), ScreenCenter.y - (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
-      { {ScreenCenter.x + (CardWidth), ScreenCenter.y + (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
-      { {ScreenCenter.x - (CardWidth), ScreenCenter.y + (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
-    };
+  {
+    // pos                                                                             color               tex-coords
+    { {0.0f - (CardWidth), 0.0f - (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
+    { {0.0f + (CardWidth), 0.0f - (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
+    { {0.0f + (CardWidth), 0.0f + (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
+    { {0.0f - (CardWidth), 0.0f + (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
+  };
 
   u32 EboIndexPattern[] =
   {

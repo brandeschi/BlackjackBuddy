@@ -145,19 +145,15 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->tex_atlas.width, Renderer->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->tex_atlas.pixels);
 
-  mat4 Projection = Mat4Ortho(0.0f, (f32)Renderer->width, 0.0f, (f32)Renderer->height, -1.0f, 1.0f);
+  glUseProgram(g_ShaderProgram);
+
   // TODO: Set this up to use Right-handed coord system where:
   // -Y is right, up is +Z, and forward +X.
+  mat4 Projection = Mat4Ortho(0.0f, (f32)Renderer->width, 0.0f, (f32)Renderer->height, -1.0f, 100.0f);
   mat4 Mvp = Projection*Mat4Iden()*Mat4Iden();
-
-  glUseProgram(g_ShaderProgram);
-  GLint u_MvpId = glGetUniformLocation(g_ShaderProgram, "u_MVP");
   Renderer->mvp = Mvp;
-  // NOTE: Since OGL is col-major, need to transpose here (GL_TRUE in the func below).
-  glUniformMatrix4fv(u_MvpId, 1, GL_TRUE, (f32 *)Mvp.e);
 
   // NOTE: I might unbind the buffers at some point.
   //
@@ -297,7 +293,11 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
 #else
     while (Unit != 0)
     {
+      // NOTE: Do transformation in NDC.
+      // mat4 TrueMvp = Unit->model*Renderer->mvp;
+      // NOTE: Do transformation in screenspace.
       mat4 TrueMvp = Renderer->mvp*Unit->model;
+      // NOTE: Since OGL is col-major, need to transpose here (GL_TRUE in the func below).
       glUniformMatrix4fv(glGetUniformLocation(g_ShaderProgram, "u_MVP"), 1, GL_TRUE, (f32 *)TrueMvp.e);
       glBufferSubData(GL_ARRAY_BUFFER, 0, Unit->vertex_count*sizeof(vertex_data), Unit->vertices);
       glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, Unit->index_count*sizeof(u32), Unit->indices);

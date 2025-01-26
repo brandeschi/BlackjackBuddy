@@ -293,30 +293,66 @@ inline mat4 Mat4Iden()
   return Result;
 }
 
+inline mat4 Mat4Add(mat4 Left, mat4 Right)
+{
+  mat4 Result = {0};
+
+  Result.m0  = Left.m0  +  Right.m0;
+  Result.m1  = Left.m1  +  Right.m1;
+  Result.m2  = Left.m2  +  Right.m2;
+  Result.m3  = Left.m3  +  Right.m3;
+  Result.m4  = Left.m4  +  Right.m4;
+  Result.m5  = Left.m5  +  Right.m5;
+  Result.m6  = Left.m6  +  Right.m6;
+  Result.m7  = Left.m7  +  Right.m7;
+  Result.m8  = Left.m8  +  Right.m8;
+  Result.m9  = Left.m9  +  Right.m9;
+  Result.m10 = Left.m10 +  Right.m10;
+  Result.m11 = Left.m11 +  Right.m11;
+  Result.m12 = Left.m12 +  Right.m12;
+  Result.m13 = Left.m13 +  Right.m13;
+  Result.m14 = Left.m14 +  Right.m14;
+  Result.m15 = Left.m15 +  Right.m15;
+
+  return Result;
+}
+inline mat4 operator+(mat4 Left, mat4 Right)
+{
+  mat4 Result = {0};
+  Result = Mat4Add(Left, Right);
+
+  return Result;
+}
+
+inline mat4 &operator+=(mat4 &a, mat4 b)
+{
+    a = a+b;
+    return a;
+}
+
 inline mat4 Mat4Multiply(mat4 Left, mat4 Right)
 {
-  mat4 Result = {};
+  mat4 Result = {0};
 
-  Result.m0 =  Left.m0*Right.m0 + Left.m1*Right.m4 + Left.m2*Right.m8 + Left.m3*Right.m12;
-  Result.m1 =  Left.m0*Right.m1 + Left.m1*Right.m5 + Left.m2*Right.m9 + Left.m3*Right.m13;
-  Result.m2 =  Left.m0*Right.m2 + Left.m1*Right.m6 + Left.m2*Right.m10 + Left.m3*Right.m14;
-  Result.m3 =  Left.m0*Right.m3 + Left.m1*Right.m7 + Left.m2*Right.m11 + Left.m3*Right.m15;
-  Result.m4 =  Left.m4*Right.m0 + Left.m5*Right.m4 + Left.m6*Right.m8 + Left.m7*Right.m12;
-  Result.m5 =  Left.m4*Right.m1 + Left.m5*Right.m5 + Left.m6*Right.m9 + Left.m7*Right.m13;
-  Result.m6 =  Left.m4*Right.m2 + Left.m5*Right.m6 + Left.m6*Right.m10 + Left.m7*Right.m14;
-  Result.m7 =  Left.m4*Right.m3 + Left.m5*Right.m7 + Left.m6*Right.m11 + Left.m7*Right.m15;
-  Result.m8 =  Left.m8*Right.m0 + Left.m9*Right.m4 + Left.m10*Right.m8 + Left.m11*Right.m12;
-  Result.m9 =  Left.m8*Right.m1 + Left.m9*Right.m5 + Left.m10*Right.m9 + Left.m11*Right.m13;
-  Result.m10 = Left.m8*Right.m2 + Left.m9*Right.m6 + Left.m10*Right.m10 + Left.m11*Right.m14;
-  Result.m11 = Left.m8*Right.m3 + Left.m9*Right.m7 + Left.m10*Right.m11 + Left.m11*Right.m15;
-  Result.m12 = Left.m12*Right.m0 + Left.m13*Right.m4 + Left.m14*Right.m8 + Left.m15*Right.m12;
-  Result.m13 = Left.m12*Right.m1 + Left.m13*Right.m5 + Left.m14*Right.m9 + Left.m15*Right.m13;
+  Result.m0 =  Left.m0*Right.m0  + Left.m1*Right.m4  + Left.m2*Right.m8   + Left.m3*Right.m12;
+  Result.m1 =  Left.m0*Right.m1  + Left.m1*Right.m5  + Left.m2*Right.m9   + Left.m3*Right.m13;
+  Result.m2 =  Left.m0*Right.m2  + Left.m1*Right.m6  + Left.m2*Right.m10  + Left.m3*Right.m14;
+  Result.m3 =  Left.m0*Right.m3  + Left.m1*Right.m7  + Left.m2*Right.m11  + Left.m3*Right.m15;
+  Result.m4 =  Left.m4*Right.m0  + Left.m5*Right.m4  + Left.m6*Right.m8   + Left.m7*Right.m12;
+  Result.m5 =  Left.m4*Right.m1  + Left.m5*Right.m5  + Left.m6*Right.m9   + Left.m7*Right.m13;
+  Result.m6 =  Left.m4*Right.m2  + Left.m5*Right.m6  + Left.m6*Right.m10  + Left.m7*Right.m14;
+  Result.m7 =  Left.m4*Right.m3  + Left.m5*Right.m7  + Left.m6*Right.m11  + Left.m7*Right.m15;
+  Result.m8 =  Left.m8*Right.m0  + Left.m9*Right.m4  + Left.m10*Right.m8  + Left.m11*Right.m12;
+  Result.m9 =  Left.m8*Right.m1  + Left.m9*Right.m5  + Left.m10*Right.m9  + Left.m11*Right.m13;
+  Result.m10 = Left.m8*Right.m2  + Left.m9*Right.m6  + Left.m10*Right.m10 + Left.m11*Right.m14;
+  Result.m11 = Left.m8*Right.m3  + Left.m9*Right.m7  + Left.m10*Right.m11 + Left.m11*Right.m15;
+  Result.m12 = Left.m12*Right.m0 + Left.m13*Right.m4 + Left.m14*Right.m8  + Left.m15*Right.m12;
+  Result.m13 = Left.m12*Right.m1 + Left.m13*Right.m5 + Left.m14*Right.m9  + Left.m15*Right.m13;
   Result.m14 = Left.m12*Right.m2 + Left.m13*Right.m6 + Left.m14*Right.m10 + Left.m15*Right.m14;
   Result.m15 = Left.m12*Right.m3 + Left.m13*Right.m7 + Left.m14*Right.m11 + Left.m15*Right.m15;
 
   return Result;
 }
-
 inline mat4 operator*(mat4 Left, mat4 Right)
 {
   mat4 Result = {0};
@@ -324,7 +360,6 @@ inline mat4 operator*(mat4 Left, mat4 Right)
 
   return Result;
 }
-
 inline mat4 &operator*=(mat4 &a, mat4 b)
 {
     a = a*b;

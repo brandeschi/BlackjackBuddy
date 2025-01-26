@@ -1,9 +1,21 @@
-// TODO: Implment all deck actions
-// - Shuffling
-// - Drawing Cards
-// - Concept of a hand?
+// TODO:
+// General Player Actions
+// - Surrendering/Insurance
+// - NA rules seperation from Intl. rules
+//   - EX: NA only rule where dealers get a hole card but
+//     in the rest of the world they only get an up card.
+//       - This means an option needs to be added to handle
+//         regular play to continue.
+// Stats
+// - Currency
+// - Count (running and true) - Will be done with Hi/Lo but might add other counts
+// - Discard tray deck estimation
+// - Based on bet spread, amount that should be wagered
+// - Basic strategy play (with and without count and including EHNC)
+// Settings (for type of game, location, etc)
+// - Whether to show or hide double downs
 //
-// Also need to add general player actions
+
 #pragma once
 #include "core.unity.h"
 
@@ -229,6 +241,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
     NextPhase(&GameState->game_phase);
   }
+
   if (GameState->game_phase == END)
   {
     ResetRound(GameState);
@@ -371,19 +384,20 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   }
 
   // RENDER
+
+  mat4 CenterTranslate = Mat4Translate((f32)Renderer->width*0.5f, (f32)Renderer->height*0.5f, 0.0f);
   {
     hand Hand = GameState->dealer;
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
     {
+      mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 100.0f, 1.0f)*CenterTranslate;
       if (Index == 0 && (GameState->game_phase == START || GameState->game_phase == PLAYER))
       {
-        PushQuad(Renderer, { 2.0f, 0.0f },
-                 Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 100.0f, 1.0f));
+        PushQuad(Renderer, { 2.0f, 0.0f }, Transform);
       }
       else
       {
-        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit },
-                 Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 100.0f, 1.0f));
+        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
       }
     }
   }
@@ -393,17 +407,15 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     {
       if (Hand.cards[Index].is_dd)
       {
-        // mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 100.0f, 1.0f)*Mat4RotateZ(0.5f);
-        // TODO: try to translate to origin, rotate, than translate to desired location.
-        mat4 Transform = Mat4Translate((f32)Renderer->width - 160.0f, -290.0f, 1.0f)*Mat4RotateZ(PI32 / 2.0f);
-
-        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit },
-                 Transform);
+        mat4 Transform = Mat4Translate(((Index - 1)*Renderer->card_width*0.5f) + Renderer->card_height, Index*Renderer->card_height*0.5f - 100.0f, 1.0f)*
+                         CenterTranslate*
+                         Mat4RotateZ(PI32 / 2.0f);
+        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
       }
       else
       {
-        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit },
-                 Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 100.0f, 1.0f));
+        mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 100.0f, 1.0f)*CenterTranslate;
+        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
       }
     }
   }

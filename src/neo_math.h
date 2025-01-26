@@ -45,12 +45,6 @@ union v4
 // (Math style 4x4 - right handed, row major)
 union mat4
 {
-  // struct {
-  //   f32 m0,  m4,  m8,  m12;
-  //   f32 m1,  m5,  m9,  m13;
-  //   f32 m2,  m6,  m10, m14;
-  //   f32 m3,  m7,  m11, m15;
-  // };
   struct {
     f32 m0,  m1,  m2,  m3;
     f32 m4,  m5,  m6,  m7;
