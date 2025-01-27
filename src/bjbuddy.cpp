@@ -28,6 +28,7 @@ static inline void PlaceBet(app_state *GameState, u32 BetSize = MIN_BET_SIZE)
   u32 *PlayerMoney = &GameState->player_money;
   NeoAssert(*PlayerMoney - BetSize >= 0);
   *PlayerMoney -= BetSize;
+  GameState->player.wager = BetSize;
 }
 
 static inline void NextPhase(enum phase *Phase)
@@ -57,6 +58,7 @@ static inline void DoubleDown(deck *Deck, hand *Hand,
 {
   Hit(Deck, Hand);
   Hand->cards[Hand->card_count - 1].is_dd = true;
+  Hand->wager *= 2;
   // TODO: When split is implemented, will need to move on
   // to the next player's hand (if they have one) or to next player.
   NextPhase(Phase);
@@ -139,6 +141,7 @@ static void ResetRound(app_state *GameState)
 
   GameState->player.card_count = 0;
   GameState->player.value = 0;
+  GameState->player.wager = 0;
 }
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
@@ -217,6 +220,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
               ArrayCount(GameState->base_deck.cards));
     }
 
+    // TODO: Need a period before the cards are dealt to
+    // set bet amount for player.
     GameState->player_money = 5000;
     PlaceBet(GameState);
 
@@ -237,8 +242,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     GameState->dealer = DealerHand;
     GameState->player = PlayerHand;
 
-    // TODO: Need a period before the cards are dealt to
-    // set bet amount for player.
+    // TODO: Handle paying out the player immediately
+    // if they have BJ.
 
     NextPhase(&GameState->game_phase);
 

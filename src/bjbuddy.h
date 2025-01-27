@@ -128,6 +128,7 @@ struct hand
   u32 card_count;
 
   u32 value;
+  u32 wager;
 };
 
 // TODO: Optimize size of game structs.
