@@ -14,7 +14,12 @@ typedef char GLchar;
 #define GL_CLAMP_TO_BORDER                0x812D
 #define GL_CLAMP_TO_EDGE                  0x812F
 #define GL_TEXTURE0                       0x84C0
+#define GL_TEXTURE1                       0x84C1
+#define GL_TEXTURE2                       0x84C2
 #define GL_SHADING_LANGUAGE_VERSION       0x8B8C
+#define GL_RG                             0x8227
+#define GL_BGRA                           0x80E1
+#define GL_SRGB8_ALPHA8                   0x8C43
 #define GL_NO_ERROR                       0
 
 // Accepted as an attribute name in <*attribList>:

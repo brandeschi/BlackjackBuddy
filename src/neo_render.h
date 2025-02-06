@@ -25,6 +25,7 @@ struct renderer
   render_unit *head;
 
   u32 VAO, VBO, EBO;
+  u32 texture_atlas, font_texture;
   u32 width, height;
 
   loaded_bmp tex_atlas;

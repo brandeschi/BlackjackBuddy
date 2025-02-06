@@ -1,12 +1,18 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
 #include "../core.unity.h"
 #include "win32_nebula.h"
+
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "../../vendor/stb_truetype.h"
+
 
 // Globals
 global b32 g_Running = false;
 global win32_bitmap_buffer g_BitmapBuffer;
 global LPDIRECTSOUNDBUFFER g_SecondaryBuffer;
 global s64 g_PerfCountFreq;
+global loaded_bmp g_FontBitmap;
 
 // typedef HGLRC WINAPI wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList);
 typedef HGLRC WINAPI wgl_create_context_attribs_arb(HDC hDC, HGLRC hShareContext, const int *attribList);
@@ -131,23 +137,67 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
   glEnableVertexAttribArray(2);
   glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
 
-  u32 TextureAtlas;
-  glGenTextures(1, &TextureAtlas);
-  glBindTexture(GL_TEXTURE_2D, TextureAtlas);
+  glGenTextures(1, &Renderer->texture_atlas);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, Renderer->texture_atlas);
 
   // Setting Texture wrapping method
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  // Setting Texture filtering methods
+  // Setting Texture filtering method
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->tex_atlas.width, Renderer->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->tex_atlas.pixels);
 
+  // Create Font Bitmap
+  // TODO: Check to see if the baked bitmaps exist to early out.
+  b32 BakedBitmapsExist = false;
+  if (!BakedBitmapsExist)
+  {
+    u8 TFFBuffer[KB(500)];
+    u8 TempBitmap[512*512];
+    stbtt_bakedchar CharData[96]; // ASCII 32..126 is 95 glyphs
+    fread(TFFBuffer, 1, KB(500), fopen("c:/windows/fonts/consola.ttf", "rb"));
+    int test = stbtt_BakeFontBitmap(TFFBuffer, 0, 32.0f, TempBitmap, 512, 512, 32, 96, CharData);
+    loaded_bmp BMP = {0};
+    BMP.channels = 1;
+    BMP.width = 512;
+    BMP.height = 512;
+    BMP.pixels = PushArray(&Renderer->frame_arena, 512*512*4, u8);
+
+    u8 *StbBitmap = TempBitmap;
+    u8 *OurBitmap = BMP.pixels + (512 - 1)*(4*512);
+    for (ums Row = 0; Row < 512; ++Row)
+    {
+      u32 *Dest = (u32 *)OurBitmap;
+      for (ums Col = 0; Col < 512; ++Col)
+      {
+        u8 MonoPixel = *StbBitmap++;
+        *Dest++ = ((MonoPixel << 24) |
+                  (MonoPixel << 16) |
+                  (MonoPixel << 8) |
+                  (MonoPixel << 0));
+      }
+
+      OurBitmap -= 4*512;
+    }
+    // g_FontBitmap.pixels = Temp
+    glGenTextures(1, &Renderer->font_texture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, Renderer->font_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512,512, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, BMP.pixels);
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, TempBitmap);
+    int x = glGetError();
+
+    // glBindTexture(GL_TEXTURE_2D, 0);
+  }
+
+  // glBindTexture(GL_TEXTURE_2D, Renderer->texture_atlas);
   glUseProgram(g_ShaderProgram);
+  glUniform1i(glGetUniformLocation(g_ShaderProgram, "CardTex"), 0);
+  glUniform1i(glGetUniformLocation(g_ShaderProgram, "FontTex"), 1);
 
   // TODO: Set this up to use Right-handed coord system where:
   // -Y is right, up is +Z, and forward +X.
@@ -307,7 +357,7 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
 #endif
 
     // TODO: Expand how we catch OGL errors
-    NeoAssert(glGetError() == GL_NO_ERROR);
+    // NeoAssert(glGetError() == GL_NO_ERROR);
 
     // TODO: Look up what swapbuffers should be used
     SwapBuffers(DeviceContext);
@@ -530,15 +580,15 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   f32 TargetSecondsPerFrame = 1.0f / UpdateHz;
 
 #if NEO_INTERNAL
-  LPVOID BaseAddress = (LPVOID) terabytes(1);
+  LPVOID BaseAddress = (LPVOID) TB(1);
 #else
   LPVOID BaseAddress = 0;
 #endif
 
   s32 Err = 0;
   app_memory AppMemory = {0};
-  AppMemory.perm_storage_size = megabytes(64);
-  AppMemory.flex_storage_size = gigabytes(1);
+  AppMemory.perm_storage_size = MB(64);
+  AppMemory.flex_storage_size = GB(1);
   AppMemory.DEBUG_free_file = DEBUG_free_file;
   AppMemory.DEBUG_read_entire_file = DEBUG_read_entire_file;
   AppMemory.DEBUG_write_entire_file = DEBUG_write_entire_file;

@@ -96,10 +96,13 @@ internal void PushQuad(renderer *Renderer, v2 TexCoords, mat4 Model = Mat4Iden()
 
 internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer *Renderer)
 {
-  InitArena(&Renderer->frame_arena, megabytes(4), Memory->flex_memory);
+  InitArena(&Renderer->frame_arena, MB(4), Memory->flex_memory);
 
   // NOTE: Each card is like 98 hori and 153 vert
   Renderer->tex_atlas = DEBUG_load_bmp(Thread, Memory->DEBUG_read_entire_file, "test/cards.bmp");
+
+
+
   Renderer->width = 960;
   Renderer->height = 540;
   Renderer->card_width = (f32)Renderer->tex_atlas.width / 13.0f * 0.21f;

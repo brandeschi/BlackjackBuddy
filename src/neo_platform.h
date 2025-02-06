@@ -12,10 +12,10 @@
  */
 
 // Bytes size maps
-#define kilobytes(Value) ((Value)*1024LL)
-#define megabytes(Value) (kilobytes(Value) * 1024LL)
-#define gigabytes(Value) (megabytes(Value) * 1024LL)
-#define terabytes(Value) (gigabytes(Value) * 1024LL)
+#define KB(Value) (((u64)Value) << 10)
+#define MB(Value) (((u64)Value) << 20)
+#define GB(Value) (((u64)Value) << 30)
+#define TB(Value) (((u64)Value) << 40)
 
 #define KEEB_COUNT 1
 

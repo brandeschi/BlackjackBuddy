@@ -409,6 +409,39 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   // RENDER
 
   mat4 CenterTranslate = Mat4Translate((f32)Renderer->width*0.5f, (f32)Renderer->height*0.5f, 0.0f);
+  vertex_data Vertices[] =
+  {
+    // pos                                                                             color               tex-coords
+    { {200.0f, 100.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
+    { {(f32)Renderer->width - 200.0f, 100.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
+    { {(f32)Renderer->width - 200.0f, (f32)Renderer->height - 100.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
+    { {200.0f, (f32)Renderer->height - 100.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
+  };
+
+  u32 EboIndexPattern[] =
+  {
+    0, 1, 3,
+    1, 2, 3,
+  };
+
+  memory_arena *FrameArena = &Renderer->frame_arena;
+  render_unit *Unit = PushStruct(FrameArena, render_unit);
+
+  u32 EboIndexCount = ArrayCount(EboIndexPattern);
+  u32 *Indices = PushArray(FrameArena, EboIndexCount, u32);
+  Unit->indices = Indices;
+  Unit->index_count = EboIndexCount;
+  u32 UnitCount = Renderer->unit_count;
+  memcpy(Unit->indices, EboIndexPattern, EboIndexCount*sizeof(u32));
+  u32 VertexCount = ArrayCount(Vertices);
+  Unit->vertices = PushArray(FrameArena, VertexCount, vertex_data);
+  Unit->vertex_count = VertexCount;
+  Unit->model = Mat4Iden();
+  memcpy(Unit->vertices, Vertices, VertexCount*sizeof(vertex_data));
+  Renderer->head = Unit;
+  ++Renderer->unit_count;
+
+#if 0
   {
     hand Hand = GameState->dealer;
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
@@ -442,5 +475,6 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       }
     }
   }
+#endif
 }
 
