@@ -108,7 +108,7 @@ struct bmp_header
   u16 res_1;
   u16 res_2;
   u32 bitmap_offset;
-  // DIB Header v5
+  // DIB Header v5 (aka BITMAPINFOHEADER)
   u32 size;
   s32 width;
   s32 height;

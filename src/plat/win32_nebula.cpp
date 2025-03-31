@@ -32,7 +32,7 @@ inline static void win32_DeallocateMemory(memory_arena *Arena)
   }
 }
 
-static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer *Renderer)
+static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memory *Memory, renderer *Renderer)
 {
   HDC WindowDC = GetDC(WindowHandle);
 
@@ -149,27 +149,55 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->tex_atlas.width, Renderer->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->tex_atlas.pixels);
 
   // Create Font Bitmap
-  // TODO: Check to see if the baked bitmaps exist to early out.
   b32 BakedBitmapsExist = false;
+  // TODO: Check to see if the baked bitmaps exist to early out.
   if (!BakedBitmapsExist)
   {
+    // TODO: Make ability to create scratch memory!!
     u8 TFFBuffer[KB(500)];
     u8 TempBitmap[512*512];
     stbtt_bakedchar CharData[96]; // ASCII 32..126 is 95 glyphs
     fread(TFFBuffer, 1, KB(500), fopen("c:/windows/fonts/consola.ttf", "rb"));
+    // TODO: See if I can get the mapping of the chars out of this bitmap based on the other
+    // function from the api?
     int test = stbtt_BakeFontBitmap(TFFBuffer, 0, 32.0f, TempBitmap, 512, 512, 32, 96, CharData);
-    loaded_bmp BMP = {0};
-    BMP.channels = 1;
-    BMP.width = 512;
-    BMP.height = 512;
-    BMP.pixels = PushArray(&Renderer->frame_arena, 512*512*4, u8);
+    // loaded_bmp BMP = {0};
+    // BMP.channels = 1;
+    // BMP.width = 512;
+    // BMP.height = 512;
+    // BMP.pixels = PushArray(&Renderer->frame_arena, PixelArraySize, u8);
+    u32 PixelArraySize = 512*512*4;
 
-    u8 *StbBitmap = TempBitmap;
-    u8 *OurBitmap = BMP.pixels + (512 - 1)*(4*512);
-    for (ums Row = 0; Row < 512; ++Row)
+    bmp_header BMPHeader = {0};
+    // file_type is always 'BM' and is represented below
+    BMPHeader.file_type = 0x4D42;
+    BMPHeader.bitmap_offset = sizeof(BMPHeader);
+
+    BMPHeader.size = 40;
+    BMPHeader.width = 512;
+    BMPHeader.height = 512;
+    BMPHeader.horz_resolution = 0x2E23;
+    BMPHeader.vert_resolution = 0x2E23;
+    BMPHeader.planes = 1;
+    BMPHeader.bits_per_pixel = 32;
+    BMPHeader.size_of_bitmap = PixelArraySize;
+    BMPHeader.file_size = BMPHeader.bitmap_offset + BMPHeader.size_of_bitmap;
+
+    u8 *FileData = PushArray(&Renderer->frame_arena, BMPHeader.file_size, u8);
+    u8 *BMPHeaderData = (u8 *)&BMPHeader;
+    u8 *FileDataPtr = FileData;
+    for (ums Index = 0; Index < BMPHeader.bitmap_offset; ++Index)
     {
-      u32 *Dest = (u32 *)OurBitmap;
-      for (ums Col = 0; Col < 512; ++Col)
+      *FileDataPtr++ = *BMPHeaderData++;
+    }
+
+    FileDataPtr += 512*512*4;
+    u8 *StbBitmap = TempBitmap;
+    // u8 *OurBitmap = BMP.pixels + (512 - 1)*(4*512);
+    for (ums Row = 0; Row < BMPHeader.height; ++Row)
+    {
+      u32 *Dest = (u32 *)FileDataPtr;
+      for (ums Col = 0; Col < BMPHeader.width; ++Col)
       {
         u8 MonoPixel = *StbBitmap++;
         *Dest++ = ((MonoPixel << 24) |
@@ -178,8 +206,13 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
                   (MonoPixel << 0));
       }
 
-      OurBitmap -= 4*512;
+      FileDataPtr -= 4*512;
     }
+
+    // Write out BMP to file
+    b32 BMPWritten = Memory->DEBUG_write_entire_file(Thread, "fontatlas.bmp", FileData, BMPHeader.file_size);
+    if (BMPWritten) exit(0);
+
     // g_FontBitmap.pixels = Temp
     glGenTextures(1, &Renderer->font_texture);
     glActiveTexture(GL_TEXTURE1);
@@ -187,7 +220,7 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, renderer
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512,512, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, BMP.pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512,512, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, (FileData + BMPHeader.bitmap_offset));
     // glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, TempBitmap);
     int x = glGetError();
 
@@ -620,7 +653,7 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   InitRenderer(&Thread, &AppMemory, &Renderer);
 
   // Init OpenGL
-  win32_InitOpengl(Window, &Thread, &Renderer);
+  win32_InitOpengl(Window, &Thread, &AppMemory, &Renderer);
 
   engine_input Input[2] = {};
   engine_input *NewInput = &Input[0];
