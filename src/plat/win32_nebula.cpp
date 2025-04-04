@@ -149,8 +149,8 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->tex_atlas.width, Renderer->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->tex_atlas.pixels);
 
   // Create Font Bitmap
-  b32 BakedBitmapsExist = false;
-  // TODO: Check to see if the baked bitmaps exist to early out.
+  debug_file_result FontAtlas = Memory->DEBUG_read_entire_file(Thread, "fontatlas.bmp");
+  b32 BakedBitmapsExist = FontAtlas.contents_size > 0;
   if (!BakedBitmapsExist)
   {
     // TODO: Make ability to create scratch memory!!
@@ -161,11 +161,6 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
     // TODO: See if I can get the mapping of the chars out of this bitmap based on the other
     // function from the api?
     int test = stbtt_BakeFontBitmap(TFFBuffer, 0, 32.0f, TempBitmap, 512, 512, 32, 96, CharData);
-    // loaded_bmp BMP = {0};
-    // BMP.channels = 1;
-    // BMP.width = 512;
-    // BMP.height = 512;
-    // BMP.pixels = PushArray(&Renderer->frame_arena, PixelArraySize, u8);
     u32 PixelArraySize = 512*512*4;
 
     bmp_header BMPHeader = {0};
@@ -193,7 +188,6 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
 
     FileDataPtr += 512*512*4;
     u8 *StbBitmap = TempBitmap;
-    // u8 *OurBitmap = BMP.pixels + (512 - 1)*(4*512);
     for (ums Row = 0; Row < BMPHeader.height; ++Row)
     {
       u32 *Dest = (u32 *)FileDataPtr;
@@ -211,21 +205,22 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
 
     // Write out BMP to file
     b32 BMPWritten = Memory->DEBUG_write_entire_file(Thread, "fontatlas.bmp", FileData, BMPHeader.file_size);
-    if (BMPWritten) exit(0);
-
-    // g_FontBitmap.pixels = Temp
-    glGenTextures(1, &Renderer->font_texture);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, Renderer->font_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512,512, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, (FileData + BMPHeader.bitmap_offset));
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, TempBitmap);
-    int x = glGetError();
-
-    // glBindTexture(GL_TEXTURE_2D, 0);
+    if (!BMPWritten)
+    {
+      exit(1);
+    }
   }
+
+  loaded_bmp Fonts = DEBUG_load_bmp(Thread, Memory->DEBUG_read_entire_file, "fontatlas.bmp");
+  glGenTextures(1, &Renderer->font_texture);
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, Renderer->font_texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512,512, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Fonts.pixels);
+  // glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, TempBitmap);
+  int x = glGetError();
 
   // glBindTexture(GL_TEXTURE_2D, Renderer->texture_atlas);
   glUseProgram(g_ShaderProgram);
