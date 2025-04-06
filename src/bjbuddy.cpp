@@ -409,6 +409,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   // RENDER
 
   mat4 CenterTranslate = Mat4Translate((f32)Renderer->width*0.5f, (f32)Renderer->height*0.5f, 0.0f);
+#if 0
   vertex_data Vertices[] =
   {
     // pos                                                                             color               tex-coords
@@ -440,8 +441,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   memcpy(Unit->vertices, Vertices, VertexCount*sizeof(vertex_data));
   Renderer->head = Unit;
   ++Renderer->unit_count;
-
-#if 0
+#else
   {
     hand Hand = GameState->dealer;
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
