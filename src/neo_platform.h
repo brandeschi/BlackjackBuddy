@@ -66,9 +66,6 @@ struct app_memory
   u64 flex_storage_size;
   void *flex_memory;
 
-  u64 frame_storage_size;
-  void *frame_memory;
-
   debug_free_file *DEBUG_free_file;
   debug_read_entire_file *DEBUG_read_entire_file;
   debug_write_entire_file *DEBUG_write_entire_file;

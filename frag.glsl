@@ -9,6 +9,7 @@ out vec4 FragColor;
 
 void main()
 {
-   FragColor = texture(CardTex, TexCoord) * vec4(OutColor, 1.0);
+   // FragColor = texture(CardTex, TexCoord) * vec4(OutColor, 1.0);
+   FragColor = texture(FontTex, TexCoord) * vec4(OutColor, 1.0);
 }
 

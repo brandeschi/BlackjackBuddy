@@ -3,10 +3,6 @@
 #include "../core.unity.h"
 #include "win32_nebula.h"
 
-#define STB_TRUETYPE_IMPLEMENTATION
-#include "../../vendor/stb_truetype.h"
-
-
 // Globals
 global b32 g_Running = false;
 global win32_bitmap_buffer g_BitmapBuffer;
@@ -220,44 +216,16 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512,512, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Fonts.pixels);
   // glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, TempBitmap);
   int x = glGetError();
-#else
-  // Create all bitmap structs for character glyphs
-  debug_file_result TTFontFile = Memory->DEBUG_read_entire_file(Thread, "C:/Users/brandeschi/AppData/Local/Microsoft/Windows/Fonts/Code New Roman.otf");
-
-  stbtt_fontinfo FontInfo;
-  stbtt_InitFont(&FontInfo, (u8 *)TTFontFile.contents, stbtt_GetFontOffsetForIndex((u8 *)TTFontFile.contents, 0));
-
-  loaded_bmp TestBmp = {0};
-  TestBmp.channels = 4;
-  s32 Width, Height;
-  u8 *StbBitmap = stbtt_GetCodepointBitmap(&FontInfo, 0, stbtt_ScaleForPixelHeight(&FontInfo, 64.0f),
-                                           'A', &Width, &Height, 0, 0);
-
-  TestBmp.width = (u32)Width;
-  TestBmp.height = (u32)Height;
-  // TODO: Remove this and put these in perm memory
-  TestBmp.pixels = (u8 *)malloc(4*TestBmp.width*TestBmp.height);
-
-  u8 *Src = StbBitmap;
-  u8 *EndOfBmp = TestBmp.pixels + (4*TestBmp.width*(TestBmp.height - 1));
-  for (ums Row = 0; Row < TestBmp.height; ++Row)
-  {
-    u32 *Dest = (u32 *)EndOfBmp;
-    for (ums Col = 0; Col < TestBmp.width; ++Col)
-    {
-      u8 MonoPixel = *Src++;
-      *Dest++ = ((MonoPixel << 24) |
-                (MonoPixel <<  16) |
-                (MonoPixel <<   8) |
-                (MonoPixel <<   0));
-    }
-
-    EndOfBmp -= 4*TestBmp.width;
-  }
-
-  stbtt_FreeBitmap(StbBitmap, 0);
-  Memory->DEBUG_free_file(Thread, TTFontFile.contents);
 #endif
+
+  loaded_bmp LetterA = Renderer->font_glyphs[0];
+  glGenTextures(1, &Renderer->font_texture);
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, Renderer->font_texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, LetterA.width,LetterA.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, LetterA.pixels);
 
   glUseProgram(g_ShaderProgram);
   glUniform1i(glGetUniformLocation(g_ShaderProgram, "CardTex"), 0);

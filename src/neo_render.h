@@ -29,6 +29,8 @@ struct renderer
   u32 width, height;
 
   loaded_bmp tex_atlas;
+  loaded_bmp font_glyphs[50];
+
   // TODO: Likely should move this out of the renderer.
   f32 card_width;
   f32 card_height;

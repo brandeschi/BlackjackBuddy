@@ -2,6 +2,9 @@
 
 #include "core.unity.h"
 
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "../../vendor/stb_truetype.h"
+
 const global u32 MAX_UNITS = 128;
 
 internal void SetCardTexCoords(loaded_bmp TexAtlas, vertex_data *Vertices, v2 CardIndex)
@@ -105,6 +108,51 @@ internal void InitRenderer(thread_context *Thread, app_memory *Memory, renderer 
   Renderer->card_width = (f32)Renderer->tex_atlas.width / 13.0f * 0.21f;
   Renderer->card_height = (f32)Renderer->tex_atlas.height / 5.0f * 0.21f;
   Renderer->max_units = MAX_UNITS;
+
+  // Create all bitmap structs for character glyphs
+  debug_file_result TTFontFile = Memory->DEBUG_read_entire_file(Thread, "C:/Users/brandeschi/AppData/Local/Microsoft/Windows/Fonts/Code New Roman.otf");
+
+  stbtt_fontinfo FontInfo;
+  stbtt_InitFont(&FontInfo, (u8 *)TTFontFile.contents, stbtt_GetFontOffsetForIndex((u8 *)TTFontFile.contents, 0));
+
+  // Make BMP for all letters
+  for (char Current = 'A'; Current <= 'Z'; ++Current)
+  {
+    loaded_bmp GlyphBitmap = {0};
+    GlyphBitmap.channels = 4;
+    s32 Width, Height;
+    u8 *StbBitmap = stbtt_GetCodepointBitmap(&FontInfo, 0, stbtt_ScaleForPixelHeight(&FontInfo, 64.0f),
+                                             Current, &Width, &Height, 0, 0);
+
+    GlyphBitmap.width = (u32)Width;
+    GlyphBitmap.height = (u32)Height;
+    // TODO: Better memory place for this.
+    GlyphBitmap.pixels = (u8 *)malloc(4*GlyphBitmap.width*GlyphBitmap.height);
+
+    u8 *Src = StbBitmap;
+    u8 *EndOfBmp = GlyphBitmap.pixels + (4*GlyphBitmap.width*(GlyphBitmap.height - 1));
+    for (ums Row = 0; Row < GlyphBitmap.height; ++Row)
+    {
+      u32 *Dest = (u32 *)EndOfBmp;
+      for (ums Col = 0; Col < GlyphBitmap.width; ++Col)
+      {
+        u8 MonoPixel = *Src++;
+        *Dest++ = (
+          (MonoPixel << 24) |
+          (MonoPixel << 16) |
+          (MonoPixel <<  8) |
+          (MonoPixel <<  0));
+      }
+
+      EndOfBmp -= 4*GlyphBitmap.width;
+    }
+
+
+    Renderer->font_glyphs[Current - 65] = GlyphBitmap;
+    stbtt_FreeBitmap(StbBitmap, 0);
+  }
+
+  Memory->DEBUG_free_file(Thread, TTFontFile.contents);
 }
 
 internal void ResetRenderer(renderer *Renderer)

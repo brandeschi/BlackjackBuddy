@@ -409,7 +409,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   // RENDER
 
   mat4 CenterTranslate = Mat4Translate((f32)Renderer->width*0.5f, (f32)Renderer->height*0.5f, 0.0f);
-#if 0
+#if 1
   vertex_data Vertices[] =
   {
     // pos                                                                             color               tex-coords
