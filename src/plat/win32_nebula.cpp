@@ -103,6 +103,10 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   glUniform1i = (gluniform1i *)wglGetProcAddress("glUniform1i");
   glUniformMatrix4fv = (gluniformmatrix4fv *)wglGetProcAddress("glUniformMatrix4fv");
 
+  // TODO: Look into how to remove fringe
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
   // Create Shader Program
   g_ShaderProgram = CreateOpenGLShaderProgram(Thread, "..\\vert.glsl", "..\\frag.glsl");
 
@@ -122,25 +126,28 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   // Tell opengl how to interpret our vertex data by setting pointers to the attribs
   // pos attrib
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9*sizeof(f32), (void *)0);
 
   // color attrib
   glEnableVertexAttribArray(1);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(3*sizeof(f32)));
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9*sizeof(f32), (void *)(3*sizeof(f32)));
   // tex coord attrib
   glEnableVertexAttribArray(2);
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8*sizeof(f32), (void *)(6*sizeof(f32)));
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 9*sizeof(f32), (void *)(6*sizeof(f32)));
+  // tex_id attrib
+  glEnableVertexAttribArray(3);
+  glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 9*sizeof(f32), (void *)(8*sizeof(f32)));
 
-  glGenTextures(1, &Renderer->texture_atlas);
+  glGenTextures(1, &Renderer->card_texture);
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, Renderer->texture_atlas);
+  glBindTexture(GL_TEXTURE_2D, Renderer->card_texture);
 
   // Setting Texture wrapping method
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
   // Setting Texture filtering method
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->tex_atlas.width, Renderer->tex_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->tex_atlas.pixels);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->card_atlas.width, Renderer->card_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->card_atlas.pixels);
 
 #if 0
   // Create Font Bitmap
@@ -218,14 +225,22 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   int x = glGetError();
 #endif
 
-  loaded_bmp LetterA = Renderer->font_glyphs[0];
+  u8 Pixels[512*512];
+  s32 Width = 512;
+  s32 Height = 512;
+
+  debug_file_result TTFontFile = Memory->DEBUG_read_entire_file(Thread, "C:/Users/brandeschi/AppData/Local/Microsoft/Windows/Fonts/Code New Roman.otf");
+  stbtt_BakeFontBitmap((u8 *)TTFontFile.contents, 0, 32.0f, Pixels, Width, Height, '!', 95, Renderer->chars);
+  Memory->DEBUG_free_file(Thread, TTFontFile.contents);
+
   glGenTextures(1, &Renderer->font_texture);
   glActiveTexture(GL_TEXTURE1);
   glBindTexture(GL_TEXTURE_2D, Renderer->font_texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, LetterA.width,LetterA.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, LetterA.pixels);
+
+  // @START
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, Width, Height, 0, GL_RED, GL_UNSIGNED_BYTE, Pixels);
+  // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Pixels);
 
   glUseProgram(g_ShaderProgram);
   glUniform1i(glGetUniformLocation(g_ShaderProgram, "CardTex"), 0);
@@ -389,7 +404,7 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
 #endif
 
     // TODO: Expand how we catch OGL errors
-    // NeoAssert(glGetError() == GL_NO_ERROR);
+    NeoAssert(glGetError() == GL_NO_ERROR);
 
     // TODO: Look up what swapbuffers should be used
     SwapBuffers(DeviceContext);

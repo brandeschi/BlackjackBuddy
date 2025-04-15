@@ -7,6 +7,10 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "../../vendor/stb_truetype.h"
+
+
 // TODO: Move these includes into a diff file that imports
 // them based on platform.
 //

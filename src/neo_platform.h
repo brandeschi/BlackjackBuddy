@@ -96,6 +96,20 @@ static void *PushSize_(memory_arena *Arena, ums Size)
   return Result;
 }
 
+// Strings
+struct string
+{
+  u8 *data;
+  u64 count;
+};
+
+#define Str(CStr) _StrFromCStr((u8 *)(CStr), sizeof((CStr)) - 1)
+internal string _StrFromCStr(u8 *StringData, u64 Count)
+{
+  string Result = { StringData, Count };
+  return Result;
+}
+
 // NOTE: CPP is not obligated to pack structs the way we want so sometimes this is necessary
 #pragma pack(push, 1) // Push how closely to pack bytes
 struct bmp_header

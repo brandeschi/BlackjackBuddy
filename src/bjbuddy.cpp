@@ -409,7 +409,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   // RENDER
 
   mat4 CenterTranslate = Mat4Translate((f32)Renderer->width*0.5f, (f32)Renderer->height*0.5f, 0.0f);
-#if 1
+#if 0
   vertex_data Vertices[] =
   {
     // pos                                                                             color               tex-coords
@@ -449,11 +449,11 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 100.0f, 1.0f)*CenterTranslate;
       if (Index == 0 && (GameState->game_phase == START || GameState->game_phase == PLAYER))
       {
-        PushQuad(Renderer, { 2.0f, 0.0f }, Transform);
+        PushCard(Renderer, { 2.0f, 0.0f }, Transform);
       }
       else
       {
-        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
+        PushCard(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
       }
     }
   }
@@ -466,14 +466,17 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         mat4 Transform = Mat4Translate(((Index - 1)*Renderer->card_width*0.5f) + Renderer->card_height, Index*Renderer->card_height*0.5f - 100.0f, 1.0f)*
                          CenterTranslate*
                          Mat4RotateZ(PI32 / 2.0f);
-        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
+        PushCard(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
       }
       else
       {
         mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 100.0f, 1.0f)*CenterTranslate;
-        PushQuad(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
+        PushCard(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
       }
     }
+  }
+  {
+    PushText(Renderer, Str("Blackjack!"));
   }
 #endif
 }
