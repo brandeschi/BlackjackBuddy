@@ -89,36 +89,21 @@ internal void PushCard(renderer *Renderer, v2 CardCoords = {0}, mat4 Model = Mat
 
 internal void PushText(renderer *Renderer, string Text, mat4 Model = Mat4Iden())
 {
-  f32 ScreenX, ScreenY;
+  f32 ScreenX = -1.0f, ScreenY = 30.0f;
   for (s32 Index = 0; Index < Text.count; ++Index)
   {
     s32 CurrentCharIdx = Text.data[Index] - 33;
     stbtt_aligned_quad Quad;
     stbtt_GetBakedQuad(Renderer->chars, 512, 512, CurrentCharIdx, &ScreenX, &ScreenY, &Quad, 1);
+    stbtt_bakedchar CurrentBakedChar = Renderer->chars[CurrentCharIdx];
 
-    // vertex_data VData[] =
-    // {
-    //   // pos                                color               tex-coords
-    //   { {(f32)Quad.x0, (f32)Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s0, (f32)Quad.t0}, 1.0f }, // Bottom-Left
-    //   { {(f32)Quad.x1, (f32)Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s1, (f32)Quad.t0}, 1.0f }, // Bottom-Right
-    //   { {(f32)Quad.x1, (f32)Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s1, (f32)Quad.t1}, 1.0f }, // Top-Right
-    //   { {(f32)Quad.x0, (f32)Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s0, (f32)Quad.t1}, 1.0f }, // Top-Left
-    // };
-    // vertex_data VData[] =
-    // {
-    //   // pos                                color               tex-coords
-    //   { {(f32)Quad.x0, (f32)Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s0, (f32)Quad.t0}, 1.0f }, // Bottom-Left
-    //   { {(f32)Quad.x1, (f32)Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s1, (f32)Quad.t0}, 1.0f }, // Bottom-Right
-    //   { {(f32)Quad.x1, (f32)Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s1, (f32)Quad.t1}, 1.0f }, // Top-Right
-    //   { {(f32)Quad.x0, (f32)Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s0, (f32)Quad.t1}, 1.0f }, // Top-Left
-    // };
     vertex_data VData[] =
     {
       // pos                                color               tex-coords
-      { {(f32)Quad.x0, 340.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s0, (f32)Quad.t1}, 1.0f }, // Bottom-Left
-      { {(f32)Quad.x1, 340.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s1, (f32)Quad.t1}, 1.0f }, // Bottom-Right
-      { {(f32)Quad.x1, 360.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s1, (f32)Quad.t0}, 1.0f }, // Top-Right
-      { {(f32)Quad.x0, 360.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s0, (f32)Quad.t0}, 1.0f }, // Top-Left
+      { {(f32)Quad.x0, (f32)Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s0, (f32)Quad.t1}, 1.0f }, // Top-Left
+      { {(f32)Quad.x1, (f32)Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s1, (f32)Quad.t1}, 1.0f }, // Top-Right
+      { {(f32)Quad.x1, (f32)Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s1, (f32)Quad.t0}, 1.0f }, // Bottom-Right
+      { {(f32)Quad.x0, (f32)Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s0, (f32)Quad.t0}, 1.0f }, // Bottom-Left
     };
     u32 EboIndexPattern[] =
     {

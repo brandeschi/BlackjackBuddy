@@ -476,6 +476,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     }
   }
   {
+    // @Start
+    // TODO: Gain knowledge on centering quads to baseline
     PushText(Renderer, Str("Blackjack!"));
   }
 #endif

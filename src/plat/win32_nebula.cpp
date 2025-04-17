@@ -149,82 +149,7 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Renderer->card_atlas.width, Renderer->card_atlas.height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Renderer->card_atlas.pixels);
 
-#if 0
-  // Create Font Bitmap
-  debug_file_result FontAtlas = Memory->DEBUG_read_entire_file(Thread, "fontatlas.bmp");
-  b32 BakedBitmapsExist = FontAtlas.contents_size > 0;
-  if (!BakedBitmapsExist)
-  {
-    // TODO: Make ability to create scratch memory!!
-    u8 TFFBuffer[KB(500)];
-    u8 TempBitmap[512*512];
-    stbtt_bakedchar CharData[96]; // ASCII 32..126 is 95 glyphs
-    fread(TFFBuffer, 1, KB(500), fopen("c:/windows/fonts/consola.ttf", "rb"));
-    // TODO: See if I can get the mapping of the chars out of this bitmap based on the other
-    // function from the api?
-    int test = stbtt_BakeFontBitmap(TFFBuffer, 0, 32.0f, TempBitmap, 512, 512, 32, 96, CharData);
-    u32 PixelArraySize = 512*512*4;
-
-    bmp_header BMPHeader = {0};
-    // file_type is always 'BM' and is represented below
-    BMPHeader.file_type = 0x4D42;
-    BMPHeader.bitmap_offset = sizeof(BMPHeader);
-
-    BMPHeader.size = 40;
-    BMPHeader.width = 512;
-    BMPHeader.height = 512;
-    BMPHeader.horz_resolution = 0x2E23;
-    BMPHeader.vert_resolution = 0x2E23;
-    BMPHeader.planes = 1;
-    BMPHeader.bits_per_pixel = 32;
-    BMPHeader.size_of_bitmap = PixelArraySize;
-    BMPHeader.file_size = BMPHeader.bitmap_offset + BMPHeader.size_of_bitmap;
-
-    u8 *FileData = PushArray(&Renderer->frame_arena, BMPHeader.file_size, u8);
-    u8 *BMPHeaderData = (u8 *)&BMPHeader;
-    u8 *FileDataPtr = FileData;
-    for (ums Index = 0; Index < BMPHeader.bitmap_offset; ++Index)
-    {
-      *FileDataPtr++ = *BMPHeaderData++;
-    }
-
-    FileDataPtr += 512*512*4;
-    u8 *StbBitmap = TempBitmap;
-    for (ums Row = 0; Row < BMPHeader.height; ++Row)
-    {
-      u32 *Dest = (u32 *)FileDataPtr;
-      for (ums Col = 0; Col < BMPHeader.width; ++Col)
-      {
-        u8 MonoPixel = *StbBitmap++;
-        *Dest++ = ((MonoPixel << 24) |
-                  (MonoPixel << 16) |
-                  (MonoPixel << 8) |
-                  (MonoPixel << 0));
-      }
-
-      FileDataPtr -= 4*512;
-    }
-
-    // Write out BMP to file
-    b32 BMPWritten = Memory->DEBUG_write_entire_file(Thread, "fontatlas.bmp", FileData, BMPHeader.file_size);
-    if (!BMPWritten)
-    {
-      exit(1);
-    }
-  }
-
-  loaded_bmp Fonts = DEBUG_load_bmp(Thread, Memory->DEBUG_read_entire_file, "fontatlas.bmp");
-  glGenTextures(1, &Renderer->font_texture);
-  glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D, Renderer->font_texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 512,512, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Fonts.pixels);
-  // glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, TempBitmap);
-  int x = glGetError();
-#endif
-
+  // Load font atlas
   u8 Pixels[512*512];
   s32 Width = 512;
   s32 Height = 512;
@@ -233,14 +158,34 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   stbtt_BakeFontBitmap((u8 *)TTFontFile.contents, 0, 32.0f, Pixels, Width, Height, '!', 95, Renderer->chars);
   Memory->DEBUG_free_file(Thread, TTFontFile.contents);
 
+  // NOTE: This expands out the single channel bitmap into one that
+  // is four channels. Additionally, I am certain the bitmap is created
+  // upside down but this is correct in the vertex_data for text.
+  u8 *FontTexture = (u8 *)malloc(Width*Height*4);
+  u8 *FTPtr = FontTexture;
+  u8 *StbBitmap = Pixels;
+  u32 Stride = 4*512;
+  for (s32 Row = 0; Row < Height; ++Row)
+  {
+    u32 *Dest = (u32 *)FTPtr;
+    for (s32 Col = 0; Col < Width; ++Col)
+    {
+      u8 MonoPixel = *StbBitmap++;
+      *Dest++ = ((MonoPixel << 24) |
+                 (MonoPixel << 16) |
+                 (MonoPixel << 8)  |
+                 (MonoPixel << 0));
+    }
+    FTPtr += Stride;
+  }
+
   glGenTextures(1, &Renderer->font_texture);
   glActiveTexture(GL_TEXTURE1);
   glBindTexture(GL_TEXTURE_2D, Renderer->font_texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-  // @START
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, Width, Height, 0, GL_RED, GL_UNSIGNED_BYTE, Pixels);
-  // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Pixels);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, FontTexture);
+  free(FontTexture);
 
   glUseProgram(g_ShaderProgram);
   glUniform1i(glGetUniformLocation(g_ShaderProgram, "CardTex"), 0);
