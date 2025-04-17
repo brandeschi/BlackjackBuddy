@@ -154,7 +154,7 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   s32 Width = 512;
   s32 Height = 512;
 
-  debug_file_result TTFontFile = Memory->DEBUG_read_entire_file(Thread, "C:/Users/brandeschi/AppData/Local/Microsoft/Windows/Fonts/Code New Roman.otf");
+  debug_file_result TTFontFile = Memory->DEBUG_read_entire_file(Thread, "test/Code New Roman.otf");
   stbtt_BakeFontBitmap((u8 *)TTFontFile.contents, 0, 32.0f, Pixels, Width, Height, '!', 95, Renderer->chars);
   Memory->DEBUG_free_file(Thread, TTFontFile.contents);
 
