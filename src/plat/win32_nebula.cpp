@@ -155,7 +155,7 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   s32 Height = 512;
 
   debug_file_result TTFontFile = Memory->DEBUG_read_entire_file(Thread, "test/Code New Roman.otf");
-  stbtt_BakeFontBitmap((u8 *)TTFontFile.contents, 0, 32.0f, Pixels, Width, Height, '!', 95, Renderer->chars);
+  stbtt_BakeFontBitmap((u8 *)TTFontFile.contents, 0, 64.0f, Pixels, Width, Height, '!', 95, Renderer->chars);
   Memory->DEBUG_free_file(Thread, TTFontFile.contents);
 
   // NOTE: This expands out the single channel bitmap into one that
@@ -183,6 +183,7 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   glActiveTexture(GL_TEXTURE1);
   glBindTexture(GL_TEXTURE_2D, Renderer->font_texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, FontTexture);
   free(FontTexture);

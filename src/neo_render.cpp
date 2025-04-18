@@ -87,9 +87,9 @@ internal void PushCard(renderer *Renderer, v2 CardCoords = {0}, mat4 Model = Mat
   PushQuad(Renderer, Vertices, EboIndexPattern, Model);
 }
 
-internal void PushText(renderer *Renderer, string Text, mat4 Model = Mat4Iden())
+internal void PushText(renderer *Renderer, string Text, mat4 Model = Mat4Scale(0.5f, 0.5f, 1.0f))
 {
-  f32 ScreenX = -1.0f, ScreenY = 30.0f;
+  f32 ScreenX = -1.0f, ScreenY = 60.0f;
   for (s32 Index = 0; Index < Text.count; ++Index)
   {
     s32 CurrentCharIdx = Text.data[Index] - 33;
