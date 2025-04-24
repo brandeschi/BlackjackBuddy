@@ -97,14 +97,34 @@ internal void PushText(renderer *Renderer, string Text, mat4 Model = Mat4Scale(0
     stbtt_GetBakedQuad(Renderer->chars, 512, 512, CurrentCharIdx, &ScreenX, &ScreenY, &Quad, 1);
     stbtt_bakedchar CurrentBakedChar = Renderer->chars[CurrentCharIdx];
 
+    f32 GlyphHeight = Quad.y1 - Quad.y0;
+    f32 YAdjust = CurrentBakedChar.yoff + (GlyphHeight);
+    f32 GlyphY0 = Quad.y0 - YAdjust;
+    f32 GlyphY1 = Quad.y1 - YAdjust;
+
+    // vertex_data VData[] =
+    // {
+    //   // pos                                color               tex-coords
+    //   { {Quad.x0, GlyphY0, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s0, Quad.t1}, 1.0f }, // Top-Left
+    //   { {Quad.x1, GlyphY0, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s1, Quad.t1}, 1.0f }, // Top-Right
+    //   { {Quad.x1, GlyphY1, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s1, Quad.t0}, 1.0f }, // Bottom-Right
+    //   { {Quad.x0, GlyphY1, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s0, Quad.t0}, 1.0f }, // Bottom-Left
+    // };
     vertex_data VData[] =
     {
       // pos                                color               tex-coords
-      { {(f32)Quad.x0, (f32)Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s0, (f32)Quad.t1}, 1.0f }, // Top-Left
-      { {(f32)Quad.x1, (f32)Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s1, (f32)Quad.t1}, 1.0f }, // Top-Right
-      { {(f32)Quad.x1, (f32)Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s1, (f32)Quad.t0}, 1.0f }, // Bottom-Right
-      { {(f32)Quad.x0, (f32)Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {(f32)Quad.s0, (f32)Quad.t0}, 1.0f }, // Bottom-Left
+      { {Quad.x0, Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s0, Quad.t1}, 1.0f }, // Top-Left
+      { {Quad.x1, Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s1, Quad.t1}, 1.0f }, // Top-Right
+      { {Quad.x1, Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s1, Quad.t0}, 1.0f }, // Bottom-Right
+      { {Quad.x0, Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s0, Quad.t0}, 1.0f }, // Bottom-Left
     };
+    // if (Text.data[Index] == 'a')
+    // {
+      VData[0].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
+      VData[1].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
+      VData[2].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
+      VData[3].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
+    // }
     u32 EboIndexPattern[] =
     {
       0, 1, 3,

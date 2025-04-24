@@ -319,20 +319,33 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
     // DRAW
     render_unit *Unit = Renderer->head;
     // TODO: Use this path!
-#if 0
-    for (u32 UnitCount = 0; UnitCount < Renderer->unit_count; ++UnitCount)
+#if 1
+    render_unit *PrevUnit = Renderer->head;
+    for (u32 UnitCount = 0; UnitCount < Renderer->unit_count;)
     {
-      s32 DataSize = Unit->vertex_count*sizeof(vertex_data);
-      s32 DataOffset = (s32)UnitCount*DataSize;
-      s32 IndexSize = Unit->index_count*sizeof(u32);
-      s32 IndexOffset = (s32)UnitCount*IndexSize;
-      glBufferSubData(GL_ARRAY_BUFFER, DataOffset, DataSize, Unit->vertices);
-      glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, IndexOffset, IndexSize, Unit->indices);
-      Unit = Unit->next;
+      u32 UnitsForDrawCall = 0;
+      do
+      {
+        s32 DataSize = (s32)Unit->vertex_count*sizeof(vertex_data);
+        s32 DataOffset = UnitsForDrawCall*DataSize;
+        s32 IndexSize = (s32)Unit->index_count*sizeof(u32);
+        s32 IndexOffset = UnitsForDrawCall*IndexSize;
+        glBufferSubData(GL_ARRAY_BUFFER, DataOffset, DataSize, Unit->vertices);
+        glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, IndexOffset, IndexSize, Unit->indices);
+        ++UnitsForDrawCall;
+        if (Unit != PrevUnit)
+        {
+          PrevUnit = PrevUnit->next;
+        }
+        Unit = Unit->next;
+      }
+      while (Unit != 0 && Unit->vertices[0].tex_id == PrevUnit->vertices[0].tex_id);
+      glDrawElements(GL_TRIANGLES, UnitsForDrawCall*6, GL_UNSIGNED_INT, 0);
+      UnitCount += UnitsForDrawCall;
     }
 
     // TODO: Somehow encode the 6 which represents the number of indices per quad.
-    glDrawElements(GL_TRIANGLES, Renderer->unit_count*6, GL_UNSIGNED_INT, 0);
+    // glDrawElements(GL_TRIANGLES, Renderer->unit_count*6, GL_UNSIGNED_INT, 0);
 #else
     while (Unit != 0)
     {
