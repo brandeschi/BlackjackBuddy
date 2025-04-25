@@ -131,17 +131,25 @@ struct hand
   u32 wager;
 };
 
+struct player
+{
+  u32 bankroll;
+  u32 hand_count;
+  hand *hands;
+};
+
 // TODO: Optimize size of game structs.
 struct app_state
 {
   memory_arena core_arena;
   deck base_deck;
   hand dealer;
-  hand player;
+  player ap;
 
   u32 player_money;
   phase game_phase;
 
+  hand *current_hand;
 };
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input,
