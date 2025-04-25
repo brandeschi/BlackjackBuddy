@@ -8,29 +8,35 @@ const global u32 MAX_UNITS = KB(5);
 // TODO: This makes me think I should catergorize each unit so that way at the end,
 // I can stuff all the data for units of the same kind into their respective glBufferSubData
 // calls and then execute the draw call for each type of unit.
-internal void PushQuad(renderer *Renderer, vertex_data *Vertices, u32 *EboIndexPattern, mat4 Model)
+internal void PushQuad(renderer *Renderer, vertex_data *Vertices, mat4 Model)
 {
   memory_arena *FrameArena = &Renderer->frame_arena;
   u32 UnitCount = Renderer->unit_count;
 
   render_unit *Unit = PushStruct(FrameArena, render_unit);
 
+  u32 EboIndexPattern[] =
+  {
+    0 + (4*UnitCount), 1 + (4*UnitCount), 3 + (4*UnitCount),
+    1 + (4*UnitCount), 2 + (4*UnitCount), 3 + (4*UnitCount),
+  };
+
   u32 EboIndexCount = 6;
   Unit->indices = PushArray(FrameArena, EboIndexCount, u32);
   Unit->index_count = EboIndexCount;
-  // TODO: Use this path eventually!
-#if 0
-  for (ums Index = 0; Index < EboIndexCount; ++Index)
-  {
-    Indices[Index] = EboIndexPattern[Index] + (4*UnitCount);
-  }
-#else
   memcpy(Unit->indices, EboIndexPattern, EboIndexCount*sizeof(u32));
-#endif
 
   u32 VertexCount = 4;
   Unit->vertices = PushArray(FrameArena, VertexCount, vertex_data);
   Unit->vertex_count = VertexCount;
+
+  // Apply Model Transform
+  for (s32 Index = 0; Index < (s32)VertexCount; ++Index)
+  {
+    v4 Current = V4FromV3(Vertices[Index].position);
+    Vertices[Index].position = V3FromV4(Model*Current);
+  }
+
   memcpy(Unit->vertices, Vertices, VertexCount*sizeof(vertex_data));
 
   Unit->model = Model;
@@ -68,12 +74,6 @@ internal void PushCard(renderer *Renderer, v2 CardCoords = {0}, mat4 Model = Mat
     { {0.0f - (CardWidth), 0.0f + (CardHeight), 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
   };
 
-  u32 EboIndexPattern[] =
-  {
-    0, 1, 3,
-    1, 2, 3,
-  };
-
   CardWidth /= 0.21f;
   CardHeight /= 0.21f;
   loaded_bmp CardAtlas = Renderer->card_atlas;
@@ -84,7 +84,7 @@ internal void PushCard(renderer *Renderer, v2 CardCoords = {0}, mat4 Model = Mat
   Vertices[2].tex_coords = { Max.x, Max.y };
   Vertices[3].tex_coords = { Min.x, Max.y };
 
-  PushQuad(Renderer, Vertices, EboIndexPattern, Model);
+  PushQuad(Renderer, Vertices, Model);
 }
 
 internal void PushText(renderer *Renderer, string Text, mat4 Model = Mat4Scale(0.5f, 0.5f, 1.0f))
@@ -104,7 +104,7 @@ internal void PushText(renderer *Renderer, string Text, mat4 Model = Mat4Scale(0
 
     // vertex_data VData[] =
     // {
-    //   // pos                                color               tex-coords
+    //   // pos                      color               tex-coords
     //   { {Quad.x0, GlyphY0, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s0, Quad.t1}, 1.0f }, // Top-Left
     //   { {Quad.x1, GlyphY0, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s1, Quad.t1}, 1.0f }, // Top-Right
     //   { {Quad.x1, GlyphY1, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s1, Quad.t0}, 1.0f }, // Bottom-Right
@@ -112,26 +112,21 @@ internal void PushText(renderer *Renderer, string Text, mat4 Model = Mat4Scale(0
     // };
     vertex_data VData[] =
     {
-      // pos                                color               tex-coords
+      // pos                      color               tex-coords
       { {Quad.x0, Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s0, Quad.t1}, 1.0f }, // Top-Left
       { {Quad.x1, Quad.y0, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s1, Quad.t1}, 1.0f }, // Top-Right
       { {Quad.x1, Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s1, Quad.t0}, 1.0f }, // Bottom-Right
       { {Quad.x0, Quad.y1, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s0, Quad.t0}, 1.0f }, // Bottom-Left
     };
-    // if (Text.data[Index] == 'a')
-    // {
-      VData[0].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
-      VData[1].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
-      VData[2].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
-      VData[3].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
-    // }
-    u32 EboIndexPattern[] =
-    {
-      0, 1, 3,
-      1, 2, 3,
-    };
+    // // if (Text.data[Index] == 'a')
+    // // {
+    //   VData[0].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
+    //   VData[1].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
+    //   VData[2].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
+    //   VData[3].position.y += (-1.0f)*CurrentBakedChar.yoff + (Quad.y1 - Quad.y0);
+    // // }
 
-    PushQuad(Renderer, VData, EboIndexPattern, Model);
+    PushQuad(Renderer, VData, Model);
   }
 }
 

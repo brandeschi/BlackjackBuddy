@@ -198,6 +198,16 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   mat4 Mvp = Projection*Mat4Iden()*Mat4Iden();
   Renderer->mvp = Mvp;
 
+  // NOTE: Since I want to batch the quads and keep things simple, I am going to set a
+  // default MVP since the transforms will be baked into the position data for each quad
+  //
+  // Does transformation in NDC.
+  // mat4 TrueMvp = Unit->model*Renderer->mvp;
+  //
+  // Does transformation in screenspace.
+  // NOTE: Since OGL is col-major, need to transpose here (GL_TRUE in the func below).
+  glUniformMatrix4fv(glGetUniformLocation(g_ShaderProgram, "u_MVP"), 1, GL_TRUE, (f32 *)Mvp.e);
+
   // NOTE: I might unbind the buffers at some point.
   //
   // glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -318,21 +328,18 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
 
     // DRAW
     render_unit *Unit = Renderer->head;
-    // TODO: Use this path!
-#if 1
     render_unit *PrevUnit = Renderer->head;
     for (u32 UnitCount = 0; UnitCount < Renderer->unit_count;)
     {
-      u32 UnitsForDrawCall = 0;
       do
       {
         s32 DataSize = (s32)Unit->vertex_count*sizeof(vertex_data);
-        s32 DataOffset = UnitsForDrawCall*DataSize;
+        s32 DataOffset = UnitCount*DataSize;
         s32 IndexSize = (s32)Unit->index_count*sizeof(u32);
-        s32 IndexOffset = UnitsForDrawCall*IndexSize;
+        s32 IndexOffset = UnitCount*IndexSize;
         glBufferSubData(GL_ARRAY_BUFFER, DataOffset, DataSize, Unit->vertices);
         glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, IndexOffset, IndexSize, Unit->indices);
-        ++UnitsForDrawCall;
+        ++UnitCount;
         if (Unit != PrevUnit)
         {
           PrevUnit = PrevUnit->next;
@@ -340,27 +347,9 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
         Unit = Unit->next;
       }
       while (Unit != 0 && Unit->vertices[0].tex_id == PrevUnit->vertices[0].tex_id);
-      glDrawElements(GL_TRIANGLES, UnitsForDrawCall*6, GL_UNSIGNED_INT, 0);
-      UnitCount += UnitsForDrawCall;
+      glDrawElements(GL_TRIANGLES, UnitCount*6, GL_UNSIGNED_INT, 0);
     }
 
-    // TODO: Somehow encode the 6 which represents the number of indices per quad.
-    // glDrawElements(GL_TRIANGLES, Renderer->unit_count*6, GL_UNSIGNED_INT, 0);
-#else
-    while (Unit != 0)
-    {
-      // NOTE: Do transformation in NDC.
-      // mat4 TrueMvp = Unit->model*Renderer->mvp;
-      // NOTE: Do transformation in screenspace.
-      mat4 TrueMvp = Renderer->mvp*Unit->model;
-      // NOTE: Since OGL is col-major, need to transpose here (GL_TRUE in the func below).
-      glUniformMatrix4fv(glGetUniformLocation(g_ShaderProgram, "u_MVP"), 1, GL_TRUE, (f32 *)TrueMvp.e);
-      glBufferSubData(GL_ARRAY_BUFFER, 0, Unit->vertex_count*sizeof(vertex_data), Unit->vertices);
-      glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, Unit->index_count*sizeof(u32), Unit->indices);
-      glDrawElements(GL_TRIANGLES, Unit->index_count, GL_UNSIGNED_INT, 0);
-      Unit = Unit->next;
-    }
-#endif
 
     // TODO: Expand how we catch OGL errors
     NeoAssert(glGetError() == GL_NO_ERROR);
