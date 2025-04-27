@@ -155,7 +155,7 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   s32 Height = 512;
 
   debug_file_result TTFontFile = Memory->DEBUG_read_entire_file(Thread, "test/Code New Roman.otf");
-  stbtt_BakeFontBitmap((u8 *)TTFontFile.contents, 0, 64.0f, Pixels, Width, Height, '!', 95, Renderer->chars);
+  stbtt_BakeFontBitmap((u8 *)TTFontFile.contents, 0, 64.0f, Pixels, Width, Height, 32, 96, Renderer->chars);
   Memory->DEBUG_free_file(Thread, TTFontFile.contents);
 
   // NOTE: This expands out the single channel bitmap into one that
@@ -549,14 +549,24 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   WinClass.hInstance = WinInstance;
   WinClass.lpszClassName = "MainWindowClass";
 
-  win32_ResizeDIBSection(&g_BitmapBuffer, 960, 540);
+  // NOTE: Only expecting to have one renderer. This could change in the future.
+  renderer Renderer = {0};
+  Renderer.width = 1600;
+  Renderer.height = 900;
+  win32_ResizeDIBSection(&g_BitmapBuffer, Renderer.width, Renderer.height);
 
   if (!RegisterClassA(&WinClass))
     return false;
 
+  RECT WindowRect = { 0, 0, (s32)Renderer.width, (s32)Renderer.height };
+  DWORD DwStyle = WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX | WS_VISIBLE;
+  AdjustWindowRectEx(&WindowRect, DwStyle, FALSE, 0);
+
   HWND Window = CreateWindowExA(0, WinClass.lpszClassName, "Blackjack Buddy",
-                                WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT,
-                                CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0,
+                                DwStyle, CW_USEDEFAULT,
+                                CW_USEDEFAULT,
+                                WindowRect.right - WindowRect.left,
+                                WindowRect.bottom - WindowRect.top, 0,
                                 0, WinInstance, 0);
   if(!Window)
     return false;
@@ -608,16 +618,12 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   // TODO: Figure out how to init each graphics API
   // in order to allow us to easily switch between
   // the different APIs.
-
-
-  // NOTE: Only expecting to have one renderer. This could change in the future.
-  renderer Renderer = {0};
   InitRenderer(&Thread, &AppMemory, &Renderer);
 
   // Init OpenGL
   win32_InitOpengl(Window, &Thread, &AppMemory, &Renderer);
 
-  engine_input Input[2] = {};
+  engine_input Input[2] = {0};
   engine_input *NewInput = &Input[0];
   engine_input *OldInput = &Input[1];
 

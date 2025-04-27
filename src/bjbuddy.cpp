@@ -458,7 +458,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     hand Hand = GameState->dealer;
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
     {
-      mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 100.0f, 1.0f)*CenterTranslate;
+      mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 200.0f, 1.0f)*CenterTranslate;
       if (Index == 0 && (GameState->game_phase == START || GameState->game_phase == PLAYER))
       {
         PushCard(Renderer, { 2.0f, 0.0f }, Transform);
@@ -478,23 +478,30 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       {
         if (Hand.cards[Index].is_dd)
         {
-          mat4 Transform = Mat4Translate(((Index - 1)*Renderer->card_width*0.5f) + Renderer->card_height, Index*Renderer->card_height*0.5f - 100.0f, 1.0f)*
+          mat4 Transform = Mat4Translate(((Index - 1)*Renderer->card_width*0.5f) + Renderer->card_height, Index*Renderer->card_height*0.5f - 200.0f, 1.0f)*
             CenterTranslate*
             Mat4RotateZ(PI32 / 2.0f);
           PushCard(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
         }
         else
         {
-          mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 100.0f, 1.0f)*CenterTranslate;
+          mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 200.0f, 1.0f)*CenterTranslate;
           PushCard(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
         }
       }
     }
   }
   {
-    // @Start
-    // TODO: Gain knowledge on centering quads to baseline
-    PushText(Renderer, Str("Blackjack!"));
+    mat4 TextTransform = Mat4Translate(5.0f, (f32)Renderer->height - 40.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f);
+    string Lines[] =
+    {
+        Str("Welcome to BlackjackBuddy!"),
+        Str("Jack Mitt loves penis."),
+        Str("This is the third line of text."),
+    };
+    PushLinesOfText(Renderer, Lines, ArrayCount(Lines), TextTransform);
+    // PushText(Renderer, Str("Blackjack!"), TextTransform);
+    // PushText(Renderer, Str("$100.00"), CenterTranslate*Mat4Translate(-100.0f, -(f32)Renderer->height*0.5f, 0.0f)*TextTransform);
   }
 #endif
 }

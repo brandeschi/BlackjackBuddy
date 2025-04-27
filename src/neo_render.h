@@ -32,11 +32,12 @@ struct renderer
 
   loaded_bmp card_atlas;
   loaded_bmp font_atlas;
-  stbtt_bakedchar chars[95];
+  stbtt_bakedchar chars[96];
 
   // TODO: Likely should move this out of the renderer.
   f32 card_width;
   f32 card_height;
+  f32 card_scale;
 
   mat4 mvp;
 };
