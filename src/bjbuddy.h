@@ -135,6 +135,7 @@ struct player
 {
   u32 bankroll;
   u32 hand_count;
+  ums hand_idx;
   hand *hands;
 };
 
@@ -148,8 +149,6 @@ struct app_state
 
   u32 player_money;
   phase game_phase;
-
-  hand *current_hand;
 };
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input,

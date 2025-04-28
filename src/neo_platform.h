@@ -103,8 +103,20 @@ struct string
   u64 count;
 };
 
-#define Str(CStr) _StrFromCStr((u8 *)(CStr), sizeof((CStr)) - 1)
-internal string _StrFromCStr(u8 *StringData, u64 Count)
+#define StrFromCStr(CStr) _StrFromCStr((CStr))
+inline string _StrFromCStr(char *CStr)
+{
+  string Result = {0};
+
+  u8 *Ptr = (u8 *)CStr;
+  Result.data = Ptr;
+  while (*Ptr++ != 0);
+  Result.count = Ptr - (u8 *)CStr;
+
+  return Result;
+}
+#define Str(Lit) _Str((u8 *)(Lit), sizeof((Lit)) - 1)
+inline string _Str(u8 *StringData, u64 Count)
 {
   string Result = { StringData, Count };
   return Result;

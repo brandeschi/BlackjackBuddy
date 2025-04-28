@@ -23,22 +23,23 @@ global u32 MAX_HAND_COUNT = 13;
 global u32 MIN_BET_SIZE   = 10;
 global u32 MAX_BET_SIZE   = 100;
 
-static inline void PlaceBet(player *Player, u32 HandIndex = 0, u32 Wager = MIN_BET_SIZE)
+internal void PlaceBet(player *Player, hand *Hand, u32 Wager = MIN_BET_SIZE)
 {
-  u32 PlayerBankroll = Player->bankroll;
-  NeoAssert(PlayerBankroll - Wager >= 0);
+  // TODO: Show something if the player does this but does not have the funds.
+  NeoAssert(Player->bankroll - Wager >= 0);
   Player->bankroll -= Wager;
-  Player->hands[HandIndex].wager = Wager;
+  Hand->wager += Wager;
 }
 
-static inline void NextPhase(enum phase *Phase)
+internal void NextPhase(enum phase *Phase)
 {
     *Phase = (enum phase)((s32)(*Phase) + 1);
 }
 
-static void Hit(deck *Deck, hand *Hand)
+internal void Hit(deck *Deck, hand *Hand, b32 IsDoubleDown = false)
 {
   NeoAssert(Deck->current - Deck->cards < 52);
+  // TODO: Do something if we actually hit this.
   if (Hand->card_count >= 13) return;
   card DrawnCard = *Deck->current++;
 
@@ -50,18 +51,23 @@ static void Hit(deck *Deck, hand *Hand)
   }
 
   Hand->cards[Hand->card_count++] = DrawnCard;
+  if (IsDoubleDown)
+  {
+    Hand->cards[Hand->card_count - 1].is_dd = true;
+  }
   Hand->value += DrawnCard.value;
 }
 
-static inline void DoubleDown(deck *Deck, hand *Hand,
-                              enum phase *Phase)
+internal void DoubleDown(deck *Deck, player *Player,
+                         hand *Hand, enum phase *Phase)
 {
-  Hit(Deck, Hand);
-  Hand->cards[Hand->card_count - 1].is_dd = true;
-  Hand->wager *= 2;
-  // TODO: When split is implemented, will need to move on
-  // to the next player's hand (if they have one) or to next player.
-  NextPhase(Phase);
+  PlaceBet(Player, Hand, Hand->wager);
+  Hit(Deck, Hand, true);
+
+  if (++Player->hand_idx == Player->hand_count)
+  {
+    NextPhase(Phase);
+  }
 }
 
 #if 0
@@ -149,6 +155,7 @@ static void ResetRound(app_state *GameState)
     Hand->value = 0;
     Hand->wager = 0;
   }
+  Ap->hand_idx = 0;
   Ap->hand_count = 1;
 }
 
@@ -221,7 +228,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
     // Blackjack Setup
 
-    GameState->game_phase = START;
+    GameState->game_phase = NULL_PHASE;
     for (s32 Index = 0; Index < 4; ++Index)
     {
       Shuffle(GameState->base_deck.cards,
@@ -233,19 +240,15 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     player Ap = {0};
     Ap.bankroll = 10000;
 
-    // TODO: This is to 'burn' the first card of the deck but I should
-    // make this into an option/setting for the type of game.
+    // TODO: Make burning a card an option/setting.
     GameState->base_deck.current = &GameState->base_deck.cards[1];
 
     // TODO: Make settings for number of allowed hands
     Ap.hands = PushArray(&GameState->core_arena, 5, hand);
-    // for (s32 Idx = 0; Idx < 5; +Idx)
-    // {
-    //   Ap->hands[Idx].cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
-    // }
-
-    hand *PlayerMainHand = &Ap.hands[0];
-    PlayerMainHand->cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
+    for (s32 Idx = 0; Idx < 5; ++Idx)
+    {
+      Ap.hands[Idx].cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
+    }
     Ap.hand_count = 1;
 
     hand DealerHand = {0};
@@ -253,35 +256,59 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
     GameState->dealer = DealerHand;
     GameState->ap = Ap;
-    GameState->current_hand = PlayerMainHand;
-
-    // TODO: Handle paying out the player immediately
-    // if they have BJ.
 
     Memory->is_init = true;
   }
 
-  if (GameState->game_phase == START)
-  {
-    PlaceBet(&GameState->ap);
-
-    hand *DealerHand = &GameState->dealer;
-    hand *PlayerMainHand = GameState->current_hand;
-
-    Hit(&GameState->base_deck, PlayerMainHand);
-    Hit(&GameState->base_deck, DealerHand);
-    Hit(&GameState->base_deck, PlayerMainHand);
-    Hit(&GameState->base_deck, DealerHand);
-
-    NextPhase(&GameState->game_phase);
-  }
-
+  // UPDATE
   if (GameState->game_phase == END)
   {
     ResetRound(GameState);
-    GameState->game_phase = START;
+    GameState->game_phase = NULL_PHASE;
   }
-  ResetRenderer(Renderer);
+
+  hand *DealerHand = &GameState->dealer;
+  hand *PlayerHand = &GameState->ap.hands[GameState->ap.hand_idx];
+
+  if (GameState->game_phase == START)
+  {
+    PlaceBet(&GameState->ap, PlayerHand);
+
+    Hit(&GameState->base_deck, PlayerHand);
+    Hit(&GameState->base_deck, DealerHand);
+    Hit(&GameState->base_deck, PlayerHand);
+    Hit(&GameState->base_deck, DealerHand);
+
+    b32 AllBJs = true;
+    for (u32 Idx = 0; Idx < GameState->ap.hand_count; ++Idx)
+    {
+      hand *Hand = &GameState->ap.hands[Idx];
+      if (Hand->value == 21)
+      {
+        // TODO: Pay out based on table rules
+        Hand->card_count = 0;
+        Hand->value = 0;
+        Hand->wager = 0;
+      }
+      else
+      {
+         AllBJs = false;
+      }
+    }
+    if (AllBJs)
+    {
+      GameState->game_phase = END;
+    }
+    else
+    {
+      NextPhase(&GameState->game_phase);
+    }
+  }
+
+  // NOTE: For cases when a hand pays out BJ and exists inbetween all the hands
+  // ie. players has 3 hands and the middle hand played out BJ, the active player
+  // hand should be updated accordingly before processing player actions.
+  for (; GameState->game_phase != NULL_PHASE && PlayerHand->value == 0; PlayerHand = &GameState->ap.hands[++GameState->ap.hand_idx]);
 
   for (ums ControllerIndex = 0;
   ControllerIndex < ArrayCount(Input->controllers);
@@ -301,7 +328,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
       switch (GameState->game_phase)
       {
-        case START:
+        case NULL_PHASE:
         {
           if (ActionRight.half_transitions != 0 && ActionRight.is_down)
           {
@@ -316,30 +343,52 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
             }
             OutputDebugStringA("======================\n");
           }
+          if (ActionDown.half_transitions != 0 && ActionDown.is_down)
+          {
+            char OutStr[256];
+            card *Cards = GameState->base_deck.current;
+            OutputDebugStringA("Deck (current)\n");
+            for (u32 Index = 0; Index < 4; ++Index)
+            {
+              _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
+                          TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
+              OutputDebugStringA(OutStr);
+            }
+            OutputDebugStringA("======================\n");
+
+            NextPhase(&GameState->game_phase);
+          }
         } break;
         case PLAYER:
         {
-          hand *Hand = GameState->current_hand;
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
-            Hit(&GameState->base_deck, Hand);
+            Hit(&GameState->base_deck, PlayerHand);
 
             char OutStr[256];
-            _snprintf_s(OutStr, sizeof(OutStr), "Hand Value: %d\n", Hand->value);
+            _snprintf_s(OutStr, sizeof(OutStr), "Hand Value: %d\n", PlayerHand->value);
             OutputDebugStringA(OutStr);
 
             OutputDebugStringA("======================\n");
           }
           else if (ActionRight.half_transitions != 0 && ActionRight.is_down)
           {
+            player *Player = &GameState->ap;
+            if (++Player->hand_idx == Player->hand_count)
+            {
               NextPhase(&GameState->game_phase);
+            }
           }
           else if (ActionDown.half_transitions != 0 && ActionDown.is_down)
           {
-            DoubleDown(&GameState->base_deck, Hand, &GameState->game_phase);
+            if (PlayerHand->card_count == 2)
+            {
+              DoubleDown(&GameState->base_deck, &GameState->ap,
+                         PlayerHand, &GameState->game_phase);
+            }
 
             char OutStr[256];
-            _snprintf_s(OutStr, sizeof(OutStr), "Hand Value: %d\n", Hand->value);
+            _snprintf_s(OutStr, sizeof(OutStr), "Hand Value: %d\n", PlayerHand->value);
             OutputDebugStringA(OutStr);
 
             OutputDebugStringA("======================\n");
@@ -363,97 +412,21 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           }
         } break;
 
-        default:
-        {
-          if (ActionDown.half_transitions != 0 && ActionDown.is_down)
-          {
-            char OutStr[256];
-            card *Cards = GameState->base_deck.cards;
-            OutputDebugStringA("Deck (Base) Output:\n");
-            for (s32 Index = 0; Index < 8; ++Index)
-            {
-              _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
-                          TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
-              OutputDebugStringA(OutStr);
-            }
-            OutputDebugStringA("======================\n");
-          }
-          else if (ActionUp.half_transitions != 0 && ActionUp.is_down)
-          {
-            char OutStr[256];
-            hand PlayerHand = *GameState->current_hand;
-            card *Cards = PlayerHand.cards;
-            OutputDebugStringA("Player's Hand\n");
-            for (u32 Index = 0; Index < PlayerHand.card_count; ++Index)
-            {
-              _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
-                          TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
-              OutputDebugStringA(OutStr);
-            }
-            OutputDebugStringA("======================\n");
-          }
-          else if (ActionRight.half_transitions != 0 && ActionRight.is_down)
-          {
-            char OutStr[256];
-            card *Cards = GameState->base_deck.current;
-            OutputDebugStringA("Deck (current)\n");
-            for (u32 Index = 0; Index < 4; ++Index)
-            {
-              _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
-                          TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
-              OutputDebugStringA(OutStr);
-            }
-            OutputDebugStringA("======================\n");
-          }
-        }
+        default: {}
       }
     }
   }
 
-  // UPDATE
   b32 PlayerBust = GameState->game_phase == PLAYER && GameState->ap.hands[0].value > 21;
   b32 DealerBust = GameState->game_phase == DEALER && GameState->dealer.value > 21;
-  if (PlayerBust || DealerBust)
+  if ((PlayerBust || DealerBust) && GameState->game_phase != END)
   {
     NextPhase(&GameState->game_phase);
   }
 
   // RENDER
-
+  ResetRenderer(Renderer);
   mat4 CenterTranslate = Mat4Translate((f32)Renderer->width*0.5f, (f32)Renderer->height*0.5f, 0.0f);
-#if 0
-  vertex_data Vertices[] =
-  {
-    // pos                                                                             color               tex-coords
-    { {200.0f, 100.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f} }, // Bottom-Left
-    { {(f32)Renderer->width - 200.0f, 100.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f} }, // Bottom-Right
-    { {(f32)Renderer->width - 200.0f, (f32)Renderer->height - 100.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f} }, // Top-Right
-    { {200.0f, (f32)Renderer->height - 100.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f} }, // Top-Left
-  };
-
-  u32 EboIndexPattern[] =
-  {
-    0, 1, 3,
-    1, 2, 3,
-  };
-
-  memory_arena *FrameArena = &Renderer->frame_arena;
-  render_unit *Unit = PushStruct(FrameArena, render_unit);
-
-  u32 EboIndexCount = ArrayCount(EboIndexPattern);
-  u32 *Indices = PushArray(FrameArena, EboIndexCount, u32);
-  Unit->indices = Indices;
-  Unit->index_count = EboIndexCount;
-  u32 UnitCount = Renderer->unit_count;
-  memcpy(Unit->indices, EboIndexPattern, EboIndexCount*sizeof(u32));
-  u32 VertexCount = ArrayCount(Vertices);
-  Unit->vertices = PushArray(FrameArena, VertexCount, vertex_data);
-  Unit->vertex_count = VertexCount;
-  Unit->model = Mat4Iden();
-  memcpy(Unit->vertices, Vertices, VertexCount*sizeof(vertex_data));
-  Renderer->head = Unit;
-  ++Renderer->unit_count;
-#else
   {
     hand Hand = GameState->dealer;
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
@@ -500,9 +473,9 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         Str("This is the third line of text."),
     };
     PushLinesOfText(Renderer, Lines, ArrayCount(Lines), TextTransform);
-    // PushText(Renderer, Str("Blackjack!"), TextTransform);
-    // PushText(Renderer, Str("$100.00"), CenterTranslate*Mat4Translate(-100.0f, -(f32)Renderer->height*0.5f, 0.0f)*TextTransform);
+    char BankrollText[256];
+    _snprintf_s(BankrollText, sizeof(BankrollText), "Bankroll: $%d", GameState->ap.bankroll);
+    PushText(Renderer, StrFromCStr(BankrollText), CenterTranslate*Mat4Translate(-150.0f, -(f32)Renderer->height*0.5f + 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
   }
-#endif
 }
 
