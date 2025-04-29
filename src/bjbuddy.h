@@ -100,6 +100,7 @@ enum phase
   START,
   PLAYER,
   DEALER,
+  EVAL,
   END
 };
 
@@ -128,12 +129,12 @@ struct hand
   u32 card_count;
 
   u32 value;
-  u32 wager;
+  f32 wager;
 };
 
 struct player
 {
-  u32 bankroll;
+  f32 bankroll;
   u32 hand_count;
   ums hand_idx;
   hand *hands;

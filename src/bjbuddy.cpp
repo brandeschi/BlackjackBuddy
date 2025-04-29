@@ -23,17 +23,32 @@ global u32 MAX_HAND_COUNT = 13;
 global u32 MIN_BET_SIZE   = 10;
 global u32 MAX_BET_SIZE   = 100;
 
-internal void PlaceBet(player *Player, hand *Hand, u32 Wager = MIN_BET_SIZE)
+internal void PayOut(f32 *Bankroll, f32 Wager, b32 IsBlackjack = false)
+{
+  // TODO: Settings
+  if (IsBlackjack)
+  {
+    // 3:2 - includes the original wager
+    *Bankroll += 1.5f*Wager;
+  }
+  *Bankroll += Wager;
+}
+internal void PlaceBet(f32 *Bankroll, hand *Hand, f32 Wager = MIN_BET_SIZE)
 {
   // TODO: Show something if the player does this but does not have the funds.
-  NeoAssert(Player->bankroll - Wager >= 0);
-  Player->bankroll -= Wager;
+  NeoAssert(*Bankroll - Wager >= 0);
   Hand->wager += Wager;
 }
 
 internal void NextPhase(enum phase *Phase)
 {
     *Phase = (enum phase)((s32)(*Phase) + 1);
+}
+
+internal b32 CheckBust(u32 *HandValue)
+{
+  b32 Result = *HandValue > 21;
+  return Result;
 }
 
 internal void Hit(deck *Deck, hand *Hand, b32 IsDoubleDown = false)
@@ -56,18 +71,6 @@ internal void Hit(deck *Deck, hand *Hand, b32 IsDoubleDown = false)
     Hand->cards[Hand->card_count - 1].is_dd = true;
   }
   Hand->value += DrawnCard.value;
-}
-
-internal void DoubleDown(deck *Deck, player *Player,
-                         hand *Hand, enum phase *Phase)
-{
-  PlaceBet(Player, Hand, Hand->wager);
-  Hit(Deck, Hand, true);
-
-  if (++Player->hand_idx == Player->hand_count)
-  {
-    NextPhase(Phase);
-  }
 }
 
 #if 0
@@ -272,7 +275,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
   if (GameState->game_phase == START)
   {
-    PlaceBet(&GameState->ap, PlayerHand);
+    PlaceBet(&GameState->ap.bankroll, PlayerHand);
 
     Hit(&GameState->base_deck, PlayerHand);
     Hit(&GameState->base_deck, DealerHand);
@@ -285,7 +288,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       hand *Hand = &GameState->ap.hands[Idx];
       if (Hand->value == 21)
       {
-        // TODO: Pay out based on table rules
+        PayOut(&GameState->ap.bankroll, Hand->wager);
         Hand->card_count = 0;
         Hand->value = 0;
         Hand->wager = 0;
@@ -295,6 +298,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
          AllBJs = false;
       }
     }
+
     if (AllBJs)
     {
       GameState->game_phase = END;
@@ -363,7 +367,14 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         {
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
+            // TODO: Bake busting into hit func?
             Hit(&GameState->base_deck, PlayerHand);
+            b32 Busted = CheckBust(&PlayerHand->value);
+            if (Busted && (++GameState->ap.hand_idx == GameState->ap.hand_count))
+            {
+              --GameState->ap.hand_idx;
+              NextPhase(&GameState->game_phase);
+            }
 
             char OutStr[256];
             _snprintf_s(OutStr, sizeof(OutStr), "Hand Value: %d\n", PlayerHand->value);
@@ -376,6 +387,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
             player *Player = &GameState->ap;
             if (++Player->hand_idx == Player->hand_count)
             {
+              --Player->hand_idx;
               NextPhase(&GameState->game_phase);
             }
           }
@@ -383,8 +395,9 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           {
             if (PlayerHand->card_count == 2)
             {
-              DoubleDown(&GameState->base_deck, &GameState->ap,
-                         PlayerHand, &GameState->game_phase);
+              PlaceBet(&GameState->ap.bankroll, PlayerHand, PlayerHand->wager);
+              Hit(&GameState->base_deck, PlayerHand, true);
+              NextPhase(&GameState->game_phase);
             }
 
             char OutStr[256];
@@ -398,7 +411,10 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         {
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
+            // TODO: Bake busting into hit func?
             Hit(&GameState->base_deck, &GameState->dealer);
+            // TODO: Add this back once I setup the 'flow' between phases.
+            // if (CheckBust(&DealerHand->value)) NextPhase(&GameState->game_phase);
 
             char OutStr[256];
             _snprintf_s(OutStr, sizeof(OutStr), "Hand Value: %d\n", GameState->dealer.value);
@@ -417,12 +433,22 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     }
   }
 
-  b32 PlayerBust = GameState->game_phase == PLAYER && GameState->ap.hands[0].value > 21;
-  b32 DealerBust = GameState->game_phase == DEALER && GameState->dealer.value > 21;
-  if ((PlayerBust || DealerBust) && GameState->game_phase != END)
+  // Evaluate current player hand
+  if (GameState->game_phase == EVAL)
   {
+    if (CheckBust(&DealerHand->value) ||
+       (!CheckBust(&PlayerHand->value) && DealerHand->value < PlayerHand->value))
+    {
+      PayOut(&GameState->ap.bankroll, PlayerHand->wager);
+    }
+    else if (CheckBust(&PlayerHand->value) || DealerHand->value > PlayerHand->value)
+    {
+      GameState->ap.bankroll -= PlayerHand->wager;
+    }
+
     NextPhase(&GameState->game_phase);
   }
+
 
   // RENDER
   ResetRenderer(Renderer);
@@ -473,9 +499,13 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         Str("This is the third line of text."),
     };
     PushLinesOfText(Renderer, Lines, ArrayCount(Lines), TextTransform);
-    char BankrollText[256];
-    _snprintf_s(BankrollText, sizeof(BankrollText), "Bankroll: $%d", GameState->ap.bankroll);
-    PushText(Renderer, StrFromCStr(BankrollText), CenterTranslate*Mat4Translate(-150.0f, -(f32)Renderer->height*0.5f + 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
+    char TextContainer[256];
+    // Bankroll
+    _snprintf_s(TextContainer, sizeof(TextContainer), "Bankroll: $%.2f", GameState->ap.bankroll);
+    PushText(Renderer, StrFromCStr(TextContainer), Mat4Translate(5.0f, 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
+    // Wager
+    _snprintf_s(TextContainer, sizeof(TextContainer), "Wager: $%.2f", PlayerHand->wager);
+    PushText(Renderer, StrFromCStr(TextContainer), CenterTranslate*Mat4Translate(-175.0f, -(f32)Renderer->height*0.5f + 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
   }
 }
 
