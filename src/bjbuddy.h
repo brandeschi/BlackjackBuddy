@@ -121,6 +121,7 @@ struct deck
 {
   card cards[52];
   card *current;
+  u64 discarded;
 };
 
 struct hand

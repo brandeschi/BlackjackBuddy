@@ -187,6 +187,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   NeoAssert(sizeof(app_state) <= Memory->perm_storage_size);
   app_state *GameState = (app_state *)Memory->perm_memory;
 
+  static b32 FirstRound = true;
   if(!Memory->is_init)
   {
     InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
@@ -288,6 +289,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   {
     ResetRound(GameState);
     GameState->game_phase = NULL_PHASE;
+    if (FirstRound) FirstRound = false;
+    GameState->base_deck.discarded = (GameState->base_deck.current - GameState->base_deck.cards) - 1;
   }
 
   hand *DealerHand = &GameState->dealer;
@@ -474,6 +477,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   ResetRenderer(Renderer);
   mat4 CenterTranslate = Mat4Translate((f32)Renderer->width*0.5f, (f32)Renderer->height*0.5f, 0.0f);
   {
+    // Dealer's Cards
     hand Hand = GameState->dealer;
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
     {
@@ -489,6 +493,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     }
   }
   {
+    // Player's Cards
     for (u32 HCount = 0; HCount < GameState->ap.hand_count; ++HCount)
     {
       hand Hand = GameState->ap.hands[HCount];
@@ -511,7 +516,23 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     }
   }
   {
+    deck Deck = GameState->base_deck;
+    // 'Discard Tray'
+    // TODO: I feel like there should be a way to reuse vertex data instead of pushing an identical card.
+    if (Deck.discarded > 0 && !FirstRound)
+    {
+      mat4 CardTransform = Mat4Translate((Renderer->card_width*0.5f) + Renderer->card_height,
+                                     Renderer->card_height*0.5f + Renderer->width*0.25f, 1.0f)*Mat4RotateZ(PI32 / 4.0f);
+      PushCard(Renderer, { 2.0f, 0.0f }, CardTransform);
+      char TextContainer[256];
+      // Cards in discard tray
+      _snprintf_s(TextContainer, sizeof(TextContainer), "Discarded: %llu", Deck.discarded);
+      PushText(Renderer, StrFromCStr(TextContainer), Mat4Translate(5.0f, Renderer->width*0.25f + 150.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
+    }
+  }
+  {
     char TextContainer[256];
+
     mat4 TextTransform = Mat4Translate(5.0f, (f32)Renderer->height - 40.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f);
     string Lines[2] = {0};
 
