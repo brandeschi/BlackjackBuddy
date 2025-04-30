@@ -51,12 +51,32 @@ internal b32 CheckBust(u32 *HandValue)
   return Result;
 }
 
-internal void Hit(deck *Deck, hand *Hand, b32 IsDoubleDown = false)
+internal void Hit(deck *Deck, hand *Hand, s32 *RCount, b32 IsDoubleDown = false)
 {
   NeoAssert(Deck->current - Deck->cards < 52);
   // TODO: Do something if we actually hit this.
   if (Hand->card_count >= 13) return;
   card DrawnCard = *Deck->current++;
+  switch (DrawnCard.type)
+  {
+    case TEN:
+    case JACK:
+    case QUEEN:
+    case KING:
+    case ACE:
+    {
+      *RCount -= 1;
+    } break;
+    case TWO:
+    case THREE:
+    case FOUR:
+    case FIVE:
+    case SIX:
+    {
+      *RCount += 1;
+    } break;
+    default: {} break;
+  }
 
   // TODO: Need to handle making the ACE valued at 11 again
   // in the split function.
@@ -277,10 +297,10 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   {
     PlaceBet(&GameState->ap.bankroll, PlayerHand);
 
-    Hit(&GameState->base_deck, PlayerHand);
-    Hit(&GameState->base_deck, DealerHand);
-    Hit(&GameState->base_deck, PlayerHand);
-    Hit(&GameState->base_deck, DealerHand);
+    Hit(&GameState->base_deck, PlayerHand, &GameState->running_count);
+    Hit(&GameState->base_deck, DealerHand, &GameState->running_count);
+    Hit(&GameState->base_deck, PlayerHand, &GameState->running_count);
+    Hit(&GameState->base_deck, DealerHand, &GameState->running_count);
 
     b32 AllBJs = true;
     for (u32 Idx = 0; Idx < GameState->ap.hand_count; ++Idx)
@@ -368,7 +388,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
             // TODO: Bake busting into hit func?
-            Hit(&GameState->base_deck, PlayerHand);
+            Hit(&GameState->base_deck, PlayerHand, &GameState->running_count);
             b32 Busted = CheckBust(&PlayerHand->value);
             if (Busted && (++GameState->ap.hand_idx == GameState->ap.hand_count))
             {
@@ -396,7 +416,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
             if (PlayerHand->card_count == 2)
             {
               PlaceBet(&GameState->ap.bankroll, PlayerHand, PlayerHand->wager);
-              Hit(&GameState->base_deck, PlayerHand, true);
+              Hit(&GameState->base_deck, PlayerHand, &GameState->running_count, true);
               NextPhase(&GameState->game_phase);
             }
 
@@ -412,7 +432,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
             // TODO: Bake busting into hit func?
-            Hit(&GameState->base_deck, &GameState->dealer);
+            Hit(&GameState->base_deck, &GameState->dealer, &GameState->running_count);
             // TODO: Add this back once I setup the 'flow' between phases.
             // if (CheckBust(&DealerHand->value)) NextPhase(&GameState->game_phase);
 
@@ -491,15 +511,22 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     }
   }
   {
-    mat4 TextTransform = Mat4Translate(5.0f, (f32)Renderer->height - 40.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f);
-    string Lines[] =
-    {
-        Str("Welcome to BlackjackBuddy!"),
-        Str("Jack Mitt loves penis."),
-        Str("This is the third line of text."),
-    };
-    PushLinesOfText(Renderer, Lines, ArrayCount(Lines), TextTransform);
     char TextContainer[256];
+    mat4 TextTransform = Mat4Translate(5.0f, (f32)Renderer->height - 40.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f);
+    string Lines[2] = {0};
+
+    // Running Count
+    _snprintf_s(TextContainer, sizeof(TextContainer), "Running Count: %d", GameState->running_count);
+    Lines[0] = StrAllocFromCStr(TextContainer);
+    // True Count
+    _snprintf_s(TextContainer, sizeof(TextContainer), "True Count: %d", GameState->true_count);
+    Lines[1] = StrAllocFromCStr(TextContainer);
+
+    // FIX: PIGGY AF PLZ FIX SOON!!!
+    PushLinesOfText(Renderer, Lines, ArrayCount(Lines), TextTransform);
+    FreeStrAlloc(&Lines[0]);
+    FreeStrAlloc(&Lines[1]);
+
     // Bankroll
     _snprintf_s(TextContainer, sizeof(TextContainer), "Bankroll: $%.2f", GameState->ap.bankroll);
     PushText(Renderer, StrFromCStr(TextContainer), Mat4Translate(5.0f, 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));

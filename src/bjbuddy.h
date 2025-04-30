@@ -147,8 +147,8 @@ struct app_state
   deck base_deck;
   hand dealer;
   player ap;
-
-  u32 player_money;
+  s32 running_count;
+  s32 true_count;
   phase game_phase;
 };
 

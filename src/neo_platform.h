@@ -103,6 +103,32 @@ struct string
   u64 count;
 };
 
+inline void FreeStrAlloc(string *Str)
+{
+  NeoAssert(Str->data != 0);
+  free(Str->data);
+  Str->data = 0;
+  Str->count = 0;
+}
+
+#define StrAllocFromCStr(CStr) _StrAllocFromCStr((CStr))
+inline string _StrAllocFromCStr(char *CStr)
+{
+  string Result = {0};
+
+  u8 *Ptr = (u8 *)CStr;
+  for (; *Ptr != 0; ++Ptr);
+  Result.count = Ptr - (u8 *)CStr;
+  Result.data = (u8 *)malloc(Result.count);
+  NeoAssert(Result.data != 0);
+  u8 *T = Result.data;
+  for (s32 Idx = 0; Idx < Result.count; ++Idx)
+  {
+    *T++ = *CStr++;
+  }
+
+  return Result;
+}
 #define StrFromCStr(CStr) _StrFromCStr((CStr))
 inline string _StrFromCStr(char *CStr)
 {
