@@ -124,6 +124,12 @@ struct deck
   u64 discarded;
 };
 
+struct shoe
+{
+  deck *decks;
+  u32 deck_count = 1;
+};
+
 struct hand
 {
   card *cards;
@@ -135,21 +141,21 @@ struct hand
 
 struct player
 {
-  f32 bankroll;
-  u32 hand_count;
-  ums hand_idx;
   hand *hands;
+  ums hand_idx;
+  u32 hand_count;
+  f32 bankroll;
 };
 
 // TODO: Optimize size of game structs.
 struct app_state
 {
   memory_arena core_arena;
-  deck base_deck;
+  shoe shoe;
   hand dealer;
   player ap;
   s32 running_count;
-  s32 true_count;
+  f32 true_count;
   phase game_phase;
 };
 

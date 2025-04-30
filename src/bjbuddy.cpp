@@ -2,12 +2,12 @@
 // General Player Actions
 // - Surrendering/Insurance
 // - NA rules seperation from Intl. rules
+//   - Currency for other regions
 //   - EX: NA only rule where dealers get a hole card but
 //     in the rest of the world they only get an up card.
 //       - This means an option needs to be added to handle
 //         regular play to continue.
 // Stats
-// - Currency
 // - Count (running and true) - Will be done with Hi/Lo but might add other counts
 // - Discard tray deck estimation
 // - Based on bet spread, amount that should be wagered
@@ -193,7 +193,10 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
               (u8 *)Memory->perm_memory + sizeof(app_state));
 
-    GameState->base_deck = {
+    shoe Shoe = {0};
+    // TODO: Setting
+    Shoe.decks = PushArray(&GameState->core_arena, Shoe.deck_count, deck);
+    Shoe.decks[0] = {
       {
         { TWO, SPADES, 2 },
         { THREE, SPADES, 3 },
@@ -255,8 +258,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     GameState->game_phase = NULL_PHASE;
     for (s32 Index = 0; Index < 4; ++Index)
     {
-      Shuffle(GameState->base_deck.cards,
-              ArrayCount(GameState->base_deck.cards));
+      Shuffle(Shoe.decks[0].cards,
+              ArrayCount(Shoe.decks[0].cards));
     }
 
     // TODO: Need a period before the cards are dealt to
@@ -265,7 +268,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     Ap.bankroll = 10000;
 
     // TODO: Make burning a card an option/setting.
-    GameState->base_deck.current = &GameState->base_deck.cards[1];
+    Shoe.decks[0].current = &Shoe.decks[0].cards[1];
 
     // TODO: Make settings for number of allowed hands
     Ap.hands = PushArray(&GameState->core_arena, 5, hand);
@@ -278,6 +281,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     hand DealerHand = {0};
     DealerHand.cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
 
+    GameState->shoe = Shoe;
     GameState->dealer = DealerHand;
     GameState->ap = Ap;
 
@@ -285,12 +289,33 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   }
 
   // UPDATE
+  deck *ActiveDeck = &GameState->shoe.decks[0];
   if (GameState->game_phase == END)
   {
     ResetRound(GameState);
     GameState->game_phase = NULL_PHASE;
     if (FirstRound) FirstRound = false;
-    GameState->base_deck.discarded = (GameState->base_deck.current - GameState->base_deck.cards) - 1;
+    ActiveDeck->discarded = (ActiveDeck->current - ActiveDeck->cards) - 1;
+    // TODO: Setup deck division choices (half deck, quarter, eighth, etc.).
+    // NOTE: These are the typical ways of rounding the true count. I will like use floor
+    // but will leave it for now until I get the sim working.
+    //   - Truncate – For positive numbers, round down and for negative numbers round up. This is the method used in the 1994 and later editions of Professional Blackjack.
+    //     1.5 is rounded down to 1. -1.5 is rounded up to -1.
+    //   - Floor – Numbers are always rounded down. This is the method used in the early versions of Professional Blackjack.
+    //     1.5 is rounded down to 1. -1.5 is rounded down to -2. This is the most popular method used now.
+    //   - Round – After the True Count division, the result is rounded to the nearest integer.
+    //     If the number is exactly between two integers, it is rounded up. 1.5 is rounded up to 2. -1.5 is rounded up to -1. This method is also common.
+    //   - Statistical Round – After the True Count division, the result is rounded to the nearest integer.
+    //     If the number is exactly between two integers, it is rounded to the nearest even number. 1.5 is rounded up to 2. -1.5 is rounded down to -2.
+    // TODO: Update to be used for all decks remaining
+    if (GameState->shoe.deck_count > 1 && ActiveDeck->discarded != 52)
+    {
+      GameState->true_count = (f32)GameState->running_count / (f32)(52 - ActiveDeck->discarded);
+    }
+    else
+    {
+      GameState->true_count = (f32)GameState->running_count;
+    }
   }
 
   hand *DealerHand = &GameState->dealer;
@@ -300,10 +325,10 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   {
     PlaceBet(&GameState->ap.bankroll, PlayerHand);
 
-    Hit(&GameState->base_deck, PlayerHand, &GameState->running_count);
-    Hit(&GameState->base_deck, DealerHand, &GameState->running_count);
-    Hit(&GameState->base_deck, PlayerHand, &GameState->running_count);
-    Hit(&GameState->base_deck, DealerHand, &GameState->running_count);
+    Hit(ActiveDeck, PlayerHand, &GameState->running_count);
+    Hit(ActiveDeck, DealerHand, &GameState->running_count);
+    Hit(ActiveDeck, PlayerHand, &GameState->running_count);
+    Hit(ActiveDeck, DealerHand, &GameState->running_count);
 
     b32 AllBJs = true;
     for (u32 Idx = 0; Idx < GameState->ap.hand_count; ++Idx)
@@ -360,7 +385,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           if (ActionRight.half_transitions != 0 && ActionRight.is_down)
           {
             char OutStr[256];
-            card *Cards = GameState->base_deck.current;
+            card *Cards = ActiveDeck->current;
             OutputDebugStringA("Deck (current)\n");
             for (u32 Index = 0; Index < 4; ++Index)
             {
@@ -373,7 +398,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           if (ActionDown.half_transitions != 0 && ActionDown.is_down)
           {
             char OutStr[256];
-            card *Cards = GameState->base_deck.current;
+            card *Cards = ActiveDeck->current;
             OutputDebugStringA("Deck (current)\n");
             for (u32 Index = 0; Index < 4; ++Index)
             {
@@ -391,7 +416,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
             // TODO: Bake busting into hit func?
-            Hit(&GameState->base_deck, PlayerHand, &GameState->running_count);
+            Hit(ActiveDeck, PlayerHand, &GameState->running_count);
             b32 Busted = CheckBust(&PlayerHand->value);
             if (Busted && (++GameState->ap.hand_idx == GameState->ap.hand_count))
             {
@@ -419,7 +444,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
             if (PlayerHand->card_count == 2)
             {
               PlaceBet(&GameState->ap.bankroll, PlayerHand, PlayerHand->wager);
-              Hit(&GameState->base_deck, PlayerHand, &GameState->running_count, true);
+              Hit(ActiveDeck, PlayerHand, &GameState->running_count, true);
               NextPhase(&GameState->game_phase);
             }
 
@@ -435,7 +460,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
             // TODO: Bake busting into hit func?
-            Hit(&GameState->base_deck, &GameState->dealer, &GameState->running_count);
+            Hit(ActiveDeck, &GameState->dealer, &GameState->running_count);
             // TODO: Add this back once I setup the 'flow' between phases.
             // if (CheckBust(&DealerHand->value)) NextPhase(&GameState->game_phase);
 
@@ -516,17 +541,16 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     }
   }
   {
-    deck Deck = GameState->base_deck;
     // 'Discard Tray'
     // TODO: I feel like there should be a way to reuse vertex data instead of pushing an identical card.
-    if (Deck.discarded > 0 && !FirstRound)
+    if (ActiveDeck->discarded > 0 && !FirstRound)
     {
       mat4 CardTransform = Mat4Translate((Renderer->card_width*0.5f) + Renderer->card_height,
                                      Renderer->card_height*0.5f + Renderer->width*0.25f, 1.0f)*Mat4RotateZ(PI32 / 4.0f);
       PushCard(Renderer, { 2.0f, 0.0f }, CardTransform);
       char TextContainer[256];
       // Cards in discard tray
-      _snprintf_s(TextContainer, sizeof(TextContainer), "Discarded: %llu", Deck.discarded);
+      _snprintf_s(TextContainer, sizeof(TextContainer), "Discarded: %llu", ActiveDeck->discarded);
       PushText(Renderer, StrFromCStr(TextContainer), Mat4Translate(5.0f, Renderer->width*0.25f + 150.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
     }
   }
@@ -540,7 +564,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     _snprintf_s(TextContainer, sizeof(TextContainer), "Running Count: %d", GameState->running_count);
     Lines[0] = StrAllocFromCStr(TextContainer);
     // True Count
-    _snprintf_s(TextContainer, sizeof(TextContainer), "True Count: %d", GameState->true_count);
+    _snprintf_s(TextContainer, sizeof(TextContainer), "True Count: %.3f", GameState->true_count);
     Lines[1] = StrAllocFromCStr(TextContainer);
 
     // FIX: PIGGY AF PLZ FIX SOON!!!
