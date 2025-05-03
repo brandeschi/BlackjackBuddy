@@ -68,7 +68,7 @@ inline engine_controller_input *GetController(engine_input *Input, ums Controlle
   return Result;
 }
 
-enum card_type
+enum rank
 {
   // FACE_DOWN,
   ACE = 0,
@@ -106,7 +106,7 @@ enum phase
 
 struct card
 {
-  card_type type;
+  rank rank;
   suit suit;
 
   u32 value;

@@ -56,6 +56,7 @@ typedef double f64;
 #include "neo_platform.h"
 #include "bb_ogl.h"
 #include "neo_render.h"
+#include "bb_basic_strat.h"
 #include "bjbuddy.h"
 
 // Sub TU
@@ -63,5 +64,6 @@ typedef double f64;
 #include "neo_platform.cpp"
 #include "bb_ogl.cpp"
 #include "neo_render.cpp"
+#include "bb_basic_strat.cpp"
 #include "bjbuddy.cpp"
 

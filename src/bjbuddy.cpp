@@ -8,8 +8,6 @@
 //       - This means an option needs to be added to handle
 //         regular play to continue.
 // Stats
-// - Count (running and true) - Will be done with Hi/Lo but might add other counts
-// - Discard tray deck estimation
 // - Based on bet spread, amount that should be wagered
 // - Basic strategy play (with and without count and including EHNC)
 // Settings (for type of game, location, etc)
@@ -53,11 +51,11 @@ internal b32 CheckBust(u32 *HandValue)
 
 internal void Hit(deck *Deck, hand *Hand, s32 *RCount, b32 IsDoubleDown = false)
 {
-  NeoAssert(Deck->current - Deck->cards < 52);
+  NeoAssert(Deck->current - Deck->cards <= 52);
   // TODO: Do something if we actually hit this.
   if (Hand->card_count >= 13) return;
   card DrawnCard = *Deck->current++;
-  switch (DrawnCard.type)
+  switch (DrawnCard.rank)
   {
     case TEN:
     case JACK:
@@ -80,7 +78,7 @@ internal void Hit(deck *Deck, hand *Hand, s32 *RCount, b32 IsDoubleDown = false)
 
   // TODO: Need to handle making the ACE valued at 11 again
   // in the split function.
-  if (DrawnCard.type == ACE && (Hand->value + DrawnCard.value) > 21)
+  if (DrawnCard.rank == ACE && (Hand->value + DrawnCard.value) > 21)
   {
     DrawnCard.value = 1;
   }
@@ -297,7 +295,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     if (FirstRound) FirstRound = false;
     ActiveDeck->discarded = (ActiveDeck->current - ActiveDeck->cards) - 1;
     // TODO: Setup deck division choices (half deck, quarter, eighth, etc.).
-    // NOTE: These are the typical ways of rounding the true count. I will like use floor
+    // NOTE: These are the typical ways of rounding the true count. I will likely use floor
     // but will leave it for now until I get the sim working.
     //   - Truncate – For positive numbers, round down and for negative numbers round up. This is the method used in the 1994 and later editions of Professional Blackjack.
     //     1.5 is rounded down to 1. -1.5 is rounded up to -1.
@@ -390,7 +388,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
             for (u32 Index = 0; Index < 4; ++Index)
             {
               _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
-                          TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
+                          TypeToCStr(Cards[Index].rank), SuitToCStr(Cards[Index].suit));
               OutputDebugStringA(OutStr);
             }
             OutputDebugStringA("======================\n");
@@ -403,7 +401,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
             for (u32 Index = 0; Index < 4; ++Index)
             {
               _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
-                          TypeToCStr(Cards[Index].type), SuitToCStr(Cards[Index].suit));
+                          TypeToCStr(Cards[Index].rank), SuitToCStr(Cards[Index].suit));
               OutputDebugStringA(OutStr);
             }
             OutputDebugStringA("======================\n");
@@ -513,7 +511,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       }
       else
       {
-        PushCard(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
+        PushCard(Renderer, { (f32)Hand.cards[Index].rank, (f32)Hand.cards[Index].suit }, Transform);
       }
     }
   }
@@ -530,12 +528,12 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           mat4 Transform = Mat4Translate(((Index - 1)*Renderer->card_width*0.5f) + Renderer->card_height, Index*Renderer->card_height*0.5f - 200.0f, 1.0f)*
             CenterTranslate*
             Mat4RotateZ(PI32 / 2.0f);
-          PushCard(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
+          PushCard(Renderer, { (f32)Hand.cards[Index].rank, (f32)Hand.cards[Index].suit }, Transform);
         }
         else
         {
           mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 200.0f, 1.0f)*CenterTranslate;
-          PushCard(Renderer, { (f32)Hand.cards[Index].type, (f32)Hand.cards[Index].suit }, Transform);
+          PushCard(Renderer, { (f32)Hand.cards[Index].rank, (f32)Hand.cards[Index].suit }, Transform);
         }
       }
     }
