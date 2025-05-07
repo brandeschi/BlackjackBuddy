@@ -49,12 +49,12 @@ internal b32 CheckBust(u32 *HandValue)
   return Result;
 }
 
-internal void Hit(deck *Deck, hand *Hand, s32 *RCount, b32 IsDoubleDown = false)
+internal void Hit(shoe *Shoe, hand *Hand, s32 *RCount, b32 IsDoubleDown = false)
 {
-  NeoAssert(Deck->current - Deck->cards <= 52);
+  NeoAssert(Shoe->current - Shoe->cards <= Shoe->card_count);
   // TODO: Do something if we actually hit this.
-  if (Hand->card_count >= 13) return;
-  card DrawnCard = *Deck->current++;
+  if (Hand->card_count >= 13) InvalidCodePath;
+  card DrawnCard = *Shoe->current++;
   switch (DrawnCard.rank)
   {
     case TEN:
@@ -108,10 +108,9 @@ inline static void shuffle(card deck[], mem_index deck_size)
 inline static void Shuffle(card *Cards, ums CardCount)
 {
   u32 RandomIndex = 0;
-  for (ums Index = 0; Index <= CardCount - 1; Index++)
+  for (ums Index = 0; Index <= CardCount - 1; ++Index)
   {
     ums SwapIndex = RandomNumberTable[RandomIndex++] % (CardCount - 1);
-    // Swap
     card Temp = Cards[Index];
     Cards[Index] = Cards[SwapIndex];
     Cards[SwapIndex] = Temp;
@@ -160,65 +159,60 @@ static inline char *SuitToCStr(s32 CardSuit)
   return "";
 }
 
-internal deck CreateDeck()
+internal void CreateDeck(shoe *Shoe, u32 DeckIdx)
 {
-  deck Result = {
-      {
-        { TWO, SPADES, 2 },
-        { THREE, SPADES, 3 },
-        { FOUR, SPADES, 4 },
-        { FIVE, SPADES, 5 },
-        { SIX, SPADES, 6 },
-        { SEVEN, SPADES, 7 },
-        { EIGHT, SPADES, 8 },
-        { NINE, SPADES, 9 },
-        { TEN, SPADES, 10 },
-        { JACK, SPADES, 10 },
-        { QUEEN, SPADES, 10 },
-        { KING, SPADES, 10 },
-        { ACE, SPADES, 11 },
-        { TWO, HEARTS, 2 },
-        { THREE, HEARTS, 3 },
-        { FOUR, HEARTS, 4 },
-        { FIVE, HEARTS, 5 },
-        { SIX, HEARTS, 6 },
-        { SEVEN, HEARTS, 7 },
-        { EIGHT, HEARTS, 8 },
-        { NINE, HEARTS, 9 },
-        { TEN, HEARTS, 10 },
-        { JACK, HEARTS, 10 },
-        { QUEEN, HEARTS, 10 },
-        { KING, HEARTS, 10 },
-        { ACE, HEARTS, 11 },
-        { TWO, CLUBS, 2 },
-        { THREE, CLUBS, 3 },
-        { FOUR, CLUBS, 4 },
-        { FIVE, CLUBS, 5 },
-        { SIX, CLUBS, 6 },
-        { SEVEN, CLUBS, 7 },
-        { EIGHT, CLUBS, 8 },
-        { NINE, CLUBS, 9 },
-        { TEN, CLUBS, 10 },
-        { JACK, CLUBS, 10 },
-        { QUEEN, CLUBS, 10 },
-        { KING, CLUBS, 10 },
-        { ACE, CLUBS, 11 },
-        { TWO, DIAMONDS, 2 },
-        { THREE, DIAMONDS, 3 },
-        { FOUR, DIAMONDS, 4 },
-        { FIVE, DIAMONDS, 5 },
-        { SIX, DIAMONDS, 6 },
-        { SEVEN, DIAMONDS, 7 },
-        { EIGHT, DIAMONDS, 8 },
-        { NINE, DIAMONDS, 9 },
-        { TEN, DIAMONDS, 10 },
-        { JACK, DIAMONDS, 10 },
-        { QUEEN, DIAMONDS, 10 },
-        { KING, DIAMONDS, 10 },
-        { ACE, DIAMONDS, 11 }
-      },
-    };
-    return Result;
+  Shoe->cards[DeckIdx + 0] = { TWO, SPADES, 2 };
+  Shoe->cards[DeckIdx + 1] = { THREE, SPADES, 3 };
+  Shoe->cards[DeckIdx + 2] = { FOUR, SPADES, 4 };
+  Shoe->cards[DeckIdx + 3] = { FIVE, SPADES, 5 };
+  Shoe->cards[DeckIdx + 4] = { SIX, SPADES, 6 };
+  Shoe->cards[DeckIdx + 5] = { SEVEN, SPADES, 7 };
+  Shoe->cards[DeckIdx + 6] = { EIGHT, SPADES, 8 };
+  Shoe->cards[DeckIdx + 7] = { NINE, SPADES, 9 };
+  Shoe->cards[DeckIdx + 8] = { TEN, SPADES, 10 };
+  Shoe->cards[DeckIdx + 9] = { JACK, SPADES, 10 };
+  Shoe->cards[DeckIdx + 10] = { QUEEN, SPADES, 10 };
+  Shoe->cards[DeckIdx + 11] = { KING, SPADES, 10 };
+  Shoe->cards[DeckIdx + 12] = { ACE, SPADES, 11 };
+  Shoe->cards[DeckIdx + 13] = { TWO, HEARTS, 2 };
+  Shoe->cards[DeckIdx + 14] = { THREE, HEARTS, 3 };
+  Shoe->cards[DeckIdx + 15] = { FOUR, HEARTS, 4 };
+  Shoe->cards[DeckIdx + 16] = { FIVE, HEARTS, 5 };
+  Shoe->cards[DeckIdx + 17] = { SIX, HEARTS, 6 };
+  Shoe->cards[DeckIdx + 18] = { SEVEN, HEARTS, 7 };
+  Shoe->cards[DeckIdx + 19] = { EIGHT, HEARTS, 8 };
+  Shoe->cards[DeckIdx + 20] = { NINE, HEARTS, 9 };
+  Shoe->cards[DeckIdx + 21] = { TEN, HEARTS, 10 };
+  Shoe->cards[DeckIdx + 22] = { JACK, HEARTS, 10 };
+  Shoe->cards[DeckIdx + 23] = { QUEEN, HEARTS, 10 };
+  Shoe->cards[DeckIdx + 24] = { KING, HEARTS, 10 };
+  Shoe->cards[DeckIdx + 25] = { ACE, HEARTS, 11 };
+  Shoe->cards[DeckIdx + 26] = { TWO, CLUBS, 2 };
+  Shoe->cards[DeckIdx + 27] = { THREE, CLUBS, 3 };
+  Shoe->cards[DeckIdx + 28] = { FOUR, CLUBS, 4 };
+  Shoe->cards[DeckIdx + 29] = { FIVE, CLUBS, 5 };
+  Shoe->cards[DeckIdx + 30] = { SIX, CLUBS, 6 };
+  Shoe->cards[DeckIdx + 31] = { SEVEN, CLUBS, 7 };
+  Shoe->cards[DeckIdx + 32] = { EIGHT, CLUBS, 8 };
+  Shoe->cards[DeckIdx + 33] = { NINE, CLUBS, 9 };
+  Shoe->cards[DeckIdx + 34] = { TEN, CLUBS, 10 };
+  Shoe->cards[DeckIdx + 35] = { JACK, CLUBS, 10 };
+  Shoe->cards[DeckIdx + 36] = { QUEEN, CLUBS, 10 };
+  Shoe->cards[DeckIdx + 37] = { KING, CLUBS, 10 };
+  Shoe->cards[DeckIdx + 38] = { ACE, CLUBS, 11 };
+  Shoe->cards[DeckIdx + 39] = { TWO, DIAMONDS, 2 };
+  Shoe->cards[DeckIdx + 40] = { THREE, DIAMONDS, 3 };
+  Shoe->cards[DeckIdx + 41] = { FOUR, DIAMONDS, 4 };
+  Shoe->cards[DeckIdx + 42] = { FIVE, DIAMONDS, 5 };
+  Shoe->cards[DeckIdx + 43] = { SIX, DIAMONDS, 6 };
+  Shoe->cards[DeckIdx + 44] = { SEVEN, DIAMONDS, 7 };
+  Shoe->cards[DeckIdx + 45] = { EIGHT, DIAMONDS, 8 };
+  Shoe->cards[DeckIdx + 46] = { NINE, DIAMONDS, 9 };
+  Shoe->cards[DeckIdx + 47] = { TEN, DIAMONDS, 10 };
+  Shoe->cards[DeckIdx + 48] = { JACK, DIAMONDS, 10 };
+  Shoe->cards[DeckIdx + 49] = { QUEEN, DIAMONDS, 10 };
+  Shoe->cards[DeckIdx + 50] = { KING, DIAMONDS, 10 };
+  Shoe->cards[DeckIdx + 51] = { ACE, DIAMONDS, 11 };
 }
 
 internal void ResetRound(app_state *GameState)
@@ -256,15 +250,19 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     GameState->game_phase = NULL_PHASE;
     // TODO: Setting
     shoe Shoe = {0};
-    Shoe.decks = PushArray(&GameState->core_arena, Shoe.deck_count, deck);
-    for (u32 Idx = 0; Idx < Shoe.deck_count; ++Idx)
+    Shoe.deck_count = 1;
+    Shoe.card_count = Shoe.deck_count*52;
+    Shoe.cards = PushArray(&GameState->core_arena, Shoe.card_count, card);
+    for (u32 DeckIdx = 0; DeckIdx < Shoe.deck_count; ++DeckIdx)
     {
-      Shoe.decks[Idx] = CreateDeck();
-      for (s32 ShuffleCount = 0; ShuffleCount < 4; ++ShuffleCount)
-      {
-        Shuffle(Shoe.decks[Idx].cards, ArrayCount(Shoe.decks[Idx].cards));
-      }
+      CreateDeck(&Shoe, DeckIdx);
     }
+    for (s32 ShuffleCount = 0; ShuffleCount < 4; ++ShuffleCount)
+    {
+      Shuffle(Shoe.cards, Shoe.card_count);
+    }
+    // TODO: Setting - Penetration
+    Shoe.cut_card = 52;
 
     // TODO: Need a period before the cards are dealt to
     // set bet amount for player.
@@ -272,7 +270,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     Ap.bankroll = 10000;
 
     // TODO: Make burning a card an option/setting.
-    Shoe.decks[0].current = &Shoe.decks[0].cards[1];
+    Shoe.current = &Shoe.cards[1];
 
     // TODO: Make settings for number of allowed hands
     Ap.hands = PushArray(&GameState->core_arena, 5, hand);
@@ -293,13 +291,14 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   }
 
   // UPDATE
-  deck *ActiveDeck = &GameState->shoe.decks[0];
+  shoe *Shoe = &GameState->shoe;
   if (GameState->game_phase == END)
   {
     ResetRound(GameState);
     GameState->game_phase = NULL_PHASE;
     if (FirstRound) FirstRound = false;
-    ActiveDeck->discarded = (ActiveDeck->current - ActiveDeck->cards) - 1;
+    // TODO: Only subtract one if a card is burned probably get out the bit from the setting.
+    Shoe->discarded = (u32)(Shoe->current - Shoe->cards) - 1;
     // TODO: Setup deck division choices (half deck, quarter, eighth, etc.).
     // NOTE: These are the typical ways of rounding the true count. I will likely use floor
     // but will leave it for now until I get the sim working.
@@ -311,14 +310,19 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     //     If the number is exactly between two integers, it is rounded up. 1.5 is rounded up to 2. -1.5 is rounded up to -1. This method is also common.
     //   - Statistical Round – After the True Count division, the result is rounded to the nearest integer.
     //     If the number is exactly between two integers, it is rounded to the nearest even number. 1.5 is rounded up to 2. -1.5 is rounded down to -2.
-    // TODO: Update to be used for all decks remaining
-    if (GameState->shoe.deck_count > 1 && ActiveDeck->discarded != 52)
+    if (Shoe->deck_count > 1)
     {
-      GameState->true_count = (f32)GameState->running_count / (f32)(52 - ActiveDeck->discarded);
+      GameState->true_count = (f32)GameState->running_count / (f32)(Shoe->card_count - Shoe->discarded);
     }
     else
     {
       GameState->true_count = (f32)GameState->running_count;
+    }
+
+    if (Shoe->current - Shoe->cards >= Shoe->cut_card)
+    {
+      // TODO: Reset Shoe
+      InvalidCodePath;
     }
   }
 
@@ -329,10 +333,10 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   {
     PlaceBet(&GameState->ap.bankroll, PlayerHand);
 
-    Hit(ActiveDeck, PlayerHand, &GameState->running_count);
-    Hit(ActiveDeck, DealerHand, &GameState->running_count);
-    Hit(ActiveDeck, PlayerHand, &GameState->running_count);
-    Hit(ActiveDeck, DealerHand, &GameState->running_count);
+    Hit(Shoe, PlayerHand, &GameState->running_count);
+    Hit(Shoe, DealerHand, &GameState->running_count);
+    Hit(Shoe, PlayerHand, &GameState->running_count);
+    Hit(Shoe, DealerHand, &GameState->running_count);
 
     b32 AllBJs = true;
     for (u32 Idx = 0; Idx < GameState->ap.hand_count; ++Idx)
@@ -389,7 +393,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           if (ActionRight.half_transitions != 0 && ActionRight.is_down)
           {
             char OutStr[256];
-            card *Cards = ActiveDeck->current;
+            card *Cards = Shoe->current;
             OutputDebugStringA("Deck (current)\n");
             for (u32 Index = 0; Index < 4; ++Index)
             {
@@ -402,7 +406,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           if (ActionDown.half_transitions != 0 && ActionDown.is_down)
           {
             char OutStr[256];
-            card *Cards = ActiveDeck->current;
+            card *Cards = Shoe->current;
             OutputDebugStringA("Deck (current)\n");
             for (u32 Index = 0; Index < 4; ++Index)
             {
@@ -420,7 +424,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
             // TODO: Bake busting into hit func?
-            Hit(ActiveDeck, PlayerHand, &GameState->running_count);
+            Hit(Shoe, PlayerHand, &GameState->running_count);
             b32 Busted = CheckBust(&PlayerHand->value);
             if (Busted && (++GameState->ap.hand_idx == GameState->ap.hand_count))
             {
@@ -448,7 +452,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
             if (PlayerHand->card_count == 2)
             {
               PlaceBet(&GameState->ap.bankroll, PlayerHand, PlayerHand->wager);
-              Hit(ActiveDeck, PlayerHand, &GameState->running_count, true);
+              Hit(Shoe, PlayerHand, &GameState->running_count, true);
               NextPhase(&GameState->game_phase);
             }
 
@@ -464,7 +468,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
             // TODO: Bake busting into hit func?
-            Hit(ActiveDeck, &GameState->dealer, &GameState->running_count);
+            Hit(Shoe, &GameState->dealer, &GameState->running_count);
             // TODO: Add this back once I setup the 'flow' between phases.
             // if (CheckBust(&DealerHand->value)) NextPhase(&GameState->game_phase);
 
@@ -547,14 +551,14 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   {
     // 'Discard Tray'
     // TODO: I feel like there should be a way to reuse vertex data instead of pushing an identical card.
-    if (ActiveDeck->discarded > 0 && !FirstRound)
+    if (Shoe->discarded > 0 && !FirstRound)
     {
       mat4 CardTransform = Mat4Translate((Renderer->card_width*0.5f) + Renderer->card_height,
                                      Renderer->card_height*0.5f + Renderer->width*0.25f, 1.0f)*Mat4RotateZ(PI32 / 4.0f);
       PushCard(Renderer, { 2.0f, 0.0f }, CardTransform);
       char TextContainer[256];
       // Cards in discard tray
-      _snprintf_s(TextContainer, sizeof(TextContainer), "Discarded: %llu", ActiveDeck->discarded);
+      _snprintf_s(TextContainer, sizeof(TextContainer), "Discarded: %d", Shoe->discarded);
       PushText(Renderer, StrFromCStr(TextContainer), Mat4Translate(5.0f, Renderer->width*0.25f + 150.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
     }
   }

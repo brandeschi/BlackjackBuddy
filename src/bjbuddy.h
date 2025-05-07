@@ -68,23 +68,6 @@ inline engine_controller_input *GetController(engine_input *Input, ums Controlle
   return Result;
 }
 
-// enum rank
-// {
-//   // FACE_DOWN,
-//   ACE = 0,
-//   TWO,
-//   THREE,
-//   FOUR,
-//   FIVE,
-//   SIX,
-//   SEVEN,
-//   EIGHT,
-//   NINE,
-//   TEN,
-//   JACK,
-//   QUEEN,
-//   KING
-// };
 enum rank
 {
   TWO = 0,
@@ -129,21 +112,14 @@ struct card
   b32 is_dd = false;
 };
 
-// NOTE: Technically a deck is 52 cards however, in shoe games
-// there are multiple decks and so currenlty I am not sure
-// if I should define a deck to have 52 cards or if it should
-// just be a ptr and a deck is treated as one big unit.
-struct deck
-{
-  card cards[52];
-  card *current;
-  u64 discarded;
-};
-
 struct shoe
 {
-  deck *decks;
-  u32 deck_count = 1;
+  card *cards;
+  card *current;
+  u32 card_count;
+  u32 discarded;
+  u32 cut_card;
+  u32 deck_count;
 };
 
 struct hand
@@ -188,5 +164,5 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 static void app_get_sound_samples(thread_context *Thread, app_memory *Memory, engine_sound_buffer *SoundBuffer);
 
 // NOTE: Forward Declares
-internal void Hit(deck *Deck, hand *Hand, s32 *RCount, b32 IsDoubleDown);
+internal void Hit(shoe *Shoe, hand *Hand, s32 *RCount, b32 IsDoubleDown);
 
