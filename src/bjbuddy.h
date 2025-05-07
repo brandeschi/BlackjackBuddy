@@ -68,11 +68,26 @@ inline engine_controller_input *GetController(engine_input *Input, ums Controlle
   return Result;
 }
 
+// enum rank
+// {
+//   // FACE_DOWN,
+//   ACE = 0,
+//   TWO,
+//   THREE,
+//   FOUR,
+//   FIVE,
+//   SIX,
+//   SEVEN,
+//   EIGHT,
+//   NINE,
+//   TEN,
+//   JACK,
+//   QUEEN,
+//   KING
+// };
 enum rank
 {
-  // FACE_DOWN,
-  ACE = 0,
-  TWO,
+  TWO = 0,
   THREE,
   FOUR,
   FIVE,
@@ -80,10 +95,11 @@ enum rank
   SEVEN,
   EIGHT,
   NINE,
-  TEN,
-  JACK,
-  QUEEN,
-  KING
+  TEN = 8,
+  JACK = 8,
+  QUEEN = 8,
+  KING = 8,
+  ACE,
 };
 
 enum suit
@@ -147,6 +163,12 @@ struct player
   f32 bankroll;
 };
 
+enum table_rules
+{
+  S17 = 1 << 0,
+  H17 = 1 << 1,
+};
+
 // TODO: Optimize size of game structs.
 struct app_state
 {
@@ -154,13 +176,17 @@ struct app_state
   shoe shoe;
   hand dealer;
   player ap;
+  phase game_phase;
   s32 running_count;
   f32 true_count;
-  phase game_phase;
+  s32 table_rules;
 };
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input,
                             engine_bitmap_buffer *Buffer);
 
 static void app_get_sound_samples(thread_context *Thread, app_memory *Memory, engine_sound_buffer *SoundBuffer);
+
+// NOTE: Forward Declares
+internal void Hit(deck *Deck, hand *Hand, s32 *RCount, b32 IsDoubleDown);
 

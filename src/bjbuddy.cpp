@@ -58,9 +58,6 @@ internal void Hit(deck *Deck, hand *Hand, s32 *RCount, b32 IsDoubleDown = false)
   switch (DrawnCard.rank)
   {
     case TEN:
-    case JACK:
-    case QUEEN:
-    case KING:
     case ACE:
     {
       *RCount -= 1;
@@ -127,6 +124,8 @@ inline static void Shuffle(card *Cards, ums CardCount)
 #include "neo_jpg.cpp"
 #endif
 
+// TODO: Should I keep this? If so I need to rework
+// how to convert it over
 static inline char *TypeToCStr(s32 CardType)
 {
   switch(CardType)
@@ -141,9 +140,9 @@ static inline char *TypeToCStr(s32 CardType)
     case EIGHT: return "EIGHT";
     case NINE: return "NINE";
     case TEN: return "TEN";
-    case JACK: return "JACK";
-    case QUEEN: return "QUEEN";
-    case KING: return "KING";
+    // case JACK: return "JACK";
+    // case QUEEN: return "QUEEN";
+    // case KING: return "KING";
   }
 
   return "";
@@ -161,40 +160,9 @@ static inline char *SuitToCStr(s32 CardSuit)
   return "";
 }
 
-static void ResetRound(app_state *GameState)
+internal deck CreateDeck()
 {
-  player *Ap = &GameState->ap;
-  hand *Dealer = &GameState->dealer;
-
-  Dealer->card_count = 0;
-  Dealer->value = 0;
-
-  for (u32 Idx = 0; Idx < Ap->hand_count; ++Idx)
-  {
-    hand *Hand = &Ap->hands[Idx];
-    Hand->card_count = 0;
-    Hand->value = 0;
-    Hand->wager = 0;
-  }
-  Ap->hand_idx = 0;
-  Ap->hand_count = 1;
-}
-
-static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
-{
-  NeoAssert(sizeof(app_state) <= Memory->perm_storage_size);
-  app_state *GameState = (app_state *)Memory->perm_memory;
-
-  static b32 FirstRound = true;
-  if(!Memory->is_init)
-  {
-    InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
-              (u8 *)Memory->perm_memory + sizeof(app_state));
-
-    shoe Shoe = {0};
-    // TODO: Setting
-    Shoe.decks = PushArray(&GameState->core_arena, Shoe.deck_count, deck);
-    Shoe.decks[0] = {
+  deck Result = {
       {
         { TWO, SPADES, 2 },
         { THREE, SPADES, 3 },
@@ -250,14 +218,52 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         { ACE, DIAMONDS, 11 }
       },
     };
+    return Result;
+}
+
+internal void ResetRound(app_state *GameState)
+{
+  player *Ap = &GameState->ap;
+  hand *Dealer = &GameState->dealer;
+
+  Dealer->card_count = 0;
+  Dealer->value = 0;
+
+  for (u32 Idx = 0; Idx < Ap->hand_count; ++Idx)
+  {
+    hand *Hand = &Ap->hands[Idx];
+    Hand->card_count = 0;
+    Hand->value = 0;
+    Hand->wager = 0;
+  }
+  Ap->hand_idx = 0;
+  Ap->hand_count = 1;
+}
+
+static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
+{
+  NeoAssert(sizeof(app_state) <= Memory->perm_storage_size);
+  app_state *GameState = (app_state *)Memory->perm_memory;
+
+  static b32 FirstRound = true;
+  if(!Memory->is_init)
+  {
+    InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
+              (u8 *)Memory->perm_memory + sizeof(app_state));
 
     // Blackjack Setup
 
     GameState->game_phase = NULL_PHASE;
-    for (s32 Index = 0; Index < 4; ++Index)
+    // TODO: Setting
+    shoe Shoe = {0};
+    Shoe.decks = PushArray(&GameState->core_arena, Shoe.deck_count, deck);
+    for (u32 Idx = 0; Idx < Shoe.deck_count; ++Idx)
     {
-      Shuffle(Shoe.decks[0].cards,
-              ArrayCount(Shoe.decks[0].cards));
+      Shoe.decks[Idx] = CreateDeck();
+      for (s32 ShuffleCount = 0; ShuffleCount < 4; ++ShuffleCount)
+      {
+        Shuffle(Shoe.decks[Idx].cards, ArrayCount(Shoe.decks[Idx].cards));
+      }
     }
 
     // TODO: Need a period before the cards are dealt to

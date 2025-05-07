@@ -1,5 +1,6 @@
 enum Action
 {
+  NONE = 0,
   SPLITNO = 'N',
   SPLITYES = 'Y',
   HIT = 'H',
@@ -8,7 +9,7 @@ enum Action
 };
 
 // NOTE: Default will be S17 (US)
-// TODO: Modulate certain values based on game rules.
+// TODO: Handle Late surrenders
 
 // Dealer Cards horizontal; Player cards vertical
 char SPLITS[] =
