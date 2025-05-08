@@ -161,58 +161,58 @@ static inline char *SuitToCStr(s32 CardSuit)
 
 internal void CreateDeck(shoe *Shoe, u32 DeckIdx)
 {
-  Shoe->cards[DeckIdx + 0] = { TWO, SPADES, 2 };
-  Shoe->cards[DeckIdx + 1] = { THREE, SPADES, 3 };
-  Shoe->cards[DeckIdx + 2] = { FOUR, SPADES, 4 };
-  Shoe->cards[DeckIdx + 3] = { FIVE, SPADES, 5 };
-  Shoe->cards[DeckIdx + 4] = { SIX, SPADES, 6 };
-  Shoe->cards[DeckIdx + 5] = { SEVEN, SPADES, 7 };
-  Shoe->cards[DeckIdx + 6] = { EIGHT, SPADES, 8 };
-  Shoe->cards[DeckIdx + 7] = { NINE, SPADES, 9 };
-  Shoe->cards[DeckIdx + 8] = { TEN, SPADES, 10 };
-  Shoe->cards[DeckIdx + 9] = { JACK, SPADES, 10 };
-  Shoe->cards[DeckIdx + 10] = { QUEEN, SPADES, 10 };
-  Shoe->cards[DeckIdx + 11] = { KING, SPADES, 10 };
-  Shoe->cards[DeckIdx + 12] = { ACE, SPADES, 11 };
-  Shoe->cards[DeckIdx + 13] = { TWO, HEARTS, 2 };
-  Shoe->cards[DeckIdx + 14] = { THREE, HEARTS, 3 };
-  Shoe->cards[DeckIdx + 15] = { FOUR, HEARTS, 4 };
-  Shoe->cards[DeckIdx + 16] = { FIVE, HEARTS, 5 };
-  Shoe->cards[DeckIdx + 17] = { SIX, HEARTS, 6 };
-  Shoe->cards[DeckIdx + 18] = { SEVEN, HEARTS, 7 };
-  Shoe->cards[DeckIdx + 19] = { EIGHT, HEARTS, 8 };
-  Shoe->cards[DeckIdx + 20] = { NINE, HEARTS, 9 };
-  Shoe->cards[DeckIdx + 21] = { TEN, HEARTS, 10 };
-  Shoe->cards[DeckIdx + 22] = { JACK, HEARTS, 10 };
-  Shoe->cards[DeckIdx + 23] = { QUEEN, HEARTS, 10 };
-  Shoe->cards[DeckIdx + 24] = { KING, HEARTS, 10 };
-  Shoe->cards[DeckIdx + 25] = { ACE, HEARTS, 11 };
-  Shoe->cards[DeckIdx + 26] = { TWO, CLUBS, 2 };
-  Shoe->cards[DeckIdx + 27] = { THREE, CLUBS, 3 };
-  Shoe->cards[DeckIdx + 28] = { FOUR, CLUBS, 4 };
-  Shoe->cards[DeckIdx + 29] = { FIVE, CLUBS, 5 };
-  Shoe->cards[DeckIdx + 30] = { SIX, CLUBS, 6 };
-  Shoe->cards[DeckIdx + 31] = { SEVEN, CLUBS, 7 };
-  Shoe->cards[DeckIdx + 32] = { EIGHT, CLUBS, 8 };
-  Shoe->cards[DeckIdx + 33] = { NINE, CLUBS, 9 };
-  Shoe->cards[DeckIdx + 34] = { TEN, CLUBS, 10 };
-  Shoe->cards[DeckIdx + 35] = { JACK, CLUBS, 10 };
-  Shoe->cards[DeckIdx + 36] = { QUEEN, CLUBS, 10 };
-  Shoe->cards[DeckIdx + 37] = { KING, CLUBS, 10 };
-  Shoe->cards[DeckIdx + 38] = { ACE, CLUBS, 11 };
-  Shoe->cards[DeckIdx + 39] = { TWO, DIAMONDS, 2 };
-  Shoe->cards[DeckIdx + 40] = { THREE, DIAMONDS, 3 };
-  Shoe->cards[DeckIdx + 41] = { FOUR, DIAMONDS, 4 };
-  Shoe->cards[DeckIdx + 42] = { FIVE, DIAMONDS, 5 };
-  Shoe->cards[DeckIdx + 43] = { SIX, DIAMONDS, 6 };
-  Shoe->cards[DeckIdx + 44] = { SEVEN, DIAMONDS, 7 };
-  Shoe->cards[DeckIdx + 45] = { EIGHT, DIAMONDS, 8 };
-  Shoe->cards[DeckIdx + 46] = { NINE, DIAMONDS, 9 };
-  Shoe->cards[DeckIdx + 47] = { TEN, DIAMONDS, 10 };
-  Shoe->cards[DeckIdx + 48] = { JACK, DIAMONDS, 10 };
-  Shoe->cards[DeckIdx + 49] = { QUEEN, DIAMONDS, 10 };
-  Shoe->cards[DeckIdx + 50] = { KING, DIAMONDS, 10 };
-  Shoe->cards[DeckIdx + 51] = { ACE, DIAMONDS, 11 };
+  Shoe->cards[(52*DeckIdx) + 0] = { TWO, SPADES, 2 };
+  Shoe->cards[(52*DeckIdx) + 1] = { THREE, SPADES, 3 };
+  Shoe->cards[(52*DeckIdx) + 2] = { FOUR, SPADES, 4 };
+  Shoe->cards[(52*DeckIdx) + 3] = { FIVE, SPADES, 5 };
+  Shoe->cards[(52*DeckIdx) + 4] = { SIX, SPADES, 6 };
+  Shoe->cards[(52*DeckIdx) + 5] = { SEVEN, SPADES, 7 };
+  Shoe->cards[(52*DeckIdx) + 6] = { EIGHT, SPADES, 8 };
+  Shoe->cards[(52*DeckIdx) + 7] = { NINE, SPADES, 9 };
+  Shoe->cards[(52*DeckIdx) + 8] = { TEN, SPADES, 10 };
+  Shoe->cards[(52*DeckIdx) + 9] = { JACK, SPADES, 10 };
+  Shoe->cards[(52*DeckIdx) + 10] = { QUEEN, SPADES, 10 };
+  Shoe->cards[(52*DeckIdx) + 11] = { KING, SPADES, 10 };
+  Shoe->cards[(52*DeckIdx) + 12] = { ACE, SPADES, 11 };
+  Shoe->cards[(52*DeckIdx) + 13] = { TWO, HEARTS, 2 };
+  Shoe->cards[(52*DeckIdx) + 14] = { THREE, HEARTS, 3 };
+  Shoe->cards[(52*DeckIdx) + 15] = { FOUR, HEARTS, 4 };
+  Shoe->cards[(52*DeckIdx) + 16] = { FIVE, HEARTS, 5 };
+  Shoe->cards[(52*DeckIdx) + 17] = { SIX, HEARTS, 6 };
+  Shoe->cards[(52*DeckIdx) + 18] = { SEVEN, HEARTS, 7 };
+  Shoe->cards[(52*DeckIdx) + 19] = { EIGHT, HEARTS, 8 };
+  Shoe->cards[(52*DeckIdx) + 20] = { NINE, HEARTS, 9 };
+  Shoe->cards[(52*DeckIdx) + 21] = { TEN, HEARTS, 10 };
+  Shoe->cards[(52*DeckIdx) + 22] = { JACK, HEARTS, 10 };
+  Shoe->cards[(52*DeckIdx) + 23] = { QUEEN, HEARTS, 10 };
+  Shoe->cards[(52*DeckIdx) + 24] = { KING, HEARTS, 10 };
+  Shoe->cards[(52*DeckIdx) + 25] = { ACE, HEARTS, 11 };
+  Shoe->cards[(52*DeckIdx) + 26] = { TWO, CLUBS, 2 };
+  Shoe->cards[(52*DeckIdx) + 27] = { THREE, CLUBS, 3 };
+  Shoe->cards[(52*DeckIdx) + 28] = { FOUR, CLUBS, 4 };
+  Shoe->cards[(52*DeckIdx) + 29] = { FIVE, CLUBS, 5 };
+  Shoe->cards[(52*DeckIdx) + 30] = { SIX, CLUBS, 6 };
+  Shoe->cards[(52*DeckIdx) + 31] = { SEVEN, CLUBS, 7 };
+  Shoe->cards[(52*DeckIdx) + 32] = { EIGHT, CLUBS, 8 };
+  Shoe->cards[(52*DeckIdx) + 33] = { NINE, CLUBS, 9 };
+  Shoe->cards[(52*DeckIdx) + 34] = { TEN, CLUBS, 10 };
+  Shoe->cards[(52*DeckIdx) + 35] = { JACK, CLUBS, 10 };
+  Shoe->cards[(52*DeckIdx) + 36] = { QUEEN, CLUBS, 10 };
+  Shoe->cards[(52*DeckIdx) + 37] = { KING, CLUBS, 10 };
+  Shoe->cards[(52*DeckIdx) + 38] = { ACE, CLUBS, 11 };
+  Shoe->cards[(52*DeckIdx) + 39] = { TWO, DIAMONDS, 2 };
+  Shoe->cards[(52*DeckIdx) + 40] = { THREE, DIAMONDS, 3 };
+  Shoe->cards[(52*DeckIdx) + 41] = { FOUR, DIAMONDS, 4 };
+  Shoe->cards[(52*DeckIdx) + 42] = { FIVE, DIAMONDS, 5 };
+  Shoe->cards[(52*DeckIdx) + 43] = { SIX, DIAMONDS, 6 };
+  Shoe->cards[(52*DeckIdx) + 44] = { SEVEN, DIAMONDS, 7 };
+  Shoe->cards[(52*DeckIdx) + 45] = { EIGHT, DIAMONDS, 8 };
+  Shoe->cards[(52*DeckIdx) + 46] = { NINE, DIAMONDS, 9 };
+  Shoe->cards[(52*DeckIdx) + 47] = { TEN, DIAMONDS, 10 };
+  Shoe->cards[(52*DeckIdx) + 48] = { JACK, DIAMONDS, 10 };
+  Shoe->cards[(52*DeckIdx) + 49] = { QUEEN, DIAMONDS, 10 };
+  Shoe->cards[(52*DeckIdx) + 50] = { KING, DIAMONDS, 10 };
+  Shoe->cards[(52*DeckIdx) + 51] = { ACE, DIAMONDS, 11 };
 }
 
 internal void ResetRound(app_state *GameState)
@@ -250,7 +250,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     GameState->game_phase = NULL_PHASE;
     // TODO: Setting
     shoe Shoe = {0};
-    Shoe.deck_count = 1;
+    Shoe.deck_count = 6;
     Shoe.card_count = Shoe.deck_count*52;
     Shoe.cards = PushArray(&GameState->core_arena, Shoe.card_count, card);
     for (u32 DeckIdx = 0; DeckIdx < Shoe.deck_count; ++DeckIdx)
@@ -262,7 +262,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
       Shuffle(Shoe.cards, Shoe.card_count);
     }
     // TODO: Setting - Penetration
-    Shoe.cut_card = 52;
+    Shoe.cut_card = 52*Shoe.deck_count;
 
     // TODO: Need a period before the cards are dealt to
     // set bet amount for player.
@@ -312,7 +312,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     //     If the number is exactly between two integers, it is rounded to the nearest even number. 1.5 is rounded up to 2. -1.5 is rounded down to -2.
     if (Shoe->deck_count > 1)
     {
-      GameState->true_count = (f32)GameState->running_count / (f32)(Shoe->card_count - Shoe->discarded);
+      f32 DecksRemaining = (f32)(Shoe->card_count - Shoe->discarded) / 52.0f;
+      GameState->true_count = (f32)GameState->running_count / DecksRemaining;
     }
     else
     {
