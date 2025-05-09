@@ -231,7 +231,7 @@ internal void ResetRound(app_state *GameState)
     Hand->wager = 0;
   }
   Ap->hand_idx = 0;
-  Ap->hand_count = 1;
+  Ap->hand_count = 0;
 }
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
@@ -278,7 +278,6 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     {
       Ap.hands[Idx].cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
     }
-    Ap.hand_count = 1;
 
     hand DealerHand = {0};
     DealerHand.cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
@@ -332,6 +331,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
   if (GameState->game_phase == START)
   {
+    ++GameState->ap.hand_count;
     PlaceBet(&GameState->ap.bankroll, PlayerHand);
 
     Hit(Shoe, PlayerHand, &GameState->running_count);
@@ -552,6 +552,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
 
 
   // RENDER
+  // TODO: There are more draw calls then necessary here due to lack of sorting the units.
+  // This should be looked at to either add the sorting or change the approach.
   ResetRenderer(Renderer);
   mat4 CenterTranslate = Mat4Translate((f32)Renderer->width*0.5f, (f32)Renderer->height*0.5f, 0.0f);
   {
@@ -572,6 +574,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   }
   {
     // Player's Cards
+    char TextContainer[256];
     for (u32 HCount = 0; HCount < GameState->ap.hand_count; ++HCount)
     {
       hand Hand = GameState->ap.hands[HCount];
@@ -599,11 +602,18 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
         }
         else
         {
-          // mat4 Transform = HandOffsetTransform*Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 200.0f, 1.0f)*CenterTranslate;
           mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 200.0f, 0.0f)*CenterTranslate*HandOffsetTransform;
           PushCard(Renderer, Hand.cards[Index].card_coords, Transform);
         }
       }
+
+      // Wager per hand
+      mat4 Transform = CenterTranslate*
+                       Mat4Translate(-45.0f, -Renderer->card_height*5.0f, 0.0f)*
+                       HandOffsetTransform*
+                       Mat4Scale(0.5f, 0.5f, 1.0f);
+      _snprintf_s(TextContainer, sizeof(TextContainer), "$%.2f", Hand.wager);
+      PushText(Renderer, StrFromCStr(TextContainer), Transform);
     }
   }
   {
@@ -641,10 +651,6 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     // Bankroll
     _snprintf_s(TextContainer, sizeof(TextContainer), "Bankroll: $%.2f", GameState->ap.bankroll);
     PushText(Renderer, StrFromCStr(TextContainer), Mat4Translate(5.0f, 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
-    // Wager
-    // @Start Make wager show up for each hand right below cards
-    _snprintf_s(TextContainer, sizeof(TextContainer), "Wager: $%.2f", PlayerHand->wager);
-    PushText(Renderer, StrFromCStr(TextContainer), CenterTranslate*Mat4Translate(-175.0f, -(f32)Renderer->height*0.5f + 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
   }
 }
 
