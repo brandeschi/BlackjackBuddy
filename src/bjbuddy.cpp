@@ -161,58 +161,58 @@ static inline char *SuitToCStr(s32 CardSuit)
 
 internal void CreateDeck(shoe *Shoe, u32 DeckIdx)
 {
-  Shoe->cards[(52*DeckIdx) + 0] = { TWO, SPADES, 2 };
-  Shoe->cards[(52*DeckIdx) + 1] = { THREE, SPADES, 3 };
-  Shoe->cards[(52*DeckIdx) + 2] = { FOUR, SPADES, 4 };
-  Shoe->cards[(52*DeckIdx) + 3] = { FIVE, SPADES, 5 };
-  Shoe->cards[(52*DeckIdx) + 4] = { SIX, SPADES, 6 };
-  Shoe->cards[(52*DeckIdx) + 5] = { SEVEN, SPADES, 7 };
-  Shoe->cards[(52*DeckIdx) + 6] = { EIGHT, SPADES, 8 };
-  Shoe->cards[(52*DeckIdx) + 7] = { NINE, SPADES, 9 };
-  Shoe->cards[(52*DeckIdx) + 8] = { TEN, SPADES, 10 };
-  Shoe->cards[(52*DeckIdx) + 9] = { JACK, SPADES, 10 };
-  Shoe->cards[(52*DeckIdx) + 10] = { QUEEN, SPADES, 10 };
-  Shoe->cards[(52*DeckIdx) + 11] = { KING, SPADES, 10 };
-  Shoe->cards[(52*DeckIdx) + 12] = { ACE, SPADES, 11 };
-  Shoe->cards[(52*DeckIdx) + 13] = { TWO, HEARTS, 2 };
-  Shoe->cards[(52*DeckIdx) + 14] = { THREE, HEARTS, 3 };
-  Shoe->cards[(52*DeckIdx) + 15] = { FOUR, HEARTS, 4 };
-  Shoe->cards[(52*DeckIdx) + 16] = { FIVE, HEARTS, 5 };
-  Shoe->cards[(52*DeckIdx) + 17] = { SIX, HEARTS, 6 };
-  Shoe->cards[(52*DeckIdx) + 18] = { SEVEN, HEARTS, 7 };
-  Shoe->cards[(52*DeckIdx) + 19] = { EIGHT, HEARTS, 8 };
-  Shoe->cards[(52*DeckIdx) + 20] = { NINE, HEARTS, 9 };
-  Shoe->cards[(52*DeckIdx) + 21] = { TEN, HEARTS, 10 };
-  Shoe->cards[(52*DeckIdx) + 22] = { JACK, HEARTS, 10 };
-  Shoe->cards[(52*DeckIdx) + 23] = { QUEEN, HEARTS, 10 };
-  Shoe->cards[(52*DeckIdx) + 24] = { KING, HEARTS, 10 };
-  Shoe->cards[(52*DeckIdx) + 25] = { ACE, HEARTS, 11 };
-  Shoe->cards[(52*DeckIdx) + 26] = { TWO, CLUBS, 2 };
-  Shoe->cards[(52*DeckIdx) + 27] = { THREE, CLUBS, 3 };
-  Shoe->cards[(52*DeckIdx) + 28] = { FOUR, CLUBS, 4 };
-  Shoe->cards[(52*DeckIdx) + 29] = { FIVE, CLUBS, 5 };
-  Shoe->cards[(52*DeckIdx) + 30] = { SIX, CLUBS, 6 };
-  Shoe->cards[(52*DeckIdx) + 31] = { SEVEN, CLUBS, 7 };
-  Shoe->cards[(52*DeckIdx) + 32] = { EIGHT, CLUBS, 8 };
-  Shoe->cards[(52*DeckIdx) + 33] = { NINE, CLUBS, 9 };
-  Shoe->cards[(52*DeckIdx) + 34] = { TEN, CLUBS, 10 };
-  Shoe->cards[(52*DeckIdx) + 35] = { JACK, CLUBS, 10 };
-  Shoe->cards[(52*DeckIdx) + 36] = { QUEEN, CLUBS, 10 };
-  Shoe->cards[(52*DeckIdx) + 37] = { KING, CLUBS, 10 };
-  Shoe->cards[(52*DeckIdx) + 38] = { ACE, CLUBS, 11 };
-  Shoe->cards[(52*DeckIdx) + 39] = { TWO, DIAMONDS, 2 };
-  Shoe->cards[(52*DeckIdx) + 40] = { THREE, DIAMONDS, 3 };
-  Shoe->cards[(52*DeckIdx) + 41] = { FOUR, DIAMONDS, 4 };
-  Shoe->cards[(52*DeckIdx) + 42] = { FIVE, DIAMONDS, 5 };
-  Shoe->cards[(52*DeckIdx) + 43] = { SIX, DIAMONDS, 6 };
-  Shoe->cards[(52*DeckIdx) + 44] = { SEVEN, DIAMONDS, 7 };
-  Shoe->cards[(52*DeckIdx) + 45] = { EIGHT, DIAMONDS, 8 };
-  Shoe->cards[(52*DeckIdx) + 46] = { NINE, DIAMONDS, 9 };
-  Shoe->cards[(52*DeckIdx) + 47] = { TEN, DIAMONDS, 10 };
-  Shoe->cards[(52*DeckIdx) + 48] = { JACK, DIAMONDS, 10 };
-  Shoe->cards[(52*DeckIdx) + 49] = { QUEEN, DIAMONDS, 10 };
-  Shoe->cards[(52*DeckIdx) + 50] = { KING, DIAMONDS, 10 };
-  Shoe->cards[(52*DeckIdx) + 51] = { ACE, DIAMONDS, 11 };
+  Shoe->cards[(52*DeckIdx) + 0] = { TWO, SPADES, {1, 1}, 2 };
+  Shoe->cards[(52*DeckIdx) + 1] = { THREE, SPADES, {2, 1}, 3 };
+  Shoe->cards[(52*DeckIdx) + 2] = { FOUR, SPADES, {3, 1}, 4 };
+  Shoe->cards[(52*DeckIdx) + 3] = { FIVE, SPADES, {4, 1}, 5 };
+  Shoe->cards[(52*DeckIdx) + 4] = { SIX, SPADES, {5, 1}, 6 };
+  Shoe->cards[(52*DeckIdx) + 5] = { SEVEN, SPADES, {6, 1}, 7 };
+  Shoe->cards[(52*DeckIdx) + 6] = { EIGHT, SPADES, {7, 1}, 8 };
+  Shoe->cards[(52*DeckIdx) + 7] = { NINE, SPADES, {8, 1}, 9 };
+  Shoe->cards[(52*DeckIdx) + 8] = { TEN, SPADES, {9, 1}, 10 };
+  Shoe->cards[(52*DeckIdx) + 9] = { JACK, SPADES, {10, 1}, 10 };
+  Shoe->cards[(52*DeckIdx) + 10] = { QUEEN, SPADES, {11, 1}, 10 };
+  Shoe->cards[(52*DeckIdx) + 11] = { KING, SPADES, {12, 1}, 10 };
+  Shoe->cards[(52*DeckIdx) + 12] = { ACE, SPADES, {0, 1}, 11 };
+  Shoe->cards[(52*DeckIdx) + 13] = { TWO, HEARTS, {1, 2}, 2 };
+  Shoe->cards[(52*DeckIdx) + 14] = { THREE, HEARTS, {2, 2}, 3 };
+  Shoe->cards[(52*DeckIdx) + 15] = { FOUR, HEARTS, {3, 2}, 4 };
+  Shoe->cards[(52*DeckIdx) + 16] = { FIVE, HEARTS, {4, 2}, 5 };
+  Shoe->cards[(52*DeckIdx) + 17] = { SIX, HEARTS, {5, 2}, 6 };
+  Shoe->cards[(52*DeckIdx) + 18] = { SEVEN, HEARTS, {6, 2}, 7 };
+  Shoe->cards[(52*DeckIdx) + 19] = { EIGHT, HEARTS, {7, 2}, 8 };
+  Shoe->cards[(52*DeckIdx) + 20] = { NINE, HEARTS, {8, 2}, 9 };
+  Shoe->cards[(52*DeckIdx) + 21] = { TEN, HEARTS, {9, 2}, 10 };
+  Shoe->cards[(52*DeckIdx) + 22] = { JACK, HEARTS, {10, 2}, 10 };
+  Shoe->cards[(52*DeckIdx) + 23] = { QUEEN, HEARTS, {11, 2}, 10 };
+  Shoe->cards[(52*DeckIdx) + 24] = { KING, HEARTS, {12, 2}, 10 };
+  Shoe->cards[(52*DeckIdx) + 25] = { ACE, HEARTS, {0, 2}, 11 };
+  Shoe->cards[(52*DeckIdx) + 26] = { TWO, CLUBS, {1, 4}, 2 };
+  Shoe->cards[(52*DeckIdx) + 27] = { THREE, CLUBS, {2, 4}, 3 };
+  Shoe->cards[(52*DeckIdx) + 28] = { FOUR, CLUBS, {3, 4}, 4 };
+  Shoe->cards[(52*DeckIdx) + 29] = { FIVE, CLUBS, {4, 4}, 5 };
+  Shoe->cards[(52*DeckIdx) + 30] = { SIX, CLUBS, {5, 4}, 6 };
+  Shoe->cards[(52*DeckIdx) + 31] = { SEVEN, CLUBS, {6, 4}, 7 };
+  Shoe->cards[(52*DeckIdx) + 32] = { EIGHT, CLUBS, {7, 4}, 8 };
+  Shoe->cards[(52*DeckIdx) + 33] = { NINE, CLUBS, {8, 4}, 9 };
+  Shoe->cards[(52*DeckIdx) + 34] = { TEN, CLUBS, {9, 4}, 10 };
+  Shoe->cards[(52*DeckIdx) + 35] = { JACK, CLUBS, {10, 4}, 10 };
+  Shoe->cards[(52*DeckIdx) + 36] = { QUEEN, CLUBS, {11, 4}, 10 };
+  Shoe->cards[(52*DeckIdx) + 37] = { KING, CLUBS, {12, 4}, 10 };
+  Shoe->cards[(52*DeckIdx) + 38] = { ACE, CLUBS, {0, 4}, 11 };
+  Shoe->cards[(52*DeckIdx) + 39] = { TWO, DIAMONDS, {1, 3}, 2 };
+  Shoe->cards[(52*DeckIdx) + 40] = { THREE, DIAMONDS, {2, 3}, 3 };
+  Shoe->cards[(52*DeckIdx) + 41] = { FOUR, DIAMONDS, {3, 3}, 4 };
+  Shoe->cards[(52*DeckIdx) + 42] = { FIVE, DIAMONDS, {4, 3}, 5 };
+  Shoe->cards[(52*DeckIdx) + 43] = { SIX, DIAMONDS, {5, 3}, 6 };
+  Shoe->cards[(52*DeckIdx) + 44] = { SEVEN, DIAMONDS, {6, 3}, 7 };
+  Shoe->cards[(52*DeckIdx) + 45] = { EIGHT, DIAMONDS, {7, 3}, 8 };
+  Shoe->cards[(52*DeckIdx) + 46] = { NINE, DIAMONDS, {8, 3}, 9 };
+  Shoe->cards[(52*DeckIdx) + 47] = { TEN, DIAMONDS, {9, 3}, 10 };
+  Shoe->cards[(52*DeckIdx) + 48] = { JACK, DIAMONDS, {10, 3}, 10 };
+  Shoe->cards[(52*DeckIdx) + 49] = { QUEEN, DIAMONDS, {11, 3}, 10 };
+  Shoe->cards[(52*DeckIdx) + 50] = { KING, DIAMONDS, {12, 3}, 10 };
+  Shoe->cards[(52*DeckIdx) + 51] = { ACE, DIAMONDS, {0, 3}, 11 };
 }
 
 internal void ResetRound(app_state *GameState)
@@ -273,8 +273,8 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     Shoe.current = &Shoe.cards[1];
 
     // TODO: Make settings for number of allowed hands
-    Ap.hands = PushArray(&GameState->core_arena, 5, hand);
-    for (s32 Idx = 0; Idx < 5; ++Idx)
+    Ap.hands = PushArray(&GameState->core_arena, 7, hand);
+    for (s32 Idx = 0; Idx < 7; ++Idx)
     {
       Ap.hands[Idx].cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
     }
@@ -366,6 +366,9 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     }
   }
 
+  // NOTE: We have moved on to the next player hand from a split
+  if (GameState->game_phase == PLAYER && PlayerHand->card_count == 1) Hit(Shoe, PlayerHand, &GameState->running_count);
+
   // NOTE: For cases when a hand pays out BJ and exists inbetween all the hands
   // ie. players has 3 hands and the middle hand played out BJ, the active player
   // hand should be updated accordingly before processing player actions.
@@ -427,10 +430,13 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
             // TODO: Bake busting into hit func?
             Hit(Shoe, PlayerHand, &GameState->running_count);
             b32 Busted = CheckBust(&PlayerHand->value);
-            if (Busted && (++GameState->ap.hand_idx == GameState->ap.hand_count))
+            if (Busted && ((GameState->ap.hand_idx + 1) == GameState->ap.hand_count))
             {
-              --GameState->ap.hand_idx;
               NextPhase(&GameState->game_phase);
+            }
+            else
+            {
+              ++GameState->ap.hand_idx;
             }
 
             char OutStr[256];
@@ -442,19 +448,53 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
           else if (ActionRight.half_transitions != 0 && ActionRight.is_down)
           {
             player *Player = &GameState->ap;
-            if (++Player->hand_idx == Player->hand_count)
+            if ((Player->hand_idx + 1) == Player->hand_count)
             {
-              --Player->hand_idx;
               NextPhase(&GameState->game_phase);
+            }
+            else
+            {
+              ++Player->hand_idx;
             }
           }
           else if (ActionDown.half_transitions != 0 && ActionDown.is_down)
           {
             if (PlayerHand->card_count == 2)
             {
-              PlaceBet(&GameState->ap.bankroll, PlayerHand, PlayerHand->wager);
+              // TODO: Verify bet amount requirements for double down.
+              player *Player = &GameState->ap;
+              PlaceBet(&Player->bankroll, PlayerHand, PlayerHand->wager);
               Hit(Shoe, PlayerHand, &GameState->running_count, true);
-              NextPhase(&GameState->game_phase);
+              if ((Player->hand_idx + 1) == Player->hand_count)
+              {
+                NextPhase(&GameState->game_phase);
+              }
+              else
+              {
+                ++Player->hand_idx;
+              }
+            }
+
+            char OutStr[256];
+            _snprintf_s(OutStr, sizeof(OutStr), "Hand Value: %d\n", PlayerHand->value);
+            OutputDebugStringA(OutStr);
+
+            OutputDebugStringA("======================\n");
+          }
+          else if (ActionUp.half_transitions != 0 && ActionUp.is_down)
+          {
+            // NOTE: The splitting will default to one card only when splitting aces and no RSA.
+            if (PlayerHand->card_count == 2) // TODO: Add check for being the same rank.
+            {
+              player *Player = &GameState->ap;
+              hand *NewHand = &Player->hands[Player->hand_count++];
+              NewHand->cards[0] = PlayerHand->cards[1];
+              NewHand->value += NewHand->cards[0].value;
+              PlayerHand->value -= PlayerHand->cards[1].value;
+              ++NewHand->card_count;
+              --PlayerHand->card_count;
+              PlaceBet(&GameState->ap.bankroll, NewHand, PlayerHand->wager);
+              Hit(Shoe, PlayerHand, &GameState->running_count);
             }
 
             char OutStr[256];
@@ -493,14 +533,18 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
   // Evaluate current player hand
   if (GameState->game_phase == EVAL)
   {
-    if (CheckBust(&DealerHand->value) ||
-       (!CheckBust(&PlayerHand->value) && DealerHand->value < PlayerHand->value))
+    for (u32 Idx = 0; Idx < GameState->ap.hand_count; ++Idx)
     {
-      PayOut(&GameState->ap.bankroll, PlayerHand->wager);
-    }
-    else if (CheckBust(&PlayerHand->value) || DealerHand->value > PlayerHand->value)
-    {
-      GameState->ap.bankroll -= PlayerHand->wager;
+      hand *CurrentHand = &GameState->ap.hands[Idx];
+      if (CheckBust(&DealerHand->value) ||
+        (!CheckBust(&CurrentHand->value) && DealerHand->value < CurrentHand->value))
+      {
+        PayOut(&GameState->ap.bankroll, CurrentHand->wager);
+      }
+      else if (CheckBust(&CurrentHand->value) || DealerHand->value > CurrentHand->value)
+      {
+        GameState->ap.bankroll -= CurrentHand->wager;
+      }
     }
 
     NextPhase(&GameState->game_phase);
@@ -515,14 +559,14 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     hand Hand = GameState->dealer;
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
     {
-      mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 200.0f, 1.0f)*CenterTranslate;
+      mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 200.0f, 0.0f)*CenterTranslate;
       if (Index == 0 && (GameState->game_phase == START || GameState->game_phase == PLAYER))
       {
         PushCard(Renderer, { 2.0f, 0.0f }, Transform);
       }
       else
       {
-        PushCard(Renderer, { (f32)Hand.cards[Index].rank, (f32)Hand.cards[Index].suit }, Transform);
+        PushCard(Renderer, Hand.cards[Index].card_coords, Transform);
       }
     }
   }
@@ -531,20 +575,33 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     for (u32 HCount = 0; HCount < GameState->ap.hand_count; ++HCount)
     {
       hand Hand = GameState->ap.hands[HCount];
+      mat4 HandOffsetTransform = Mat4Iden();
+      if (GameState->ap.hand_count > 1)
+      {
+        if (HCount == 0)
+        {
+          HandOffsetTransform = Mat4Translate(-105.0f, 0.0f, 0.0f);
+        }
+        else
+        {
+          HandOffsetTransform = Mat4Translate(105.0f, 0.0f, 0.0f);
+        }
+      }
       // TODO: Update the transforms to account for more than one hand
       for (u32 Index = 0; Index < Hand.card_count; ++Index)
       {
         if (Hand.cards[Index].is_dd)
         {
-          mat4 Transform = Mat4Translate(((Index - 1)*Renderer->card_width*0.5f) + Renderer->card_height, Index*Renderer->card_height*0.5f - 200.0f, 1.0f)*
+          mat4 Transform = HandOffsetTransform*Mat4Translate(((Index - 1)*Renderer->card_width*0.5f) + Renderer->card_height, Index*Renderer->card_height*0.5f - 200.0f, 0.0f)*
             CenterTranslate*
             Mat4RotateZ(PI32 / 2.0f);
-          PushCard(Renderer, { (f32)Hand.cards[Index].rank, (f32)Hand.cards[Index].suit }, Transform);
+          PushCard(Renderer, Hand.cards[Index].card_coords, Transform);
         }
         else
         {
-          mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 200.0f, 1.0f)*CenterTranslate;
-          PushCard(Renderer, { (f32)Hand.cards[Index].rank, (f32)Hand.cards[Index].suit }, Transform);
+          // mat4 Transform = HandOffsetTransform*Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 200.0f, 1.0f)*CenterTranslate;
+          mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f - 200.0f, 0.0f)*CenterTranslate*HandOffsetTransform;
+          PushCard(Renderer, Hand.cards[Index].card_coords, Transform);
         }
       }
     }
@@ -585,6 +642,7 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     _snprintf_s(TextContainer, sizeof(TextContainer), "Bankroll: $%.2f", GameState->ap.bankroll);
     PushText(Renderer, StrFromCStr(TextContainer), Mat4Translate(5.0f, 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
     // Wager
+    // @Start Make wager show up for each hand right below cards
     _snprintf_s(TextContainer, sizeof(TextContainer), "Wager: $%.2f", PlayerHand->wager);
     PushText(Renderer, StrFromCStr(TextContainer), CenterTranslate*Mat4Translate(-175.0f, -(f32)Renderer->height*0.5f + 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
   }

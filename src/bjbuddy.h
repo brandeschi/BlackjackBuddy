@@ -107,6 +107,8 @@ struct card
 {
   rank rank;
   suit suit;
+  // TODO: Possible get rid of this later.
+  v2 card_coords;
 
   u32 value;
   b32 is_dd = false;
