@@ -143,8 +143,14 @@ struct player
 
 enum table_rules
 {
-  S17 = 1 << 0,
-  H17 = 1 << 1,
+  S17 = 0,
+  H17 = 1 << 0,
+};
+
+enum scene
+{
+  GAME = 0,
+  SIM  = 1 << 0,
 };
 
 // TODO: Optimize size of game structs.
@@ -158,6 +164,7 @@ struct app_state
   s32 running_count;
   f32 true_count;
   s32 table_rules;
+  s32 scene;
 };
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input,

@@ -40,5 +40,6 @@ struct renderer
   f32 card_scale;
 
   mat4 mvp;
+  v3 clear_color;
 };
 

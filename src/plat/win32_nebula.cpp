@@ -323,7 +323,8 @@ static void win32_UpdateWindow(HDC DeviceContext, renderer *Renderer,
     // glLoadIdentity();
     // gluPerspective(45.0, 16.0/9.0*float(win_width)/float(win_height), 0.1, 100.0);
 
-    glClearColor(0.2f, 0.66f, 0.44f, 1.0f);
+    v3 ClearColor = Renderer->clear_color;
+    glClearColor(ClearColor.r, ClearColor.g, ClearColor.b, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     // DRAW

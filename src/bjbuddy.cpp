@@ -234,17 +234,11 @@ internal void ResetRound(app_state *GameState)
   Ap->hand_count = 0;
 }
 
-static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
+internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *Renderer)
 {
-  NeoAssert(sizeof(app_state) <= Memory->perm_storage_size);
-  app_state *GameState = (app_state *)Memory->perm_memory;
-
-  static b32 FirstRound = true;
-  if(!Memory->is_init)
+  static b32 FirstRun = true;
+  if (FirstRun)
   {
-    InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
-              (u8 *)Memory->perm_memory + sizeof(app_state));
-
     // Blackjack Setup
 
     GameState->game_phase = NULL_PHASE;
@@ -286,8 +280,11 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     GameState->dealer = DealerHand;
     GameState->ap = Ap;
 
-    Memory->is_init = true;
+    Renderer->clear_color = V3(0.2f, 0.66f, 0.44f);
+    FirstRun = false;
   }
+
+  static b32 FirstRound = true;
 
   // UPDATE
   shoe *Shoe = &GameState->shoe;
@@ -651,6 +648,68 @@ static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_i
     // Bankroll
     _snprintf_s(TextContainer, sizeof(TextContainer), "Bankroll: $%.2f", GameState->ap.bankroll);
     PushText(Renderer, StrFromCStr(TextContainer), Mat4Translate(5.0f, 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
+  }
+
+
+}
+
+internal void RunSimulationScene(app_state *GameState, engine_input *Input, renderer *Renderer)
+{
+  static b32 FirstRun = true;
+  if (FirstRun)
+  {
+    Renderer->clear_color = V3(0.2f, 0.44f, 0.66f);
+    FirstRun = false;
+  }
+
+  for (ums ControllerIndex = 0;
+  ControllerIndex < ArrayCount(Input->controllers);
+  ControllerIndex++)
+  {
+    engine_controller_input *Controller = GetController(Input, ControllerIndex);
+    if (Controller->is_analog)
+    {
+    }
+    else
+    {
+      engine_button_state ActionDown = Controller->action_down;
+      engine_button_state ActionUp = Controller->action_up;
+      engine_button_state ActionRight = Controller->action_right;
+      engine_button_state ActionLeft = Controller->action_left;
+      engine_button_state RShoulder = Controller->right_shoulder;
+    }
+  }
+
+  ResetRenderer(Renderer);
+
+}
+
+internal void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
+{
+  NeoAssert(sizeof(app_state) <= Memory->perm_storage_size);
+  app_state *GameState = (app_state *)Memory->perm_memory;
+
+  if(!Memory->is_init)
+  {
+    InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
+              (u8 *)Memory->perm_memory + sizeof(app_state));
+
+    GameState->scene = SIM;
+
+    Memory->is_init = true;
+  }
+
+  // TODO: Clear and reset states when scene switching is added.
+  switch (GameState->scene)
+  {
+    case GAME:
+    {
+      RunGameScene(GameState, Input, Renderer);
+    } break;
+    case SIM:
+    {
+      RunSimulationScene(GameState, Input, Renderer);
+    } break;
   }
 }
 
