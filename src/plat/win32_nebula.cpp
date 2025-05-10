@@ -103,6 +103,12 @@ static void win32_InitOpengl(HWND WindowHandle, thread_context *Thread, app_memo
   glUniform1i = (gluniform1i *)wglGetProcAddress("glUniform1i");
   glUniformMatrix4fv = (gluniformmatrix4fv *)wglGetProcAddress("glUniformMatrix4fv");
 
+  // WGL extensions
+  wglSwapIntervalEXT = (wglswapintervalext *)wglGetProcAddress("wglSwapIntervalEXT");
+
+  // Turn off v-sync
+  wglSwapIntervalEXT(0);
+
   // TODO: Look into how to remove fringe
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -259,7 +265,7 @@ static void win32_ResizeDIBSection(win32_bitmap_buffer *Buffer,
   Buffer->pitch = Buffer->bytes_per_pixel * _Width;
 }
 
-inline LARGE_INTEGER win32_GetSecondsWallclock()
+inline LARGE_INTEGER win32_GetSecondsWallClock()
 {
   LARGE_INTEGER Result;
   QueryPerformanceCounter(&Result);
@@ -268,7 +274,7 @@ inline LARGE_INTEGER win32_GetSecondsWallclock()
 
 inline f32 win32_GetSecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
 {
-  f32 Result = ((f32) (End.QuadPart - Start.QuadPart) / (f32) g_PerfCountFreq);
+  f32 Result = ((f32)(End.QuadPart - Start.QuadPart) / (f32)g_PerfCountFreq);
   return Result;
 }
 
@@ -580,9 +586,9 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
   HDC DeviceContext = GetDC(Window);
 
   // TODO: Variable refresh rate!
-  int MonitorHz = 60;
+  s32 MonitorHz = 120;
 
-  f32 UpdateHz = MonitorHz / 2.0f;
+  f32 UpdateHz = (f32)MonitorHz;
   f32 TargetSecondsPerFrame = 1.0f / UpdateHz;
 
 #if NEO_INTERNAL
@@ -630,6 +636,8 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
 
   // Global Loop
   g_Running = true;
+  LARGE_INTEGER StartCounter = win32_GetSecondsWallClock();
+
   while (g_Running)
   {
     NewInput->time_step_over_frame = TargetSecondsPerFrame;
@@ -673,6 +681,64 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
     }
 
     UpdateAndRender(&Thread, &AppMemory, NewInput, &Renderer);
+
+    // NOTE: TIMING OUR RUNNING LOOP
+    LARGE_INTEGER CurrentCounter = win32_GetSecondsWallClock();
+    f32 CurrentSecondsElapsed = win32_GetSecondsElapsed(StartCounter, CurrentCounter);
+
+    // Stall out if frame is ready sooner than target time
+    f32 SecondsElapsedForFrame = CurrentSecondsElapsed;
+    if (SecondsElapsedForFrame < TargetSecondsPerFrame)
+    {
+      if (GranularSleep)
+      {
+        // NOTE:
+        // For some reason, the sleep is not accurate enough to wake in time. [HHD018]
+        // Thus, I am sleeping 1ms less to make sure we lock at desired frame time.
+        // DWORD SleepTime = (DWORD) ((1000.0f * (TargetSecondsPerFrame - SecondsElapsedForFrame)) - 1.0f);
+        DWORD SleepTime = (DWORD) ((1000.0f * (TargetSecondsPerFrame - SecondsElapsedForFrame)));
+        if (SleepTime > 0)
+        {
+          Sleep(SleepTime);
+        }
+      }
+
+      // f32 TestSecondsElapsedForFrame = win32_GetSecondsElapsed(CurrentCounter, win32_GetSecondsWallClock());
+      // if (TestSecondsElapsedForFrame < TargetSecondsPerFrame)
+      // {
+      //   // TODO: LOGGING HERE!
+      //   OutputDebugStringA("MissedSleep!\n");
+      // }
+
+      while (SecondsElapsedForFrame < TargetSecondsPerFrame)
+      {
+        SecondsElapsedForFrame = win32_GetSecondsElapsed(StartCounter, win32_GetSecondsWallClock());
+      }
+    }
+    else
+    {
+      // TODO: Logging here
+      // Took too long to process current frame!
+    }
+
+    LARGE_INTEGER EndCounter = win32_GetSecondsWallClock();
+    f32 TotalSecondsForFrame = win32_GetSecondsElapsed(StartCounter, EndCounter);
+    StartCounter = EndCounter;
+
+    // FrameTime
+    f32 MSPerFrame = 1000.0f * TotalSecondsForFrame;
+    MSPerFrame = truncf(MSPerFrame * 100.0f) / 100.0f;
+    char TextContainer[256];
+    _snprintf_s(TextContainer, sizeof(TextContainer), "FT: %.3f", MSPerFrame);
+    mat4 Transform = Mat4Translate((f32)Renderer.width - 150.0f, (f32)Renderer.height - 20.0f, 0.0f)*Mat4Scale(0.35f, 0.35f, 1.0f);
+    PushText(&Renderer, StrFromCStr(TextContainer), Transform);
+
+    // FPS
+    f32 FPS = 1000.0f / MSPerFrame;
+    _snprintf_s(TextContainer, sizeof(TextContainer), "FPS: %.0f", FPS);
+    Transform = Mat4Translate((f32)Renderer.width - 150.0f, (f32)Renderer.height - 50.0f, 0.0f)*Mat4Scale(0.35f, 0.35f, 1.0f);
+    PushText(&Renderer, StrFromCStr(TextContainer), Transform);
+
     win32_win_dimensions WindowDims = win32_GetWindowDims(Window);
     win32_UpdateWindow(DeviceContext, &Renderer, WindowDims.width, WindowDims.height);
 

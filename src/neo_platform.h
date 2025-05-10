@@ -136,7 +136,7 @@ inline string _StrFromCStr(char *CStr)
 
   u8 *Ptr = (u8 *)CStr;
   Result.data = Ptr;
-  while (*Ptr++ != 0);
+  for (; *Ptr != 0; ++Ptr);
   Result.count = Ptr - (u8 *)CStr;
 
   return Result;

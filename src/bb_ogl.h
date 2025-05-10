@@ -92,3 +92,7 @@ global gluniform1i *glUniform1i;
 typedef void gluniformmatrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 global gluniformmatrix4fv *glUniformMatrix4fv;
 
+// WGL extensions
+typedef BOOL wglswapintervalext (int interval);
+global wglswapintervalext *wglSwapIntervalEXT;
+

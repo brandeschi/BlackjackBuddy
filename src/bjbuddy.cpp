@@ -650,7 +650,6 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
     PushText(Renderer, StrFromCStr(TextContainer), Mat4Translate(5.0f, 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
   }
 
-
 }
 
 internal void RunSimulationScene(app_state *GameState, engine_input *Input, renderer *Renderer)
@@ -673,10 +672,9 @@ internal void RunSimulationScene(app_state *GameState, engine_input *Input, rend
     else
     {
       engine_button_state ActionDown = Controller->action_down;
-      engine_button_state ActionUp = Controller->action_up;
-      engine_button_state ActionRight = Controller->action_right;
-      engine_button_state ActionLeft = Controller->action_left;
-      engine_button_state RShoulder = Controller->right_shoulder;
+      if (ActionDown.half_transitions != 0 && ActionDown.is_down)
+      {
+      }
     }
   }
 
@@ -694,7 +692,7 @@ internal void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine
     InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
               (u8 *)Memory->perm_memory + sizeof(app_state));
 
-    GameState->scene = SIM;
+    // GameState->scene = SIM;
 
     Memory->is_init = true;
   }
