@@ -139,18 +139,33 @@ struct player
   ums hand_idx;
   u32 hand_count;
   f32 bankroll;
+  u32 rounds_per_hour;
+  u32 unit_amt;
 };
 
-enum table_rules
+enum ace_splitting
 {
-  S17 = 0,
-  H17 = 1 << 0,
+  ACE_NO_SPLITTING =   1 << 0,
+  ACE_NO_RESPLITTING = 1 << 1,
+  ACE_RESPLITTING =    1 << 2,
+};
+struct table_rules
+{
+  f32 penetration;
+  ace_splitting resplit_aces;
+  u8 number_of_decks;
+  u8 max_hands;
+  b8 h17;
+  b8 das;
+  b8 surrender;
 };
 
 enum scene
 {
-  GAME = 0,
-  SIM  = 1 << 0,
+  s_QUIT = 0,
+  s_MENU = 1 << 0,
+  s_GAME = 1 << 1,
+  s_SIMU = 1 << 2,
 };
 
 // TODO: Optimize size of game structs.
@@ -161,9 +176,9 @@ struct app_state
   hand dealer;
   player ap;
   phase game_phase;
+  table_rules table_rules;
   s32 running_count;
   f32 true_count;
-  s32 table_rules;
   s32 scene;
 };
 

@@ -17,6 +17,133 @@
 #pragma once
 #include "core.unity.h"
 
+global s32 g_CurrentSelection = 0;
+
+internal void RunMenuScene(app_state *GameState, engine_input *Input, renderer *Renderer)
+{
+  Renderer->clear_color = V3(0.47f, 0.13f, 0.17f);
+
+  for (ums ControllerIndex = 0;
+  ControllerIndex < ArrayCount(Input->controllers);
+  ControllerIndex++)
+  {
+    engine_controller_input *Controller = GetController(Input, ControllerIndex);
+    if (Controller->is_analog)
+    {
+    }
+    else
+    {
+      engine_button_state Start = Controller->start;
+      if (Start.half_transitions != 0 && Start.is_down)
+      {
+        if (g_CurrentSelection == 0)
+        {
+          GameState->scene = s_GAME;
+          return;
+        }
+        else if (g_CurrentSelection == 1)
+        {
+          // TODO: Update GameState to hold necessary settings for this mode.
+          GameState->scene = s_GAME;
+          return;
+        }
+        else if (g_CurrentSelection == 2)
+        {
+          GameState->scene = s_SIMU;
+          return;
+        }
+        else if (g_CurrentSelection == 3)
+        {
+          GameState->scene = s_QUIT;
+          return;
+        }
+      }
+      engine_button_state ActionDown = Controller->action_down;
+      if (ActionDown.half_transitions != 0 && ActionDown.is_down)
+      {
+        g_CurrentSelection += 1;
+        if (g_CurrentSelection == 4)
+        {
+          g_CurrentSelection = 0;
+        }
+      }
+      engine_button_state ActionUp = Controller->action_up;
+      if (ActionUp.half_transitions != 0 && ActionUp.is_down)
+      {
+        g_CurrentSelection -= 1;
+        if (g_CurrentSelection == -1)
+        {
+          g_CurrentSelection = 3;
+        }
+      }
+    }
+  }
+
+  ResetRenderer(Renderer);
+  {
+    mat4 CenterTextXform = Mat4Translate((f32)Renderer->width*0.5f - (15.0f*15.0f), (f32)Renderer->height*0.85f, 0.0f)*Mat4Scale(0.90f, 0.90f, 1.0f);
+    PushText(Renderer, StrFromCStr("Blackjack Buddy"), CenterTextXform);
+  }
+  {
+    mat4 CenterTextXform = Mat4Translate((f32)Renderer->width*0.5f - (15.0f*15.0f) - 115.0f, (f32)Renderer->height*0.65f, 0.0f)*Mat4Scale(0.80f, 0.80f, 1.0f);
+    v3 Color = {0.5f, 0.5f, 0.5f};
+    if (g_CurrentSelection == 0)
+    {
+      Color = {1.0f, 1.0f, 1.0f};
+    }
+    PushText(Renderer, StrFromCStr("Basic Strategy Training"), CenterTextXform, Color);
+  }
+  {
+    mat4 CenterTextXform = Mat4Translate((f32)Renderer->width*0.5f - (15.0f*15.0f) - 30.0f, (f32)Renderer->height*0.56f, 0.0f)*Mat4Scale(0.80f, 0.80f, 1.0f);
+    v3 Color = {0.5f, 0.5f, 0.5f};
+    if (g_CurrentSelection == 1)
+    {
+      Color = {1.0f, 1.0f, 1.0f};
+    }
+    PushText(Renderer, StrFromCStr("Counting Training"), CenterTextXform, Color);
+  }
+  {
+    mat4 CenterTextXform = Mat4Translate((f32)Renderer->width*0.5f - (15.0f*15.0f), (f32)Renderer->height*0.47f, 0.0f)*Mat4Scale(0.80f, 0.80f, 1.0f);
+    v3 Color = {0.5f, 0.5f, 0.5f};
+    if (g_CurrentSelection == 2)
+    {
+      Color = {1.0f, 1.0f, 1.0f};
+    }
+    PushText(Renderer, StrFromCStr("Bankroll & Sim"), CenterTextXform, Color);
+  }
+  {
+    mat4 CenterTextXform = Mat4Translate((f32)Renderer->width*0.5f - (15.0f*5.0f), (f32)Renderer->height*0.38f, 0.0f)*Mat4Scale(0.80f, 0.80f, 1.0f);
+    v3 Color = {0.5f, 0.5f, 0.5f};
+    if (g_CurrentSelection == 3)
+    {
+      Color = {1.0f, 1.0f, 1.0f};
+    }
+    PushText(Renderer, StrFromCStr("Quit"), CenterTextXform, Color);
+  }
+  // {
+  //   char TextContainer[256];
+  //
+  //   mat4 TextTransform = Mat4Translate(5.0f, (f32)Renderer->height - 40.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f);
+  //   string Lines[2] = {0};
+  //
+  //   // Running Count
+  //   _snprintf_s(TextContainer, sizeof(TextContainer), "Running Count: %d", GameState->running_count);
+  //   Lines[0] = StrAllocFromCStr(TextContainer);
+  //   // True Count
+  //   _snprintf_s(TextContainer, sizeof(TextContainer), "True Count: %.3f", GameState->true_count);
+  //   Lines[1] = StrAllocFromCStr(TextContainer);
+  //
+  //   // FIX: PIGGY AF PLZ FIX SOON!!!
+  //   PushLinesOfText(Renderer, Lines, ArrayCount(Lines), TextTransform);
+  //   FreeStrAlloc(&Lines[0]);
+  //   FreeStrAlloc(&Lines[1]);
+  //
+  //   // Bankroll
+  //   _snprintf_s(TextContainer, sizeof(TextContainer), "Bankroll: $%.2f", GameState->ap.bankroll);
+  //   PushText(Renderer, StrFromCStr(TextContainer), Mat4Translate(5.0f, 10.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f));
+  // }
+}
+
 global u32 MAX_HAND_COUNT = 13;
 global u32 MIN_BET_SIZE   = 10;
 global u32 MAX_BET_SIZE   = 100;
@@ -43,7 +170,7 @@ internal void NextPhase(enum phase *Phase)
     *Phase = (enum phase)((s32)(*Phase) + 1);
 }
 
-internal b32 CheckBust(u32 *HandValue)
+internal inline b32 CheckBust(u32 *HandValue)
 {
   b32 Result = *HandValue > 21;
   return Result;
@@ -105,7 +232,7 @@ inline static void shuffle(card deck[], mem_index deck_size)
 #else
 // NOTE: This is Fisher-Yates Algo
 // TODO: Need to implement random numbers
-inline static void Shuffle(card *Cards, ums CardCount)
+internal inline void Shuffle(card *Cards, ums CardCount)
 {
   u32 RandomIndex = 0;
   for (ums Index = 0; Index <= CardCount - 1; ++Index)
@@ -125,7 +252,7 @@ inline static void Shuffle(card *Cards, ums CardCount)
 
 // TODO: Should I keep this? If so I need to rework
 // how to convert it over
-static inline char *TypeToCStr(s32 CardType)
+internal inline char *TypeToCStr(s32 CardType)
 {
   switch(CardType)
   {
@@ -146,7 +273,7 @@ static inline char *TypeToCStr(s32 CardType)
 
   return "";
 }
-static inline char *SuitToCStr(s32 CardSuit)
+internal inline char *SuitToCStr(s32 CardSuit)
 {
   switch(CardSuit)
   {
@@ -159,7 +286,7 @@ static inline char *SuitToCStr(s32 CardSuit)
   return "";
 }
 
-internal void CreateDeck(shoe *Shoe, u32 DeckIdx)
+internal inline void CreateDeck(shoe *Shoe, u32 DeckIdx)
 {
   Shoe->cards[(52*DeckIdx) + 0] = { TWO, SPADES, {1, 1}, 2 };
   Shoe->cards[(52*DeckIdx) + 1] = { THREE, SPADES, {2, 1}, 3 };
@@ -481,7 +608,7 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
           else if (ActionUp.half_transitions != 0 && ActionUp.is_down)
           {
             // NOTE: The splitting will default to one card only when splitting aces and no RSA.
-            if (PlayerHand->card_count == 2) // TODO: Add check for being the same rank.
+            if (PlayerHand->card_count == 2 && PlayerHand->cards[0].rank == PlayerHand->cards[1].rank)
             {
               player *Player = &GameState->ap;
               hand *NewHand = &Player->hands[Player->hand_count++];
@@ -682,6 +809,7 @@ internal void RunSimulationScene(app_state *GameState, engine_input *Input, rend
 
 }
 
+
 internal void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input, renderer *Renderer)
 {
   NeoAssert(sizeof(app_state) <= Memory->perm_storage_size);
@@ -692,7 +820,16 @@ internal void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine
     InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
               (u8 *)Memory->perm_memory + sizeof(app_state));
 
-    // GameState->scene = SIM;
+    GameState->scene = s_MENU;
+
+    // Default table rules
+    table_rules *TableRules = &GameState->table_rules;
+    TableRules->number_of_decks = 2;
+    TableRules->penetration = 1.5f;
+    TableRules->h17 = true;
+    TableRules->resplit_aces = ACE_NO_RESPLITTING;
+    TableRules->max_hands = 4;
+    TableRules->surrender = false;
 
     Memory->is_init = true;
   }
@@ -700,14 +837,20 @@ internal void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine
   // TODO: Clear and reset states when scene switching is added.
   switch (GameState->scene)
   {
-    case GAME:
+    case s_MENU:
+    {
+      RunMenuScene(GameState, Input, Renderer);
+    } break;
+    case s_GAME:
     {
       RunGameScene(GameState, Input, Renderer);
     } break;
-    case SIM:
+    case s_SIMU:
     {
       RunSimulationScene(GameState, Input, Renderer);
     } break;
+
+    default: {};
   }
 }
 

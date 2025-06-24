@@ -512,9 +512,11 @@ static void win32_ProcessPendingWinMessages(app_memory *Memory, engine_controlle
                 } break;
               case VK_ESCAPE:
                 {
-                  win32_ProcessKeebMessage(&Keyboard->start, IsDown);
-                  // TODO: this really needs to be sent to our main menu
                   g_Running = false;
+                } break;
+              case VK_RETURN:
+                {
+                  win32_ProcessKeebMessage(&Keyboard->start, IsDown);
                 } break;
               case VK_BACK:
                 {
@@ -681,6 +683,13 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
     }
 
     UpdateAndRender(&Thread, &AppMemory, NewInput, &Renderer);
+    {
+      app_state *GameState = (app_state *)AppMemory.perm_memory;
+      if (GameState->scene == s_QUIT)
+      {
+        g_Running = false;
+      }
+    }
 
     // NOTE: TIMING OUR RUNNING LOOP
     LARGE_INTEGER CurrentCounter = win32_GetSecondsWallClock();
@@ -725,19 +734,23 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
     f32 TotalSecondsForFrame = win32_GetSecondsElapsed(StartCounter, EndCounter);
     StartCounter = EndCounter;
 
-    // FrameTime
-    f32 MSPerFrame = 1000.0f * TotalSecondsForFrame;
-    MSPerFrame = truncf(MSPerFrame * 100.0f) / 100.0f;
-    char TextContainer[256];
-    _snprintf_s(TextContainer, sizeof(TextContainer), "FT: %.3f", MSPerFrame);
-    mat4 Transform = Mat4Translate((f32)Renderer.width - 150.0f, (f32)Renderer.height - 20.0f, 0.0f)*Mat4Scale(0.35f, 0.35f, 1.0f);
-    PushText(&Renderer, StrFromCStr(TextContainer), Transform);
+    b32 DebugOn = false;
+    if (DebugOn)
+    {
+      // FrameTime
+      f32 MSPerFrame = 1000.0f * TotalSecondsForFrame;
+      MSPerFrame = truncf(MSPerFrame * 100.0f) / 100.0f;
+      char TextContainer[256];
+      _snprintf_s(TextContainer, sizeof(TextContainer), "FT: %.3f", MSPerFrame);
+      mat4 Transform = Mat4Translate((f32)Renderer.width - 150.0f, (f32)Renderer.height - 20.0f, 0.0f)*Mat4Scale(0.35f, 0.35f, 1.0f);
+      PushText(&Renderer, StrFromCStr(TextContainer), Transform);
 
-    // FPS
-    f32 FPS = 1000.0f / MSPerFrame;
-    _snprintf_s(TextContainer, sizeof(TextContainer), "FPS: %.0f", FPS);
-    Transform = Mat4Translate((f32)Renderer.width - 150.0f, (f32)Renderer.height - 50.0f, 0.0f)*Mat4Scale(0.35f, 0.35f, 1.0f);
-    PushText(&Renderer, StrFromCStr(TextContainer), Transform);
+      // FPS
+      f32 FPS = 1000.0f / MSPerFrame;
+      _snprintf_s(TextContainer, sizeof(TextContainer), "FPS: %.0f", FPS);
+      Transform = Mat4Translate((f32)Renderer.width - 150.0f, (f32)Renderer.height - 50.0f, 0.0f)*Mat4Scale(0.35f, 0.35f, 1.0f);
+      PushText(&Renderer, StrFromCStr(TextContainer), Transform);
+    }
 
     win32_win_dimensions WindowDims = win32_GetWindowDims(Window);
     win32_UpdateWindow(DeviceContext, &Renderer, WindowDims.width, WindowDims.height);

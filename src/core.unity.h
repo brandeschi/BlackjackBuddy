@@ -30,6 +30,8 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 
 typedef s32 b32;
+typedef s16 b16;
+typedef s8 b8;
 
 typedef size_t mem_index;
 typedef mem_index ums;

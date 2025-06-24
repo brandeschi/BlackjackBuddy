@@ -3,9 +3,9 @@
 
 internal const u32 TableStride = 10;
 
-internal void UpdateCharts(s32 TableRules)
+internal void UpdateCharts(table_rules TableRules)
 {
-  if (TableRules == H17)
+  if (TableRules.h17)
   {
     // A, 8 vs a 6
     SOFTS[14] = 'D';

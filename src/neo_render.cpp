@@ -87,7 +87,7 @@ internal void PushCard(renderer *Renderer, v2 CardCoords = {0}, mat4 Model = Mat
   PushQuad(Renderer, Vertices, Model);
 }
 
-internal void PushText(renderer *Renderer, string Text, mat4 Model)
+internal void PushText(renderer *Renderer, string Text, mat4 Model = Mat4Iden(), v3 Color = {1.0f, 1.0f, 1.0f})
 {
   f32 ScreenX = 0.0f;
   f32 ScreenY = 0.0f;
@@ -109,11 +109,11 @@ internal void PushText(renderer *Renderer, string Text, mat4 Model)
 
     vertex_data VData[] =
     {
-      // pos                      color               tex-coords
-      { {GlyphX0, GlyphY0 - CurrentBakedChar.yoff, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s0, Quad.t1}, 1.0f }, // Top-Left
-      { {GlyphX1, GlyphY0 - CurrentBakedChar.yoff, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s1, Quad.t1}, 1.0f }, // Top-Right
-      { {GlyphX1, GlyphY1 - CurrentBakedChar.yoff, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s1, Quad.t0}, 1.0f }, // Bottom-Right
-      { {GlyphX0, GlyphY1 - CurrentBakedChar.yoff, 0.0f}, {1.0f, 1.0f, 1.0f}, {Quad.s0, Quad.t0}, 1.0f }, // Bottom-Left
+      // pos                                              color               tex-coords
+      { {GlyphX0, GlyphY0 - CurrentBakedChar.yoff, 0.0f}, Color, {Quad.s0, Quad.t1}, 1.0f }, // Top-Left
+      { {GlyphX1, GlyphY0 - CurrentBakedChar.yoff, 0.0f}, Color, {Quad.s1, Quad.t1}, 1.0f }, // Top-Right
+      { {GlyphX1, GlyphY1 - CurrentBakedChar.yoff, 0.0f}, Color, {Quad.s1, Quad.t0}, 1.0f }, // Bottom-Right
+      { {GlyphX0, GlyphY1 - CurrentBakedChar.yoff, 0.0f}, Color, {Quad.s0, Quad.t0}, 1.0f }, // Bottom-Left
     };
 
     PushQuad(Renderer, VData, Model);
