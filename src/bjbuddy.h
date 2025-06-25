@@ -180,6 +180,7 @@ struct app_state
   s32 running_count;
   f32 true_count;
   s32 scene;
+  b32 scene_initialized;
 };
 
 static void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine_input *Input,

@@ -17,10 +17,27 @@
 #pragma once
 #include "core.unity.h"
 
-global s32 g_CurrentSelection = 0;
+internal void ResetGameState(app_state *GameState, app_memory *Memory, scene Scene)
+{
+  memset(GameState, 0, sizeof(app_state));
+  InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
+            (u8 *)Memory->perm_memory + sizeof(app_state));
+  GameState->scene = Scene;
+}
+
+internal void BackToMenu(engine_controller_input *Controller, app_state *GameState)
+{
+  engine_button_state Back = Controller->back;
+  if (Back.half_transitions != 0 && Back.is_down)
+  {
+    GameState->scene = s_MENU;
+    GameState->scene_initialized = false;
+  }
+}
 
 internal void RunMenuScene(app_state *GameState, engine_input *Input, renderer *Renderer)
 {
+  static s32 g_CurrentSelection = 0;
   Renderer->clear_color = V3(0.47f, 0.13f, 0.17f);
 
   for (ums ControllerIndex = 0;
@@ -363,9 +380,19 @@ internal void ResetRound(app_state *GameState)
 
 internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *Renderer)
 {
-  static b32 FirstRun = true;
-  if (FirstRun)
+  if (!GameState->scene_initialized)
   {
+    GameState->scene_initialized = true;
+
+    // Default table rules
+    table_rules *TableRules = &GameState->table_rules;
+    TableRules->number_of_decks = 2;
+    TableRules->penetration = 1.5f;
+    TableRules->h17 = true;
+    TableRules->resplit_aces = ACE_NO_RESPLITTING;
+    TableRules->max_hands = 4;
+    TableRules->surrender = false;
+
     // Blackjack Setup
 
     GameState->game_phase = NULL_PHASE;
@@ -406,9 +433,6 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
     GameState->shoe = Shoe;
     GameState->dealer = DealerHand;
     GameState->ap = Ap;
-
-    Renderer->clear_color = V3(0.2f, 0.66f, 0.44f);
-    FirstRun = false;
   }
 
   static b32 FirstRound = true;
@@ -508,6 +532,7 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
     }
     else
     {
+      BackToMenu(Controller, GameState);
       engine_button_state ActionDown = Controller->action_down;
       engine_button_state ActionUp = Controller->action_up;
       engine_button_state ActionRight = Controller->action_right;
@@ -518,32 +543,8 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
       {
         case NULL_PHASE:
         {
-          if (ActionRight.half_transitions != 0 && ActionRight.is_down)
-          {
-            char OutStr[256];
-            card *Cards = Shoe->current;
-            OutputDebugStringA("Deck (current)\n");
-            for (u32 Index = 0; Index < 4; ++Index)
-            {
-              _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
-                          TypeToCStr(Cards[Index].rank), SuitToCStr(Cards[Index].suit));
-              OutputDebugStringA(OutStr);
-            }
-            OutputDebugStringA("======================\n");
-          }
           if (ActionDown.half_transitions != 0 && ActionDown.is_down)
           {
-            char OutStr[256];
-            card *Cards = Shoe->current;
-            OutputDebugStringA("Deck (current)\n");
-            for (u32 Index = 0; Index < 4; ++Index)
-            {
-              _snprintf_s(OutStr, sizeof(OutStr), "RANK: %s SUIT: %s\n",
-                          TypeToCStr(Cards[Index].rank), SuitToCStr(Cards[Index].suit));
-              OutputDebugStringA(OutStr);
-            }
-            OutputDebugStringA("======================\n");
-
             NextPhase(&GameState->game_phase);
           }
         } break;
@@ -552,15 +553,20 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
             // TODO: Bake busting into hit func?
+            player *Player = &GameState->ap;
             Hit(Shoe, PlayerHand, &GameState->running_count);
+
             b32 Busted = CheckBust(&PlayerHand->value);
-            if (Busted && ((GameState->ap.hand_idx + 1) == GameState->ap.hand_count))
+            if (Busted)
             {
-              NextPhase(&GameState->game_phase);
-            }
-            else
-            {
-              ++GameState->ap.hand_idx;
+              if (((GameState->ap.hand_idx + 1) == GameState->ap.hand_count))
+              {
+                NextPhase(&GameState->game_phase);
+              }
+              else
+              {
+                ++Player->hand_idx;
+              }
             }
 
             char OutStr[256];
@@ -678,6 +684,8 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
   // RENDER
   // TODO: There are more draw calls then necessary here due to lack of sorting the units.
   // This should be looked at to either add the sorting or change the approach.
+  Renderer->clear_color = V3(0.2f, 0.66f, 0.44f);
+
   ResetRenderer(Renderer);
   mat4 CenterTranslate = Mat4Translate((f32)Renderer->width*0.5f, (f32)Renderer->height*0.5f, 0.0f);
   {
@@ -781,11 +789,10 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
 
 internal void RunSimulationScene(app_state *GameState, engine_input *Input, renderer *Renderer)
 {
-  static b32 FirstRun = true;
-  if (FirstRun)
+
+  if (!GameState->scene_initialized)
   {
-    Renderer->clear_color = V3(0.2f, 0.44f, 0.66f);
-    FirstRun = false;
+    GameState->scene_initialized = true;
   }
 
   for (ums ControllerIndex = 0;
@@ -798,6 +805,7 @@ internal void RunSimulationScene(app_state *GameState, engine_input *Input, rend
     }
     else
     {
+      BackToMenu(Controller, GameState);
       engine_button_state ActionDown = Controller->action_down;
       if (ActionDown.half_transitions != 0 && ActionDown.is_down)
       {
@@ -805,6 +813,7 @@ internal void RunSimulationScene(app_state *GameState, engine_input *Input, rend
     }
   }
 
+  Renderer->clear_color = V3(0.2f, 0.44f, 0.66f);
   ResetRenderer(Renderer);
 
 }
@@ -821,16 +830,6 @@ internal void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine
               (u8 *)Memory->perm_memory + sizeof(app_state));
 
     GameState->scene = s_MENU;
-
-    // Default table rules
-    table_rules *TableRules = &GameState->table_rules;
-    TableRules->number_of_decks = 2;
-    TableRules->penetration = 1.5f;
-    TableRules->h17 = true;
-    TableRules->resplit_aces = ACE_NO_RESPLITTING;
-    TableRules->max_hands = 4;
-    TableRules->surrender = false;
-
     Memory->is_init = true;
   }
 
@@ -843,10 +842,18 @@ internal void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine
     } break;
     case s_GAME:
     {
+      if (!GameState->scene_initialized)
+      {
+        ResetGameState(GameState, Memory, s_GAME);
+      }
       RunGameScene(GameState, Input, Renderer);
     } break;
     case s_SIMU:
     {
+      if (!GameState->scene_initialized)
+      {
+        ResetGameState(GameState, Memory, s_SIMU);
+      }
       RunSimulationScene(GameState, Input, Renderer);
     } break;
 
