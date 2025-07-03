@@ -117,6 +117,8 @@ internal void RunMenuScene(app_state *GameState, engine_input *Input, renderer *
     {
       Color = {1.0f, 1.0f, 1.0f};
     }
+    // NOTE: I want to try to have the game run the flow automatically and there be some slider to deteremine
+    // play speed for changing how fast someone needs to be counting.
     PushText(Renderer, StrFromCStr("Counting Training"), CenterTextXform, Color);
   }
   {
@@ -435,15 +437,12 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
     GameState->ap = Ap;
   }
 
-  static b32 FirstRound = true;
-
   // UPDATE
   shoe *Shoe = &GameState->shoe;
   if (GameState->game_phase == END)
   {
     ResetRound(GameState);
     GameState->game_phase = NULL_PHASE;
-    if (FirstRound) FirstRound = false;
     // TODO: Only subtract one if a card is burned probably get out the bit from the setting.
     Shoe->discarded = (u32)(Shoe->current - Shoe->cards) - 1;
     // TODO: Setup deck division choices (half deck, quarter, eighth, etc.).
@@ -751,7 +750,7 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
   {
     // 'Discard Tray'
     // TODO: I feel like there should be a way to reuse vertex data instead of pushing an identical card.
-    if (Shoe->discarded > 0 && !FirstRound)
+    if (Shoe->discarded > 0)
     {
       mat4 CardTransform = Mat4Translate((Renderer->card_width*0.5f) + Renderer->card_height,
                                      Renderer->card_height*0.5f + Renderer->width*0.25f, 1.0f)*Mat4RotateZ(PI32 / 4.0f);

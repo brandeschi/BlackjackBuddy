@@ -163,23 +163,23 @@ struct table_rules
 enum scene
 {
   s_QUIT = 0,
-  s_MENU = 1 << 0,
-  s_GAME = 1 << 1,
-  s_SIMU = 1 << 2,
+  s_MENU,
+  s_GAME,
+  s_SIMU,
 };
 
 // TODO: Optimize size of game structs.
 struct app_state
 {
   memory_arena core_arena;
-  shoe shoe;
-  hand dealer;
-  player ap;
-  phase game_phase;
   table_rules table_rules;
+  shoe shoe;
+  player ap;
+  hand dealer;
+  phase game_phase;
+  scene scene;
   s32 running_count;
   f32 true_count;
-  s32 scene;
   b32 scene_initialized;
 };
 
