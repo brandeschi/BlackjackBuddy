@@ -17,12 +17,15 @@
 #pragma once
 #include "core.unity.h"
 
-static void ResetGameState(app_state *GameState, app_memory *Memory, scene Scene)
+static void ResetGameState(app_state *GameState, app_memory *Memory)
 {
+  scene Scene = GameState->scene;
+  game_mode GameMode = GameState->game_mode;
   memset(GameState, 0, sizeof(app_state));
   InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
             (u8 *)Memory->perm_memory + sizeof(app_state));
   GameState->scene = Scene;
+  GameState->game_mode = GameMode;
 }
 
 internal void BackToMenu(engine_controller_input *Controller, app_state *GameState)
@@ -56,12 +59,13 @@ internal void RunMenuScene(app_state *GameState, engine_input *Input, renderer *
         if (g_CurrentSelection == 0)
         {
           GameState->scene = sc_Game;
+          GameState->game_mode = gm_BasicStrategy;
           return;
         }
         else if (g_CurrentSelection == 1)
         {
-          // TODO: Update GameState to hold necessary settings for this mode.
           GameState->scene = sc_Game;
+          GameState->game_mode = gm_Counting;
           return;
         }
         else if (g_CurrentSelection == 2)
@@ -386,21 +390,14 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
   {
     GameState->scene_initialized = true;
 
-    // Default table rules
-    table_rules *TableRules = &GameState->table_rules;
-    TableRules->number_of_decks = 2;
-    TableRules->penetration = 1.5f;
-    TableRules->h17 = true;
-    TableRules->resplit_aces = as_NoResplitting;
-    TableRules->max_hands = 4;
-    TableRules->surrender = false;
-
     // Blackjack Setup
 
+    table_rules TableRules = GameState->table_rules;
     GameState->game_phase = p_Null;
     // TODO: Setting
+    // Maybe make some of the settings have some variance?
     shoe Shoe = {0};
-    Shoe.deck_count = 6;
+    Shoe.deck_count = TableRules.number_of_decks;
     Shoe.card_count = Shoe.deck_count*52;
     Shoe.cards = PushArray(&GameState->core_arena, Shoe.card_count, card);
     for (u32 DeckIdx = 0; DeckIdx < Shoe.deck_count; ++DeckIdx)
@@ -411,20 +408,18 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
     {
       Shuffle(Shoe.cards, Shoe.card_count);
     }
-    // TODO: Setting - Penetration
-    Shoe.cut_card = 52*Shoe.deck_count;
+    Shoe.cut_card = (u32)(Shoe.card_count*TableRules.penetration);
 
     // TODO: Need a period before the cards are dealt to
     // set bet amount for player.
     player Ap = {0};
     Ap.bankroll = 10000;
 
-    // TODO: Make burning a card an option/setting.
-    Shoe.current = &Shoe.cards[1];
+    if (TableRules.burn_card)
+      Shoe.current = &Shoe.cards[1];
 
-    // TODO: Make settings for number of allowed hands
-    Ap.hands = PushArray(&GameState->core_arena, 7, hand);
-    for (s32 Idx = 0; Idx < 7; ++Idx)
+    Ap.hands = PushArray(&GameState->core_arena, TableRules.max_hands, hand);
+    for (s32 Idx = 0; Idx < TableRules.max_hands; ++Idx)
     {
       Ap.hands[Idx].cards = PushArray(&GameState->core_arena, MAX_HAND_COUNT, card);
     }
@@ -767,17 +762,19 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
     mat4 TextTransform = Mat4Translate(5.0f, (f32)Renderer->height - 40.0f, 0.0f)*Mat4Scale(0.65f, 0.65f, 1.0f);
     string Lines[2] = {0};
 
-    // Running Count
-    _snprintf_s(TextContainer, sizeof(TextContainer), "Running Count: %d", GameState->running_count);
-    Lines[0] = StrAllocFromCStr(TextContainer);
-    // True Count
-    _snprintf_s(TextContainer, sizeof(TextContainer), "True Count: %.3f", GameState->true_count);
-    Lines[1] = StrAllocFromCStr(TextContainer);
-
-    // FIX: PIGGY AF PLZ FIX SOON!!!
-    PushLinesOfText(Renderer, Lines, ArrayCount(Lines), TextTransform);
-    FreeStrAlloc(&Lines[0]);
-    FreeStrAlloc(&Lines[1]);
+    if (GameState->game_mode == gm_Counting)
+    {
+      // Running Count
+      _snprintf_s(TextContainer, sizeof(TextContainer), "Running Count: %d", GameState->running_count);
+      Lines[0] = StrAllocFromCStr(TextContainer);
+      // True Count
+      _snprintf_s(TextContainer, sizeof(TextContainer), "True Count: %.3f", GameState->true_count);
+      Lines[1] = StrAllocFromCStr(TextContainer);
+      // FIX: PIGGY AF PLZ FIX SOON!!!
+      PushLinesOfText(Renderer, Lines, ArrayCount(Lines), TextTransform);
+      FreeStrAlloc(&Lines[0]);
+      FreeStrAlloc(&Lines[1]);
+    }
 
     // Bankroll
     _snprintf_s(TextContainer, sizeof(TextContainer), "Bankroll: $%.2f", GameState->ap.bankroll);
@@ -829,6 +826,16 @@ internal void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine
               (u8 *)Memory->perm_memory + sizeof(app_state));
 
     GameState->scene = sc_Menu;
+
+    // Defaults
+    table_rules *TableRules = &GameState->table_rules;
+    TableRules->number_of_decks = 2;
+    TableRules->penetration = 1.5f;
+    TableRules->h17 = true;
+    TableRules->resplit_aces = as_NoResplitting;
+    TableRules->max_hands = 4;
+    TableRules->surrender = false;
+
     Memory->is_init = true;
   }
 
@@ -843,15 +850,38 @@ internal void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine
     {
       if (!GameState->scene_initialized)
       {
-        ResetGameState(GameState, Memory, sc_Game);
+        ResetGameState(GameState, Memory);
       }
+
+      table_rules *TableRules = &GameState->table_rules;
+      if (GameState->game_mode == gm_BasicStrategy)
+      {
+        TableRules->number_of_decks = 2;
+        TableRules->penetration = 0.75f;
+        TableRules->h17 = true;
+        TableRules->resplit_aces = as_NoResplitting;
+        TableRules->max_hands = 4;
+        TableRules->surrender = false;
+        TableRules->burn_card = true;
+      }
+      if (GameState->game_mode == gm_Counting)
+      {
+        TableRules->number_of_decks = 2;
+        TableRules->penetration = 0.75f;
+        TableRules->h17 = true;
+        TableRules->resplit_aces = as_NoResplitting;
+        TableRules->max_hands = 4;
+        TableRules->surrender = false;
+        TableRules->burn_card = true;
+      }
+
       RunGameScene(GameState, Input, Renderer);
     } break;
     case sc_Simu:
     {
       if (!GameState->scene_initialized)
       {
-        ResetGameState(GameState, Memory, sc_Simu);
+        ResetGameState(GameState, Memory);
       }
       RunSimulationScene(GameState, Input, Renderer);
     } break;

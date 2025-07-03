@@ -151,13 +151,14 @@ enum ace_splitting
 };
 struct table_rules
 {
-  f32 penetration;
+  f32 penetration; // NOTE: As a percentage
   ace_splitting resplit_aces;
   u8 number_of_decks;
   u8 max_hands;
   b8 h17;
   b8 das;
   b8 surrender;
+  b8 burn_card;
 };
 
 enum scene
@@ -170,7 +171,8 @@ enum scene
 
 enum game_mode
 {
-  gm_BasicStrategy
+  gm_BasicStrategy,
+  gm_Counting,
 };
 
 // TODO: Optimize size of game structs.
@@ -183,6 +185,7 @@ struct app_state
   hand dealer;
   phase game_phase;
   scene scene;
+  game_mode game_mode;
   s32 running_count;
   f32 true_count;
   b32 scene_initialized;
