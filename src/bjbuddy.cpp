@@ -17,7 +17,7 @@
 #pragma once
 #include "core.unity.h"
 
-internal void ResetGameState(app_state *GameState, app_memory *Memory, scene Scene)
+static void ResetGameState(app_state *GameState, app_memory *Memory, scene Scene)
 {
   memset(GameState, 0, sizeof(app_state));
   InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
@@ -30,7 +30,7 @@ internal void BackToMenu(engine_controller_input *Controller, app_state *GameSta
   engine_button_state Back = Controller->back;
   if (Back.half_transitions != 0 && Back.is_down)
   {
-    GameState->scene = s_MENU;
+    GameState->scene = sc_Menu;
     GameState->scene_initialized = false;
   }
 }
@@ -55,23 +55,23 @@ internal void RunMenuScene(app_state *GameState, engine_input *Input, renderer *
       {
         if (g_CurrentSelection == 0)
         {
-          GameState->scene = s_GAME;
+          GameState->scene = sc_Game;
           return;
         }
         else if (g_CurrentSelection == 1)
         {
           // TODO: Update GameState to hold necessary settings for this mode.
-          GameState->scene = s_GAME;
+          GameState->scene = sc_Game;
           return;
         }
         else if (g_CurrentSelection == 2)
         {
-          GameState->scene = s_SIMU;
+          GameState->scene = sc_Simu;
           return;
         }
         else if (g_CurrentSelection == 3)
         {
-          GameState->scene = s_QUIT;
+          GameState->scene = sc_Quit;
           return;
         }
       }
@@ -203,16 +203,16 @@ internal void Hit(shoe *Shoe, hand *Hand, s32 *RCount, b32 IsDoubleDown = false)
   card DrawnCard = *Shoe->current++;
   switch (DrawnCard.rank)
   {
-    case TEN:
-    case ACE:
+    case r_Ten:
+    case r_Ace:
     {
       *RCount -= 1;
     } break;
-    case TWO:
-    case THREE:
-    case FOUR:
-    case FIVE:
-    case SIX:
+    case r_Two:
+    case r_Three:
+    case r_Four:
+    case r_Five:
+    case r_Six:
     {
       *RCount += 1;
     } break;
@@ -221,7 +221,7 @@ internal void Hit(shoe *Shoe, hand *Hand, s32 *RCount, b32 IsDoubleDown = false)
 
   // TODO: Need to handle making the ACE valued at 11 again
   // in the split function.
-  if (DrawnCard.rank == ACE && (Hand->value + DrawnCard.value) > 21)
+  if (DrawnCard.rank == r_Ace && (Hand->value + DrawnCard.value) > 21)
   {
     DrawnCard.value = 1;
   }
@@ -275,16 +275,16 @@ internal inline char *TypeToCStr(s32 CardType)
 {
   switch(CardType)
   {
-    case ACE: return "ACE";
-    case TWO: return "TWO";
-    case THREE: return "THREE";
-    case FOUR: return "FOUR";
-    case FIVE: return "FIVE";
-    case SIX: return "SIX";
-    case SEVEN: return "SEVEN";
-    case EIGHT: return "EIGHT";
-    case NINE: return "NINE";
-    case TEN: return "TEN";
+    case r_Ace: return "ACE";
+    case r_Two: return "TWO";
+    case r_Three: return "THREE";
+    case r_Four: return "FOUR";
+    case r_Five: return "FIVE";
+    case r_Six: return "SIX";
+    case r_Seven: return "SEVEN";
+    case r_Eight: return "EIGHT";
+    case r_Nine: return "NINE";
+    case r_Ten: return "TEN";
     // case JACK: return "JACK";
     // case QUEEN: return "QUEEN";
     // case KING: return "KING";
@@ -296,10 +296,10 @@ internal inline char *SuitToCStr(s32 CardSuit)
 {
   switch(CardSuit)
   {
-    case SPADES: return "SPADES";
-    case HEARTS: return "HEARTS";
-    case DIAMONDS: return "DIAMONDS";
-    case CLUBS: return "CLUBS";
+    case su_Spades: return "SPADES";
+    case su_Hearts: return "HEARTS";
+    case su_Diamonds: return "DIAMONDS";
+    case su_Clubs: return "CLUBS";
   }
 
   return "";
@@ -307,58 +307,58 @@ internal inline char *SuitToCStr(s32 CardSuit)
 
 internal inline void CreateDeck(shoe *Shoe, u32 DeckIdx)
 {
-  Shoe->cards[(52*DeckIdx) + 0] = { TWO, SPADES, {1, 1}, 2 };
-  Shoe->cards[(52*DeckIdx) + 1] = { THREE, SPADES, {2, 1}, 3 };
-  Shoe->cards[(52*DeckIdx) + 2] = { FOUR, SPADES, {3, 1}, 4 };
-  Shoe->cards[(52*DeckIdx) + 3] = { FIVE, SPADES, {4, 1}, 5 };
-  Shoe->cards[(52*DeckIdx) + 4] = { SIX, SPADES, {5, 1}, 6 };
-  Shoe->cards[(52*DeckIdx) + 5] = { SEVEN, SPADES, {6, 1}, 7 };
-  Shoe->cards[(52*DeckIdx) + 6] = { EIGHT, SPADES, {7, 1}, 8 };
-  Shoe->cards[(52*DeckIdx) + 7] = { NINE, SPADES, {8, 1}, 9 };
-  Shoe->cards[(52*DeckIdx) + 8] = { TEN, SPADES, {9, 1}, 10 };
-  Shoe->cards[(52*DeckIdx) + 9] = { JACK, SPADES, {10, 1}, 10 };
-  Shoe->cards[(52*DeckIdx) + 10] = { QUEEN, SPADES, {11, 1}, 10 };
-  Shoe->cards[(52*DeckIdx) + 11] = { KING, SPADES, {12, 1}, 10 };
-  Shoe->cards[(52*DeckIdx) + 12] = { ACE, SPADES, {0, 1}, 11 };
-  Shoe->cards[(52*DeckIdx) + 13] = { TWO, HEARTS, {1, 2}, 2 };
-  Shoe->cards[(52*DeckIdx) + 14] = { THREE, HEARTS, {2, 2}, 3 };
-  Shoe->cards[(52*DeckIdx) + 15] = { FOUR, HEARTS, {3, 2}, 4 };
-  Shoe->cards[(52*DeckIdx) + 16] = { FIVE, HEARTS, {4, 2}, 5 };
-  Shoe->cards[(52*DeckIdx) + 17] = { SIX, HEARTS, {5, 2}, 6 };
-  Shoe->cards[(52*DeckIdx) + 18] = { SEVEN, HEARTS, {6, 2}, 7 };
-  Shoe->cards[(52*DeckIdx) + 19] = { EIGHT, HEARTS, {7, 2}, 8 };
-  Shoe->cards[(52*DeckIdx) + 20] = { NINE, HEARTS, {8, 2}, 9 };
-  Shoe->cards[(52*DeckIdx) + 21] = { TEN, HEARTS, {9, 2}, 10 };
-  Shoe->cards[(52*DeckIdx) + 22] = { JACK, HEARTS, {10, 2}, 10 };
-  Shoe->cards[(52*DeckIdx) + 23] = { QUEEN, HEARTS, {11, 2}, 10 };
-  Shoe->cards[(52*DeckIdx) + 24] = { KING, HEARTS, {12, 2}, 10 };
-  Shoe->cards[(52*DeckIdx) + 25] = { ACE, HEARTS, {0, 2}, 11 };
-  Shoe->cards[(52*DeckIdx) + 26] = { TWO, CLUBS, {1, 4}, 2 };
-  Shoe->cards[(52*DeckIdx) + 27] = { THREE, CLUBS, {2, 4}, 3 };
-  Shoe->cards[(52*DeckIdx) + 28] = { FOUR, CLUBS, {3, 4}, 4 };
-  Shoe->cards[(52*DeckIdx) + 29] = { FIVE, CLUBS, {4, 4}, 5 };
-  Shoe->cards[(52*DeckIdx) + 30] = { SIX, CLUBS, {5, 4}, 6 };
-  Shoe->cards[(52*DeckIdx) + 31] = { SEVEN, CLUBS, {6, 4}, 7 };
-  Shoe->cards[(52*DeckIdx) + 32] = { EIGHT, CLUBS, {7, 4}, 8 };
-  Shoe->cards[(52*DeckIdx) + 33] = { NINE, CLUBS, {8, 4}, 9 };
-  Shoe->cards[(52*DeckIdx) + 34] = { TEN, CLUBS, {9, 4}, 10 };
-  Shoe->cards[(52*DeckIdx) + 35] = { JACK, CLUBS, {10, 4}, 10 };
-  Shoe->cards[(52*DeckIdx) + 36] = { QUEEN, CLUBS, {11, 4}, 10 };
-  Shoe->cards[(52*DeckIdx) + 37] = { KING, CLUBS, {12, 4}, 10 };
-  Shoe->cards[(52*DeckIdx) + 38] = { ACE, CLUBS, {0, 4}, 11 };
-  Shoe->cards[(52*DeckIdx) + 39] = { TWO, DIAMONDS, {1, 3}, 2 };
-  Shoe->cards[(52*DeckIdx) + 40] = { THREE, DIAMONDS, {2, 3}, 3 };
-  Shoe->cards[(52*DeckIdx) + 41] = { FOUR, DIAMONDS, {3, 3}, 4 };
-  Shoe->cards[(52*DeckIdx) + 42] = { FIVE, DIAMONDS, {4, 3}, 5 };
-  Shoe->cards[(52*DeckIdx) + 43] = { SIX, DIAMONDS, {5, 3}, 6 };
-  Shoe->cards[(52*DeckIdx) + 44] = { SEVEN, DIAMONDS, {6, 3}, 7 };
-  Shoe->cards[(52*DeckIdx) + 45] = { EIGHT, DIAMONDS, {7, 3}, 8 };
-  Shoe->cards[(52*DeckIdx) + 46] = { NINE, DIAMONDS, {8, 3}, 9 };
-  Shoe->cards[(52*DeckIdx) + 47] = { TEN, DIAMONDS, {9, 3}, 10 };
-  Shoe->cards[(52*DeckIdx) + 48] = { JACK, DIAMONDS, {10, 3}, 10 };
-  Shoe->cards[(52*DeckIdx) + 49] = { QUEEN, DIAMONDS, {11, 3}, 10 };
-  Shoe->cards[(52*DeckIdx) + 50] = { KING, DIAMONDS, {12, 3}, 10 };
-  Shoe->cards[(52*DeckIdx) + 51] = { ACE, DIAMONDS, {0, 3}, 11 };
+  Shoe->cards[(52*DeckIdx) + 0] = { r_Two, su_Spades, {1, 1}, 2 };
+  Shoe->cards[(52*DeckIdx) + 1] = { r_Three, su_Spades, {2, 1}, 3 };
+  Shoe->cards[(52*DeckIdx) + 2] = { r_Four, su_Spades, {3, 1}, 4 };
+  Shoe->cards[(52*DeckIdx) + 3] = { r_Five, su_Spades, {4, 1}, 5 };
+  Shoe->cards[(52*DeckIdx) + 4] = { r_Six, su_Spades, {5, 1}, 6 };
+  Shoe->cards[(52*DeckIdx) + 5] = { r_Seven, su_Spades, {6, 1}, 7 };
+  Shoe->cards[(52*DeckIdx) + 6] = { r_Eight, su_Spades, {7, 1}, 8 };
+  Shoe->cards[(52*DeckIdx) + 7] = { r_Nine, su_Spades, {8, 1}, 9 };
+  Shoe->cards[(52*DeckIdx) + 8] = { r_Ten, su_Spades, {9, 1}, 10 };
+  Shoe->cards[(52*DeckIdx) + 9] = { r_Jack, su_Spades, {10, 1}, 10 };
+  Shoe->cards[(52*DeckIdx) + 10] = { r_Queen, su_Spades, {11, 1}, 10 };
+  Shoe->cards[(52*DeckIdx) + 11] = { r_King, su_Spades, {12, 1}, 10 };
+  Shoe->cards[(52*DeckIdx) + 12] = { r_Ace, su_Spades, {0, 1}, 11 };
+  Shoe->cards[(52*DeckIdx) + 13] = { r_Two, su_Hearts, {1, 2}, 2 };
+  Shoe->cards[(52*DeckIdx) + 14] = { r_Three, su_Hearts, {2, 2}, 3 };
+  Shoe->cards[(52*DeckIdx) + 15] = { r_Four, su_Hearts, {3, 2}, 4 };
+  Shoe->cards[(52*DeckIdx) + 16] = { r_Five, su_Hearts, {4, 2}, 5 };
+  Shoe->cards[(52*DeckIdx) + 17] = { r_Six, su_Hearts, {5, 2}, 6 };
+  Shoe->cards[(52*DeckIdx) + 18] = { r_Seven, su_Hearts, {6, 2}, 7 };
+  Shoe->cards[(52*DeckIdx) + 19] = { r_Eight, su_Hearts, {7, 2}, 8 };
+  Shoe->cards[(52*DeckIdx) + 20] = { r_Nine, su_Hearts, {8, 2}, 9 };
+  Shoe->cards[(52*DeckIdx) + 21] = { r_Ten, su_Hearts, {9, 2}, 10 };
+  Shoe->cards[(52*DeckIdx) + 22] = { r_Jack, su_Hearts, {10, 2}, 10 };
+  Shoe->cards[(52*DeckIdx) + 23] = { r_Queen, su_Hearts, {11, 2}, 10 };
+  Shoe->cards[(52*DeckIdx) + 24] = { r_King, su_Hearts, {12, 2}, 10 };
+  Shoe->cards[(52*DeckIdx) + 25] = { r_Ace, su_Hearts, {0, 2}, 11 };
+  Shoe->cards[(52*DeckIdx) + 26] = { r_Two, su_Clubs, {1, 4}, 2 };
+  Shoe->cards[(52*DeckIdx) + 27] = { r_Three, su_Clubs, {2, 4}, 3 };
+  Shoe->cards[(52*DeckIdx) + 28] = { r_Four, su_Clubs, {3, 4}, 4 };
+  Shoe->cards[(52*DeckIdx) + 29] = { r_Five, su_Clubs, {4, 4}, 5 };
+  Shoe->cards[(52*DeckIdx) + 30] = { r_Six, su_Clubs, {5, 4}, 6 };
+  Shoe->cards[(52*DeckIdx) + 31] = { r_Seven, su_Clubs, {6, 4}, 7 };
+  Shoe->cards[(52*DeckIdx) + 32] = { r_Eight, su_Clubs, {7, 4}, 8 };
+  Shoe->cards[(52*DeckIdx) + 33] = { r_Nine, su_Clubs, {8, 4}, 9 };
+  Shoe->cards[(52*DeckIdx) + 34] = { r_Ten, su_Clubs, {9, 4}, 10 };
+  Shoe->cards[(52*DeckIdx) + 35] = { r_Jack, su_Clubs, {10, 4}, 10 };
+  Shoe->cards[(52*DeckIdx) + 36] = { r_Queen, su_Clubs, {11, 4}, 10 };
+  Shoe->cards[(52*DeckIdx) + 37] = { r_King, su_Clubs, {12, 4}, 10 };
+  Shoe->cards[(52*DeckIdx) + 38] = { r_Ace, su_Clubs, {0, 4}, 11 };
+  Shoe->cards[(52*DeckIdx) + 39] = { r_Two, su_Diamonds, {1, 3}, 2 };
+  Shoe->cards[(52*DeckIdx) + 40] = { r_Three, su_Diamonds, {2, 3}, 3 };
+  Shoe->cards[(52*DeckIdx) + 41] = { r_Four, su_Diamonds, {3, 3}, 4 };
+  Shoe->cards[(52*DeckIdx) + 42] = { r_Five, su_Diamonds, {4, 3}, 5 };
+  Shoe->cards[(52*DeckIdx) + 43] = { r_Six, su_Diamonds, {5, 3}, 6 };
+  Shoe->cards[(52*DeckIdx) + 44] = { r_Seven, su_Diamonds, {6, 3}, 7 };
+  Shoe->cards[(52*DeckIdx) + 45] = { r_Eight, su_Diamonds, {7, 3}, 8 };
+  Shoe->cards[(52*DeckIdx) + 46] = { r_Nine, su_Diamonds, {8, 3}, 9 };
+  Shoe->cards[(52*DeckIdx) + 47] = { r_Ten, su_Diamonds, {9, 3}, 10 };
+  Shoe->cards[(52*DeckIdx) + 48] = { r_Jack, su_Diamonds, {10, 3}, 10 };
+  Shoe->cards[(52*DeckIdx) + 49] = { r_Queen, su_Diamonds, {11, 3}, 10 };
+  Shoe->cards[(52*DeckIdx) + 50] = { r_King, su_Diamonds, {12, 3}, 10 };
+  Shoe->cards[(52*DeckIdx) + 51] = { r_Ace, su_Diamonds, {0, 3}, 11 };
 }
 
 internal void ResetRound(app_state *GameState)
@@ -391,13 +391,13 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
     TableRules->number_of_decks = 2;
     TableRules->penetration = 1.5f;
     TableRules->h17 = true;
-    TableRules->resplit_aces = ACE_NO_RESPLITTING;
+    TableRules->resplit_aces = as_NoResplitting;
     TableRules->max_hands = 4;
     TableRules->surrender = false;
 
     // Blackjack Setup
 
-    GameState->game_phase = NULL_PHASE;
+    GameState->game_phase = p_Null;
     // TODO: Setting
     shoe Shoe = {0};
     Shoe.deck_count = 6;
@@ -439,10 +439,10 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
 
   // UPDATE
   shoe *Shoe = &GameState->shoe;
-  if (GameState->game_phase == END)
+  if (GameState->game_phase == p_End)
   {
     ResetRound(GameState);
-    GameState->game_phase = NULL_PHASE;
+    GameState->game_phase = p_Null;
     // TODO: Only subtract one if a card is burned probably get out the bit from the setting.
     Shoe->discarded = (u32)(Shoe->current - Shoe->cards) - 1;
     // TODO: Setup deck division choices (half deck, quarter, eighth, etc.).
@@ -476,7 +476,7 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
   hand *DealerHand = &GameState->dealer;
   hand *PlayerHand = &GameState->ap.hands[GameState->ap.hand_idx];
 
-  if (GameState->game_phase == START)
+  if (GameState->game_phase == p_Start)
   {
     ++GameState->ap.hand_count;
     PlaceBet(&GameState->ap.bankroll, PlayerHand);
@@ -505,7 +505,7 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
 
     if (AllBJs)
     {
-      GameState->game_phase = END;
+      GameState->game_phase = p_End;
     }
     else
     {
@@ -514,12 +514,12 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
   }
 
   // NOTE: We have moved on to the next player hand from a split
-  if (GameState->game_phase == PLAYER && PlayerHand->card_count == 1) Hit(Shoe, PlayerHand, &GameState->running_count);
+  if (GameState->game_phase == p_Player && PlayerHand->card_count == 1) Hit(Shoe, PlayerHand, &GameState->running_count);
 
   // NOTE: For cases when a hand pays out BJ and exists inbetween all the hands
   // ie. players has 3 hands and the middle hand played out BJ, the active player
   // hand should be updated accordingly before processing player actions.
-  for (; GameState->game_phase != NULL_PHASE && PlayerHand->value == 0; PlayerHand = &GameState->ap.hands[++GameState->ap.hand_idx]);
+  for (; GameState->game_phase != p_Null && PlayerHand->value == 0; PlayerHand = &GameState->ap.hands[++GameState->ap.hand_idx]);
 
   for (ums ControllerIndex = 0;
   ControllerIndex < ArrayCount(Input->controllers);
@@ -540,14 +540,14 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
 
       switch (GameState->game_phase)
       {
-        case NULL_PHASE:
+        case p_Null:
         {
           if (ActionDown.half_transitions != 0 && ActionDown.is_down)
           {
             NextPhase(&GameState->game_phase);
           }
         } break;
-        case PLAYER:
+        case p_Player:
         {
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
@@ -633,7 +633,7 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
             OutputDebugStringA("======================\n");
           }
         } break;
-        case DEALER:
+        case p_Dealer:
         {
           if (ActionLeft.half_transitions != 0 && ActionLeft.is_down)
           {
@@ -660,7 +660,7 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
   }
 
   // Evaluate current player hand
-  if (GameState->game_phase == EVAL)
+  if (GameState->game_phase == p_Eval)
   {
     for (u32 Idx = 0; Idx < GameState->ap.hand_count; ++Idx)
     {
@@ -693,7 +693,7 @@ internal void RunGameScene(app_state *GameState, engine_input *Input, renderer *
     for (u32 Index = 0; Index < Hand.card_count; ++Index)
     {
       mat4 Transform = Mat4Translate(Index*Renderer->card_width*0.5f, Index*Renderer->card_height*0.5f + 200.0f, 0.0f)*CenterTranslate;
-      if (Index == 0 && (GameState->game_phase == START || GameState->game_phase == PLAYER))
+      if (Index == 0 && (GameState->game_phase == p_Start || GameState->game_phase == p_Player))
       {
         PushCard(Renderer, { 2.0f, 0.0f }, Transform);
       }
@@ -828,30 +828,30 @@ internal void UpdateAndRender(thread_context *Thread, app_memory *Memory, engine
     InitArena(&GameState->core_arena, Memory->perm_storage_size - sizeof(app_state),
               (u8 *)Memory->perm_memory + sizeof(app_state));
 
-    GameState->scene = s_MENU;
+    GameState->scene = sc_Menu;
     Memory->is_init = true;
   }
 
   // TODO: Clear and reset states when scene switching is added.
   switch (GameState->scene)
   {
-    case s_MENU:
+    case sc_Menu:
     {
       RunMenuScene(GameState, Input, Renderer);
     } break;
-    case s_GAME:
+    case sc_Game:
     {
       if (!GameState->scene_initialized)
       {
-        ResetGameState(GameState, Memory, s_GAME);
+        ResetGameState(GameState, Memory, sc_Game);
       }
       RunGameScene(GameState, Input, Renderer);
     } break;
-    case s_SIMU:
+    case sc_Simu:
     {
       if (!GameState->scene_initialized)
       {
-        ResetGameState(GameState, Memory, s_SIMU);
+        ResetGameState(GameState, Memory, sc_Simu);
       }
       RunSimulationScene(GameState, Input, Renderer);
     } break;

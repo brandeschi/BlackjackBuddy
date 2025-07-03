@@ -44,15 +44,15 @@ internal void EvaluateBasicStrategy(hand *PlayerHand, hand *DealerHand)
 
   if (PlayerHand->cards[0].rank == PlayerHand->cards[1].rank)
   {
-    ums Idx = FaceCard + (ACE - PlayerHand->cards[0].rank)*TableStride;
+    ums Idx = FaceCard + (r_Ace - PlayerHand->cards[0].rank)*TableStride;
     char CorrectAction = SPLITS[Idx];
   }
-  else if (PlayerHand->cards[0].rank == ACE || PlayerHand->cards[1].rank == ACE)
+  else if (PlayerHand->cards[0].rank == r_Ace || PlayerHand->cards[1].rank == r_Ace)
   {
-    rank NonAceCard = PlayerHand->cards[0].rank == ACE ?
+    rank NonAceCard = PlayerHand->cards[0].rank == r_Ace ?
                       PlayerHand->cards[0].rank :
                       PlayerHand->cards[1].rank;
-    ums Idx = FaceCard + (ACE - 2 - NonAceCard)*TableStride;
+    ums Idx = FaceCard + (r_Ace - 2 - NonAceCard)*TableStride;
     char CorrectAction = SOFTS[Idx];
   }
   else

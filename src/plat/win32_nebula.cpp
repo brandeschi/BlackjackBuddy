@@ -685,7 +685,7 @@ INT WINAPI WinMain(HINSTANCE WinInstance, HINSTANCE PrevInstance,
     UpdateAndRender(&Thread, &AppMemory, NewInput, &Renderer);
     {
       app_state *GameState = (app_state *)AppMemory.perm_memory;
-      if (GameState->scene == s_QUIT)
+      if (GameState->scene == sc_Quit)
       {
         g_Running = false;
       }

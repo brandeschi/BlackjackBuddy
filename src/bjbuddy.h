@@ -70,37 +70,37 @@ inline engine_controller_input *GetController(engine_input *Input, ums Controlle
 
 enum rank
 {
-  TWO = 0,
-  THREE,
-  FOUR,
-  FIVE,
-  SIX,
-  SEVEN,
-  EIGHT,
-  NINE,
-  TEN = 8,
-  JACK = 8,
-  QUEEN = 8,
-  KING = 8,
-  ACE,
+  r_Two = 0,
+  r_Three,
+  r_Four,
+  r_Five,
+  r_Six,
+  r_Seven,
+  r_Eight,
+  r_Nine,
+  r_Ten = 8,
+  r_Jack = 8,
+  r_Queen = 8,
+  r_King = 8,
+  r_Ace,
 };
 
 enum suit
 {
-  SPADES = 1,
-  HEARTS,
-  DIAMONDS,
-  CLUBS
+  su_Spades = 1,
+  su_Hearts,
+  su_Diamonds,
+  su_Clubs
 };
 
 enum phase
 {
-  NULL_PHASE = 0,
-  START,
-  PLAYER,
-  DEALER,
-  EVAL,
-  END
+  p_Null,
+  p_Start,
+  p_Player,
+  p_Dealer,
+  p_Eval,
+  p_End
 };
 
 struct card
@@ -145,9 +145,9 @@ struct player
 
 enum ace_splitting
 {
-  ACE_NO_SPLITTING =   1 << 0,
-  ACE_NO_RESPLITTING = 1 << 1,
-  ACE_RESPLITTING =    1 << 2,
+  as_NoSplitting = 1,
+  as_NoResplitting,
+  as_Resplitting,
 };
 struct table_rules
 {
@@ -162,10 +162,15 @@ struct table_rules
 
 enum scene
 {
-  s_QUIT = 0,
-  s_MENU,
-  s_GAME,
-  s_SIMU,
+  sc_Quit = 0,
+  sc_Menu,
+  sc_Game,
+  sc_Simu,
+};
+
+enum game_mode
+{
+  gm_BasicStrategy
 };
 
 // TODO: Optimize size of game structs.
